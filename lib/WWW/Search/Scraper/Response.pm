@@ -3,7 +3,7 @@ package WWW::Search::Scraper::Response;
 
 =head1 NAME
 
-WWW::Search::Scraper::Response::Scraper - result class of generic scrapes.
+WWW::Search::Scraper::Response - result class of generic scrapes.
 
 
 =head1 SYNOPSIS
@@ -32,7 +32,7 @@ modify it under the same terms as Perl itself.
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::SearchResult);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.1 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/);
 require WWW::SearchResult;
 
 sub new { 

@@ -5,7 +5,7 @@ package WWW::Search::Scraper::BAJobs;
 
 =head1 NAME
 
-WWW::Search::BAJobs - class for searching BAJobs
+WWW::Search::Scraper::BAJobs - class for searching BAJobs
 
 
 =head1 SYNOPSIS
@@ -63,7 +63,7 @@ modify it under the same terms as Perl itself.
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(1.42 generic_option addURL trimTags));

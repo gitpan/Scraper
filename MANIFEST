@@ -2,7 +2,7 @@ MANIFEST
 Makefile.PL
 README
 lib/WWW/Search/Scraper.pm
-lib/WWW/Search/Sherlock.pm
+lib/WWW/Search/Scraper/Sherlock.pm
 lib/WWW/Search/Scraper/apartments.pm
 lib/WWW/Search/Scraper/BAJobs.pm
 lib/WWW/Search/Scraper/computerjobs.pm

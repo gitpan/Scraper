@@ -1,16 +1,16 @@
-package WWW::Search::Sherlock;
+package WWW::Search::Scraper::Sherlock;
 
 =pod
 
 =head1 NAME
 
-B<WWW::Search::Sherlock> - class for accessing search engines via Sherlock plugins.
+B<WWW::Search::Scraper::Sherlock> - class for accessing search engines via Sherlock plugins.
 
 
 =head1 SYNOPSIS
 
-    require WWW::Search;
-    $search = new WWW::Search('Sherlock');
+    require WWW::Search::Scraper;
+    $search = new WWW::Search::Scraper('Sherlock');
     $search->sherlockPlugin($pluginURI);
     
     # then proceed as any normal WWW::Search module.
@@ -68,11 +68,11 @@ B<noUpdate> - boolean, do not fetch an updated plugin, even if that is called fo
 
 This sample is a complete script that runs Sherlock against Yahoo.com.
 The query is "Greeting Cards". It lists all the harvested fields to STDOUT.
-Note that WWW::Search('Sherlock') loads WWW::Search::Sherlock, so you don't have to.
+Note that WWW::Search::Scraper('Sherlock') loads WWW::Search::Scraper::Sherlock, so you don't have to.
 
-    use WWW::Search;
+    use WWW::Search::Scraper;
     
-    my $scraper = new WWW::Search('Sherlock');
+    my $scraper = new WWW::Search::Scraper('Sherlock');
     $scraper->sherlockPlugin('http://sherlock.mozdev.org/yahoo.src'); # or 'file:Sherlock/yahoo.src';
    
     $scraper->native_query('Greeting Cards', {'search_debug' => 1});
@@ -111,7 +111,7 @@ F<http://sherlock.mozdev.org/source/browse/sherlock/www/>
 
 =head1 AUTHOR
 
-C<WWW::Search::Sherlock> is written and maintained
+C<WWW::Search::Scraper::Sherlock> is written and maintained
 by Glenn Wood, F<glenwood@alumni.caltech.com>.
 
 =head1 COPYRIGHT
@@ -132,7 +132,7 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.1 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(1.31 addURL trimTags));
@@ -494,9 +494,9 @@ sub resultData {
 }
 
 
-use WWW::SearchResult::Sherlock;
+use WWW::Search::Scraper::Response::Sherlock;
 sub newHit {
-    return new WWW::SearchResult::Sherlock;
+    return new WWW::Search::Scraper::Response::Sherlock;
 }
 
 1;

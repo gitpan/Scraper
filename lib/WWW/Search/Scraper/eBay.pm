@@ -5,7 +5,7 @@ package WWW::Search::Scraper::eBay;
 
 =head1 NAME
 
-WWW::Search::eBay - class for searching eBay
+WWW::Search::Scraper::eBay - class for searching www.eBay.com
 
 
 =head1 SYNOPSIS
@@ -16,21 +16,13 @@ WWW::Search::eBay - class for searching eBay
 
 =head1 DESCRIPTION
 
-This class is an eBay specialization of WWW::Search.
+This class is an eBay extension of WWW::Search::Scraper.
 It handles making and interpreting eBay searches
 F<http://www.eBay.com>.
 
 =head1 OPTIONS
 
-None at this time (2001.05.06)
-
 =over 8
-
-=item search_url=URL
-
-Specifies who to query with the eBay protocol.
-The default is at
-C<http://www.eBay.com/cgi-bin/job-search>.
 
 =item search_debug, search_parse_debug, search_ref
 Specified at L<WWW::Search>.
@@ -38,17 +30,10 @@ Specified at L<WWW::Search>.
 =back
 
 
-=head1 AUTHOR and CURRENT VERSION
+=head1 AUTHOR
 
 C<WWW::Search::eBay> is written and maintained
 by Glenn Wood, <glenwood@alumni.caltech.edu>.
-
-The best place to obtain C<WWW::Search::eBay>
-is from Glenn's releases on CPAN. Because www.eBay.com
-sometimes changes its format in between his releases, 
-sometimes more up-to-date versions can be found at
-F<http://alumni.caltech.edu/~glenwood/SOFTWARE/index.html>.
-
 
 =head1 COPYRIGHT
 
@@ -62,13 +47,11 @@ modify it under the same terms as Perl itself.
 
 #####################################################################
 
-require Exporter;
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/);
 
-use Carp ();
 use WWW::Search::Scraper(qw(1.24 generic_option addURL trimTags));
 
 use HTML::Form;

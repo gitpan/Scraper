@@ -29,8 +29,10 @@ Happy Hunting!
 AUTHOR: Glenn Wood, glenwood@alumni.caltech.edu
 
 #---------------------------------------------------------------------#
-( $VERSION ) = sprintf("%d.%02d", q$Revision: 1.36 $ =~ /(\d+)\.(\d+)/)
+( $VERSION ) = sprintf("%d.%02d", q$Revision: 1.37 $ =~ /(\d+)\.(\d+)/)
 
+v1.37 - Moved Sherlock.pm to WWW::Search::Scraper to avoid namespace collision.
+        Improved some of the documentation layout (I think).
 v1.36 - Added test.pl; fixed bugs discovered thereby in Dice, apartments, eBay, etc.
 v1.35 - Added FlipDog.com, and a few features to Scraper.pm (e.g. 'BOGUS', etc).
 v1.34 - Introduced SearchResult sub-classing, with illustration in eg/Scraper.pl

@@ -3,7 +3,7 @@ package WWW::Search::Scraper::HotJobs;
 
 =head1 NAME
 
-WWW::Search::HotJobs - class for searching HotJobs
+WWW::Search::Scraper::HotJobs - class for searching HotJobs
 
 
 =head1 SYNOPSIS
@@ -18,10 +18,6 @@ This class is an HotJobs specialization of WWW::Search.
 It handles making and interpreting HotJobs searches
 F<http://www.HotJobs.com>.
 
-This class exports no public interface; all interaction should
-be done through WWW::Search objects.
-
-
 =head1 OPTIONS
 
 None at this time (2001.04.25)
@@ -31,8 +27,7 @@ None at this time (2001.04.25)
 =item search_url=URL
 
 Specifies who to query with the HotJobs protocol.
-The default is at
-C<http://www.HotJobs.com/cgi-bin/job-search>.
+The default is at C<http://www.HotJobs.com/cgi-bin/job-search>.
 
 =item search_debug, search_parse_debug, search_ref
 Specified at L<WWW::Search>.
@@ -45,34 +40,10 @@ Specified at L<WWW::Search>.
 To make new back-ends, see L<WWW::Search>,
 or the specialized HotJobs searches described in options.
 
+=head1 AUTHOR
 
-=head1 HOW DOES IT WORK?
-
-C<native_setup_search> is called before we do anything.
-It initializes our private variables (which all begin with underscores)
-and sets up a URL to the first results page in C<{_next_url}>.
-
-C<native_retrieve_some> is called (from C<WWW::Search::retrieve_some>)
-whenever more hits are needed.  It calls the LWP library
-to fetch the page specified by C<{_next_url}>.
-It parses this page, appending any search hits it finds to 
-C<{cache}>.  If it finds a ``next'' button in the text,
-it sets C<{_next_url}> to point to the page for the next
-set of results, otherwise it sets it to undef to indicate we're done.
-
-
-=head1 AUTHOR and CURRENT VERSION
-
-C<WWW::Search::HotJobs> is written and maintained
+C<WWW::Search::Scraper::HotJobs> is written and maintained
 by Glenn Wood, <glenwood@alumni.caltech.edu>.
-
-The best place to obtain C<WWW::Search::HotJobs>
-is from Martin Thurn's WWW::Search releases on CPAN.
-Because HotJobs sometimes changes its format
-in between his releases, sometimes more up-to-date versions
-can be found at
-F<http://alumni.caltech.edu/~glenwood/SOFTWARE/index.html>.
-
 
 =head1 COPYRIGHT
 
@@ -110,7 +81,7 @@ require Exporter;
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/);
 use WWW::Search::Scraper(qw(generic_option addURL trimTags));
 
 # HotJobs JobSearch submission form . . . 

@@ -5,7 +5,7 @@ package WWW::Search::Scraper::Google;
 
 =head1 NAME
 
-WWW::Search::Google - class for searching Google
+WWW::Search::Scraper::Google - class for searching www.Google.com
 
 
 =head1 SYNOPSIS
@@ -19,9 +19,6 @@ WWW::Search::Google - class for searching Google
 This class is an Google specialization of WWW::Search.
 It handles making and interpreting Google searches
 F<http://www.Google.com>.
-
-This class exports no public interface; all interaction should
-be done through WWW::Search objects.
 
 =head1 AUTHOR and CURRENT VERSION
 
@@ -46,7 +43,7 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(generic_option addURL trimTags));

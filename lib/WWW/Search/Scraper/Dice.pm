@@ -3,13 +3,13 @@ package WWW::Search::Scraper::Dice;
 
 =head1 NAME
 
-WWW::Search::Dice - class for searching Dice
+WWW::Search::Scraper::Dice - class for searching www.Dice.com
 
 =head1 SYNOPSIS
 
  use WWW::Search;
- my $oSearch = new WWW::Search('Dice');
- my $sQuery = WWW::Search::escape_query("unix and (c++ or java)");
+ my $oSearch = new WWW::Search::Scraper('Dice');
+ my $sQuery = WWW::Search::Scraper::escape_query("unix and (c++ or java)");
  $oSearch->native_query($sQuery,
  			{'method' => 'bool',
 		         'state' => 'CA',
@@ -22,22 +22,11 @@ WWW::Search::Dice - class for searching Dice
      } 
  }
 
- sub isHitGood {return 1;}
-
 =head1 DESCRIPTION
 
-This class is a Dice specialization of WWW::Search.
+This class is a Dice extension of WWW::Search::Scraper.
 It handles making and interpreting Dice searches at
 F<http://www.dice.com>.
-
-
-By default, returned WWW::Search::Scraper::Response objects contain only url, title
-and description which is a mixture of location and skills wanted.
-Function B<getMoreInfo( $url )> provides more specific info - it has to
-be used as
-
-    my ($company,$title,$date,$location) = 
-        $oSearch->getMoreInfo($res->url);
 
 =head1 OPTIONS 
 
@@ -226,8 +215,11 @@ Changes the default to $num_to_retrieve.
 
 =head1 AUTHOR
 
-C<WWW::Search::Google> is written and maintained
-by Glenn Wood, <glenwood@alumni.caltech.edu>.
+Copyright (c) 2001 Glenn Wood
+All rights reserved.
+
+This program is free software; you can redistribute it and/or
+modify it under the same terms as Perl itself.
 
 =head1 LEGALESE
 
@@ -242,7 +234,7 @@ require HTML::TokeParser;
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(1.42 generic_option trimTags addURL));

@@ -2,32 +2,22 @@ package WWW::Search::Scraper::JustTechJobs;
 
 =head1 NAME
 
-WWW::Search::JustTechJobs - class for searching Just*Jobs
-
+WWW::Search::Scraper::JustTechJobs - class for searching Just*Jobs
 
 =head1 SYNOPSIS
 
     require WWW::Search;
     $search = new WWW::Search('JustTechJobs');
 
-
 =head1 DESCRIPTION
 
 This class is an JustTechJobs specialization of WWW::Search.
-It handles making and interpreting Hot*Jobs searches
-F<http://www.Hot*Jobs.com> (where * is 'Perl', 'Java', etc).
+It handles making and interpreting Just*Jobs searches
+F<http://www.Just*Jobs.com> (where * is 'Perl', 'Java', etc).
 
 =head1 OPTIONS
 
-None at this time (2001.04.25)
-
 =over 8
-
-=item search_url=URL
-
-Specifies who to query with the JustTechJobs protocol.
-The default is at
-C<http://www.Just*Jobs.com/cgi-bin/job-search> (where * is 'Perl', 'Java', etc).
 
 =item search_debug, search_parse_debug, search_ref
 Specified at L<WWW::Search>.
@@ -35,14 +25,9 @@ Specified at L<WWW::Search>.
 =back
 
 
-=head1 SEE ALSO
-
-To make new back-ends, see L<WWW::Search>,
-or the specialized JustTechJobs searches described in options.
-
 =head1 AUTHOR
 
-C<WWW::Search::JustTechJobs> is written and maintained
+C<WWW::Search::Scraper::JustTechJobs> is written and maintained
 by Glenn Wood, <glenwood@alumni.caltech.edu>.
 
 =head1 COPYRIGHT
@@ -61,7 +46,7 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(generic_option addURL trimTags));

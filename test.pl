@@ -24,6 +24,7 @@ while (<TMP>) {
         push @modules, $1;
     }
 }
+close TMP;
 #    push @modules, '../HeadHunter'; # Let's add Alexander's HeadHunter, for the fun of it!
 
     my $testCount = 2 + scalar(@modules) * 4;
