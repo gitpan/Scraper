@@ -46,7 +46,7 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.13 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.14 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(1.48 generic_option addURL trimTags));
@@ -171,7 +171,7 @@ This converts to an array tree that looks like this:
 
 # This is the LOCA list as of 2.May.2001.
 # You're welcome to keep it up to date as you wish! ;-)
-    my %locationList = {
+    my %locationList = (
         'All Locations' => 'All-Locations',
         'All US Locations' => 'US-All',
         'Alabama-All' => 'US-AL-All',
@@ -661,7 +661,7 @@ This converts to an array tree that looks like this:
         'Yugoslavia' => 'Yugoslavia',
         'Zambia' => 'Zambia',
         'Zimbabwe' => 'Zimbabwe'
-    };
+    );
 
 
 #'http://www.justperljobs.com/jperj.nsf/SearchResults?OpenForm&POST=&VISA=&CONT=&ENTL=&STRT=&COMP=&LOCA=&KEYW=Perl&LOGF=AND&NEXT=1'

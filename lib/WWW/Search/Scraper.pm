@@ -10,9 +10,9 @@ require Exporter;
 use vars qw($VERSION $MAINTAINER @ISA @EXPORT @EXPORT_OK);
 @EXPORT = qw(testParameters);
 
-$VERSION = '2.19';
+$VERSION = '2.20';
 
-my $CVS_VERSION = sprintf("%d.%02d", q$Revision: 1.62 $ =~ /(\d+)\.(\d+)/);
+my $CVS_VERSION = sprintf("%d.%02d", q$Revision: 1.64 $ =~ /(\d+)\.(\d+)/);
 $MAINTAINER = 'Glenn Wood http://search.cpan.org/search?mode=author&query=GLENNWOOD';
 
 use Carp ();
@@ -70,6 +70,7 @@ sub new {
     $searchName = $subclass unless $searchName;
     $self->{'scraperName'} = $searchName;
 
+    $self->{cache} = []; # This eliminates some useless "warnings" from WWW::Search(lines 544-549) during make test.
     # Finally, call the sub-scraper's init() method.
     $self->init();
 
@@ -141,6 +142,7 @@ sub scraperDetail{ undef }
 #   T - lists progress of each TidyXML tree-walking operation.
 #   d - excruciating details about parsing the results and details pages.
 sub ScraperTrace {
+    return undef unless defined $_[0]->{'_traceFlags'};
     return $_[0]->{'_traceFlags'} unless $_[1]; # default traceFlags if no match string sent.
     return ( $_[0]->{'_traceFlags'} =~ m-$_[1]- );
 }
@@ -273,7 +275,7 @@ sub native_setup_search_FORM
     }
     
     my @forms = HTML::Form->parse($response->content(), $response->base());
-    my $form = $forms[$self->scraperQuery()->{'formNameOrNumber'}];
+    my $form = $forms[$self->scraperQuery()->{'formNameOrNumber'} or ''];
 
     # Finally figure out the url.
     return undef unless $form;
@@ -706,7 +708,7 @@ sub scraper { my ($self, $scaffold_array, $TidyXML, $hit, $debug) = @_;
 
 SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
         my $tag = $$scaffold[0];
-        print "TAG: $tag\n" if $debug > 1;
+        #print "TAG: $tag\n";
 
         # 'HIT*' is special since it has pre- and post- processing (adding the hits to the hit-list).
         # All other tokens simply process data as it moves along, then they're done,
@@ -902,7 +904,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
 
     	elsif ( $tag =~ m/^(TABLE|TR|DL|FORM)$/ )
     	{
-            my $tagLength = length $tag + 2;
+            my $tagLength = length ($tag) + 2;
             my $elmName = $$scaffold[1];
             $elmName = '#0' unless $elmName;
             if ( 'ARRAY' eq ref $$scaffold[1] )
@@ -994,17 +996,18 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
     		$next_scaffold = $$scaffold[1];
             if ( 'ARRAY' ne ref $next_scaffold  ) # if next_scaffold is an array ref, then we'll recurse (below)
             {
-               my $binding = $next_scaffold;
-               my $datParser = $$scaffold[2];
-               print STDERR  "raw dat: '$sub_string'\n" if ($self->ScraperTrace('d'));
-               if (  $self->ScraperTrace('d') ) { # print ref $ aways does something screwy
+                my $binding = $next_scaffold;
+                my $datParser = $$scaffold[2];
+                print STDERR  "raw dat: '$sub_string'\n" if ($self->ScraperTrace('d'));
+                if (  $self->ScraperTrace('d') ) { # print ref $ aways does something screwy
                   print STDERR  "datParser: ";
                   print STDERR  ref $datParser;
                   print STDERR  "\n";
-               };
-               $datParser = \&WWW::Search::Scraper::trimTags unless $datParser;
-               print STDERR  "binding: '$binding', " if ($self->ScraperTrace('d'));
-               print STDERR  "parsed dat: '".&$datParser($self, $hit, $sub_string)."'\n" if ($self->ScraperTrace('d'));
+                };
+                $datParser = \&WWW::Search::Scraper::trimTags unless $datParser;
+                print STDERR  "binding: '$binding', " if ($self->ScraperTrace('d'));
+                print STDERR  "parsed dat: '".&$datParser($self, $hit, $sub_string)."'\n" if ($self->ScraperTrace('d'));
+                next SCAFFOLD unless $binding;
                 if ( $binding eq 'url' )
                 {
                     my $url = new URI::URL(&$datParser($self, $hit, $sub_string), $self->{_base_url});
@@ -1023,6 +1026,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
             my $lbl = $$scaffold[1];
             my $anchor;
             next SCAFFOLD unless ($sub_string, $anchor) = $TidyXML->getMarkedText('A'); # and throw it away.
+            next SCAFFOLD unless $anchor;
             if ( ( $anchor =~ s-A\s.*?HREF=(["'])([^"']+?)\1--si) or
                  ( $anchor =~ s-A\s.*?HREF(=)([^> ]+)--si) 
                )
@@ -1130,7 +1134,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
                 $xpath =~ s/for\((\w+)?\)/$forN/i;
             }
             if ( $xpath =~ /hit\((\d+)?\)/i ) {
-                my $hitN = $self->{'total_hits_count'} + $1;
+                my $hitN = $self->{'total_hits_count'} + ($1||0);
                 $xpath =~ s/hit\((\d+)?\)/$hitN/i;
             }
             my $binding = $$scaffold[2];

@@ -41,8 +41,10 @@ eg/SearchJobs.pl
 eg/Sherlock.pl
 eg/Scraper.pl
 eg/setupLocations.pl
+eg/Boilerplate.pl
 eg/ZIPplus4.pl
 t/lib/Test/Builder.pm
 t/lib/Test/More.pm
 t/lib/Test/Simple.pm
+t/t.t
 test.pl

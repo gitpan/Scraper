@@ -1,19 +1,22 @@
 # Before `make install' is performed this script should be runnable with
 # `make test'. After `make install' it should work as `perl test.pl'
 
-use WWW::Search::Scraper(qw(2.19));
-
 use ExtUtils::testlib;
-use lib qw(t/lib);
+use lib 't/lib','../blib/lib','./blib/lib';
 use Test::More;
+$VERSION = sprintf("%d.%02d", q$Revision: 1.15 $ =~ /(\d+)\.(\d+)/);
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.14 $ =~ /(\d+)\.(\d+)/);
+#my $warn = $^W;
+#$^W = 0;
+#$^W = $warn if WWW::Search::Scraper::isGlennWood();
+
 
 ######################### We start with some black magic to print on failure.
 
 # Change 1..1 below to 1..last_test_to_print .
 # (It may become useful if the test is moved to ./t subdirectory.)
 
+use WWW::Search::Scraper(qw(2.19));
 BEGIN { select STDERR; $| = 1; select STDOUT; $| = 1; }
 END {
     }
@@ -39,11 +42,12 @@ EOT
     close TMP;
     my $makefile = join '',@makefile;
     use vars qw($prereq_pm);
-    $makefile =~ s/^.*'PREREQ_PM'\s*=>([^}]*}).*$/\$prereq_pm = \1/s;
+    $makefile =~ s/^.*'PREREQ_PM'\s*=>([^}]*}).*$/\$prereq_pm = $1/s;
     eval $makefile;
     for ( sort keys %$prereq_pm ) {
-        my $mod_version;
-        eval "use $_($$prereq_pm{$_}); \$mod_version = \$$_\:\:\VERSION;";
+        my $mod_version = '';
+        eval "use $_($$prereq_pm{$_}); \$mod_version = \$$_\:\:VERSION;";
+        $mod_version = '' unless $mod_version;
         print $traceFile "    using $_($mod_version);\n";
         diag "    using $_($mod_version);\n";
     }
@@ -147,7 +151,7 @@ sub TestThisEngine {
     my $success = 1;
     my $jTest = 0;
 
-    TRACE(0, "Test $jTest: $sEngine\n");
+    TRACE(0, "Test #$jTest: $sEngine\n");
     my $oSearch = new WWW::Search::Scraper($sEngine);
     if ( not ref($oSearch)) {
         TRACE(1, "Can't load scraper module for $sEngine: $!\n");
@@ -189,7 +193,7 @@ sub TestThisEngine {
     TRACE(0, "Test #$jTest: $sEngine one-page search\n");
 
 # Set up standard, and exceptional, options.
-    my ($sQuery, $options, $onePageCount, $multiPageCount, $bogusPageCount) = $oSearch->setupStandardAndExceptionalOptions($sEngine);
+    ($sQuery, $options, $onePageCount, $multiPageCount, $bogusPageCount) = $oSearch->setupStandardAndExceptionalOptions($sEngine);
 
     # Skip this test if no results are expected anyway.
     if ( $onePageCount ) {
@@ -232,7 +236,7 @@ EOT
 #######################################################################################
     $jTest++;
     TRACE(0, "Test #$jTest: $sEngine multi-page search\n");
-    my ($sQuery, $options, $onePageCount, $multiPageCount, $bogusPageCount) = $oSearch->setupStandardAndExceptionalOptions($sEngine);
+    ($sQuery, $options, $onePageCount, $multiPageCount, $bogusPageCount) = $oSearch->setupStandardAndExceptionalOptions($sEngine);
     # Don't bother with this test if $multiPageCount <= $onePageCount - we've already done it.
     if ( $multiPageCount > $onePageCount ) {
         my $maximum_to_retrieve = $multiPageCount; # 2 or 3 pages

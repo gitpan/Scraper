@@ -1,6 +1,8 @@
 
 Revision history for WWW::Search::Scraper (::*).
 
+v2.20 - Added eg/Boilerplage.pl - creates boilerplates for new Scraper modules.
+	Added t/t.t to help some make tests work.
 v2.19 - Improved make test - uses Test::More for better result logging.
 v2.18 - Added BayAreaHelpWanted.com, and ZIPplus4 (ZIP+4 Code Look-up).
 	Added auto-sub-classing of responses via Response.pm and each scraper "frame".

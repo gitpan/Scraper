@@ -32,7 +32,7 @@ modify it under the same terms as Perl itself.
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::SearchResult);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/);
 require WWW::SearchResult;
 my %AlreadyDeclared;
 
@@ -211,7 +211,10 @@ EOT
             $detailAccessors .= "sub $_ { my \$slf = shift; \$slf->ScrapeDetailPage() if defined \$_[0]; \$slf->SUPER::$_(\@_) }\n";
         }
     }
+    my $warn = $^W;
+    $^W = 0; # Eliminates useless "warnings" during make test.
     eval "{package WWW::Search::Scraper::Response$SubClass; $detailAccessors } 1";
+    $^W = $warn;
     die $@ if $@;
     
 

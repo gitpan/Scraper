@@ -132,7 +132,7 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(2.12 addURL trimTags));
@@ -196,7 +196,7 @@ sub native_setup_search
     my $interpretCount = 0;
     $self->{'sherlockInterprets'} = [];
     for ( &quotewords('<|/?>', 1, $plugin) ) {
-    do { s/\s+$// } while ( chomp ); next unless $_;
+        if ( $_) { do { s/\s+$// } while ( chomp ); next unless $_; }
 
     m/^search/i && do  { 
             for ( split /\n/ ) {

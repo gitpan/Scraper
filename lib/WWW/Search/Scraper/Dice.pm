@@ -3,7 +3,7 @@ package WWW::Search::Scraper::Dice;
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.16 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.17 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Search::Scraper(qw(1.48 generic_option trimTags addURL));
 use WWW::Search::Scraper::FieldTranslation;
@@ -82,7 +82,7 @@ sub testParameters {
     # 'POST' style scraperFrames can't be tested cause of a bug in WWW::Search(2.2[56]) !
     return {
                  'SKIP' => ''
-                ,'TODO' => 'Dice is dicey; one moment it works, the next moment it doesn\'t (it mostly works, though)\nUses POST: certain versions of WWW::Search (2.25 to name one) fail with POSTs.'
+                ,'TODO' => "Dice is dicey; one moment it works, the next moment it doesn\'t (it mostly works, though)\nUses POST: certain versions of WWW::Search (2.25 to name one) fail with POSTs."
                 ,'testNativeQuery' => 'Perl NOT Java'
                 ,'expectedOnePage' => 9
                 ,'expectedMultiPage' => 21

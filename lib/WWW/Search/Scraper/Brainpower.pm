@@ -5,7 +5,7 @@ package WWW::Search::Scraper::Brainpower;
 use strict;
 use vars qw(@ISA $VERSION);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.12 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Search::Scraper(qw(2.18 trimTags trimLFs removeScriptsInHTML cleanupHeadBody));
 use WWW::Search::Scraper::FieldTranslation(1.00);
@@ -262,9 +262,9 @@ sub location { my $x = $_[0]->SUPER::location(); $x =~ s/\s+$//g; return $x;}
 
 sub description { my $rslt = $_->SUPER::description();
 # Hey, if some of those bubble-heads at the KBDs want to put in a few hundred spaces, then !%^&!* them!
-    $rslt =~ s/\s\s\s\s\s\s\s/\s/g;
+    $rslt =~ s/\s+/ /g;
 # The same goes for massive doses of <br>s. What is it with these people?
-    $rslt =~ s/\n\n/\n/g;
+    $rslt =~ s/\n+/\n/g;
     return $rslt;
  }
 

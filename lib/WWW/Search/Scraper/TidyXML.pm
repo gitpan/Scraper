@@ -10,7 +10,7 @@
 
 
 package WWW::Search::Scraper::TidyXML;
-$VERSION = sprintf("%d.%02d", q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/);
 
 use strict;
 
@@ -72,11 +72,6 @@ sub fixupHtmlForTidy {
 }
 
 
-sub TRACE {
-    return ( $_[0]->m_TRACE() =~ m-$_[1]- );
-}
-
-
 # Extract the given xml path from the given TidyXML. Return reference to the string version.
 sub asString {
     my ($self, $xmlPath) = @_;
@@ -93,15 +88,11 @@ sub asString {
         return $result;
     }
     
-    print STDERR "TidyXML::asString($xmlPath)\n" if $self->TRACE('T');
-
-
     my $node;
     
     ####
     #### XML::XPath-wise parsing . . .
     ####
-    print STDERR "XML::XPath-wise\n" if $self->TRACE('T');
     # <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
     #return \undef unless $parsedXML = $elements->item($count-1);
     my $parsedXML = $self->m_asXML();
