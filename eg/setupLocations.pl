@@ -25,7 +25,7 @@ modify it under the same terms as Perl itself.
 =cut
 
 use strict;
-use WWW::Search::Scraper::FieldTranslation;
+use WWW::Scraper::FieldTranslation;
 use vars qw($VERSION);
 $VERSION = sprintf("%d.%02d", q$Revision: 1.0 $ =~ /(\d+)\.(\d+)/);
 
@@ -126,7 +126,7 @@ my %ScraperLocations =
     for my $scraperName ( keys %ScraperLocations ) {
 
         $scraperName =~ m/^(.*)\.(.*)\.(.*)$/;
-        my $FT = new WWW::Search::Scraper::FieldTranslation( $1, $2, $3 );
+        my $FT = new WWW::Scraper::FieldTranslation( $1, $2, $3 );
         my $Fields = $ScraperLocations{$scraperName};
         
         for ( keys %$Fields ) {

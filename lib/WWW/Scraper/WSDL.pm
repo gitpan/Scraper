@@ -187,7 +187,7 @@ WWW::Scraper::WSDL
 
 =head1 DESCRIPTION
 
-This class is an WSDL specialization of WWW::Search.
+This class is an WSDL specialization of WWW::Scraper.
 It handles making and interpreting WSDL searches
 F<http://www.WSDL.com>.
 

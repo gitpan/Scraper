@@ -27,10 +27,10 @@ $VERSION = sprintf("%d.%02d", q$Revision: 1.0 $ =~ /(\d+)\.(\d+)/);
 
 sub new {
     my $self = WWW::Scraper::Response::new(
-         'generic'
+         $_[3]
         ,{
          }
-        ,@_);
+        ,($_[0],$_[1],$_[2]));
     return $self;
 }
 

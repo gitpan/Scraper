@@ -100,6 +100,8 @@ $VERSION = sprintf("%d.%02d", q$Revision: 1.02 $ =~ /(\d+)\.(\d+)/);
 require WWW::SearchResult;
 my (%AlreadyDeclared, $idCounter);
 
+print "WWW::Scraper::Response v$VERSION\n" if ( $WWW::Scraper::PRINT_VERSION );
+
 sub fieldCapture {
     my ($scaffold) = @_;
     my @fields = ();
@@ -108,7 +110,13 @@ SCAFFOLD: for my $scaffold ( @$scaffold ) {
         $next_scaffold = undef;
         
         my $tag = $$scaffold[0];
-        if ( $tag =~ m/HIT|HIT\*/ )
+        if ( ref($tag) ) {
+            push @fields, @{$tag->{'fieldsCaptured'}} if $tag->{'fieldsCaptured'};
+            my @scfld = @$scaffold;
+            $next_scaffold = $scfld[$#scfld] if ref($scfld[$#scfld]) eq 'ARRAY';
+            push @fields, fieldCapture($next_scaffold) if $next_scaffold;
+        }
+        elsif ( $tag =~ m/HIT|HIT\*/ )
         {
             my $resultType = $$scaffold[1];
             if ( 'ARRAY' eq ref $resultType ) {
@@ -119,17 +127,15 @@ SCAFFOLD: for my $scaffold ( @$scaffold ) {
             {
                 $resultType = "::$resultType";
                 $next_scaffold = $$scaffold[2];
-                #$next_scaffold = $$scaffold[1] unless defined $next_scaffold;
-                next SCAFFOLD;
             }
         }
-        elsif ( $tag =~ m/HTML|TidyXML|TABLE|TR|DL|FORM|FOR/ )
+        elsif ( $tag =~ m/(HTML|TidyXML|TABLEX|TRX|DL|FOR)$/ )
         {
             my $i = 1;
             while ( $$scaffold[$i] and 'ARRAY' ne ref($$scaffold[$i]) ) { $i += 1; }
             $next_scaffold = $$scaffold[$i];
         }
-        elsif ('BODY' eq $tag) { # 'BODY', 'x', 'y' , [[.]]
+        elsif ('BODYX' eq $tag) { # 'BODY', 'x', 'y' , [[.]]
             if ( 'ARRAY' ne ref $$scaffold[3]  ) # if next_scaffold is an array ref, then we'll recurse (below)
             {
                 push @fields, $$scaffold[3];
@@ -144,14 +150,13 @@ SCAFFOLD: for my $scaffold ( @$scaffold ) {
             push @fields, $$scaffold[3];
             next SCAFFOLD;
         }
-    	elsif ( $tag =~ m/^(TABLE|TR|DL|FORM)$/ )
+    	elsif ( $tag =~ m/^(TABLEX|TRX|DL)$/ )
     	{
             $next_scaffold = $$scaffold[1];
             $next_scaffold = $$scaffold[2] unless ( 'ARRAY' eq ref $next_scaffold );
         }
     	elsif ( 'TAG' eq $tag )
         {
-            #$tag = $$scaffold[1];
     		$next_scaffold = $$scaffold[2];
             if ( 'ARRAY' ne ref $next_scaffold  ) # if next_scaffold is an array ref, then we'll recurse (below)
             {
@@ -159,7 +164,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold ) {
                 next SCAFFOLD;
             }
         }
-    	elsif ( $tag =~ m/^(TD|DT|DD|DIV|SPAN|RESIDUE)$/ )
+    	elsif ( $tag =~ m/^(TDX|DT|DD|DIV|SPAN|RESIDUE)$/ )
         {
     		$next_scaffold = $$scaffold[1];
             if ( 'ARRAY' ne ref $next_scaffold  ) # if next_scaffold is an array ref, then we'll recurse (below)
@@ -168,7 +173,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold ) {
                 next SCAFFOLD;
             }
         }
-        elsif ( 'A' eq $tag or 'AN' eq $tag ) 
+        elsif ( 'AN' eq $tag ) 
         {
             #my $lbl = $$scaffold[1];
             push @fields, $$scaffold[1] if $$scaffold[1];
@@ -182,7 +187,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold ) {
             push @fields, $$scaffold[3] if $$scaffold[3];
             next SCAFFOLD;
         }
-        elsif ( $tag =~ m{^(REGEX|F|SNIP)$} ) # another idea: REGEX and F give their results to a sub-scraperFrame
+        elsif ( $tag =~ m{^(REGEXX|F|SNIP)$} ) # another idea: REGEX and F give their results to a sub-scraperFrame
         {                                     #  instead of to a field - gdw.2003.01.16
             my @ary = @$scaffold;
             shift @ary;
@@ -214,6 +219,18 @@ SCAFFOLD: for my $scaffold ( @$scaffold ) {
                 next SCAFFOLD;
             }
         }
+        else {
+warn "Error in WWW::Scraper::Response";
+#            my @fieldsCaptured;
+#            my ($op,$params) = ($tag =~ m{^(\w+)(?:\((.*)\))?$});
+#            my @params = split /\s*,\s*/, $params if $params;
+#            eval "use WWW::Scraper::Opcode::$op; \$op = new WWW::Scraper::Opcode::$op(\$scaffold, \\\@params)";
+#            die "WWW::Scraper::Response - - no $tag Scraper opcode class: $@" if $@;
+#            $$scaffold[0] = $op;
+#            push @fields, @{$op->{'fieldsCaptured'}} if $op->{'fieldsCaptured'};
+#            my @scfld = @$scaffold;
+#            $next_scaffold = $scfld[$#scfld] if ref($scfld[$#scfld]) eq 'ARRAY';
+        }
         push @fields, fieldCapture($next_scaffold) if $next_scaffold;
     }
     return @fields;
@@ -223,6 +240,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold ) {
 sub new { 
     my $SubClass = shift;
     die "Scraper::Response::new() requires a subclass-name parameter." if !defined $SubClass || ref($SubClass);
+    $SubClass =~ s{^WWW\::Scraper\::Response\::}{};
 
     my $self;
     my $scraperFrameCount = 0;
@@ -243,9 +261,6 @@ sub new {
                 }
                 elsif ( 'ARRAY' eq $rf ) {
                     $scraperFrameCount += 1;
-                    my $i = 1;
-#                    while ( 'ARRAY' ne ref $$whatzit[$i] ) { $i += 1; }
-#                    $whatzit = $$whatzit[$i];
                     map { $subFields{$_} = (defined $subFields{$_})?3:$scraperFrameCount if defined $_ } fieldCapture($whatzit);
                 }
                 else {
@@ -253,21 +268,18 @@ sub new {
                 }
             }
         }
-        delete $subFields{''}; # undef's in frame code's parameter lists are allowed.
-
-        # If a Response sub-class has been declared, get field names from its detail frame, too.
-#        if ( defined $SubClass && $SubClass ) {
-#            my $responseDetailFrame;
-#            eval "use WWW::Scraper::Response$SubClass; \$responseDetailFrame = WWW::Scraper::Response$SubClass\::scraperDetail();";
-#            die $@ if $@;
-#            $scraperDetailFrame = $responseDetailFrame if $responseDetailFrame;
-#        }
-        # value of {'fieldName'} == 2 means field is from searchDetailFrame, only
-        # value of {'fieldName'} == 3 means field is from searchResultsFrame and searchDetailFrame 
+        delete $subFields{''}; # undef's in frame code's parameter lists are allowed, but should be ignored.
 
         my $subFieldsStruct = join '\'=>\'@\',\'__', keys %subFields;
         die "No fields were found in the scraperFrames for WWW::Scraper::Response$SubClass\n" unless keys %subFields;
 
+        my $type = $SubClass;
+        $type =~ s{^::}{};
+        my $typeLeaf = $type;
+        $typeLeaf =~ s{^.*:([^:]+)$}{$1};
+        my $baseClasses = '';
+        $baseClasses = "WWW::Scraper::Response::$1" if ( $type =~ m{^(.*)::[^:]+$} );
+        $baseClasses = "WWW::Scraper::Response$SubClass\::_struct_ $baseClasses WWW::Scraper::Response";
         eval <<EOT;
 { package WWW::Scraper::Response$SubClass\::_struct_;
 use Class::Struct;
@@ -283,6 +295,10 @@ use Class::Struct;
                 ,'_native_options' => '\$'   # reference to hash of native_options.
                 ,'_ScraperEngine'  => '\$'
                 ,'_Scraper_debug'  => '\$'
+                ,'_grubLevel'  => '\$'
+                ,'_hitfound'   => '\$'
+                ,'SubHitList'  => '\$'
+                ,'SubHitList'  => '\$'
 # Now for the $SubClass specific members.
 ,'__$subFieldsStruct'=>'\@'
                 }
@@ -292,8 +308,9 @@ use Class::Struct;
 package WWW::Scraper::Response$SubClass;
 use WWW::Scraper::Response;
 use vars qw(\@ISA);
-\@ISA = qw( WWW::Scraper::Response$SubClass\::_struct_ WWW::Scraper::Response );
-
+\@ISA = qw( $baseClasses );
+sub type { return '$type' }
+sub typeLeaf { return '$typeLeaf' }
 1;
 EOT
         die $@ if $@;
@@ -311,6 +328,7 @@ sub $_ {
     my \$slf = shift;
     my \$val = shift;
     if ( defined \$val ) {
+        \$slf->_hitfound(1);
         my \$ref = \$slf->__$_();
         if ( defined \$ref ) {
             push \@\$ref, \$val;
@@ -333,6 +351,7 @@ sub $_ {
     my \$val = shift;
     \$slf->ScrapeDetailPage(\$slf->url());
     if ( defined \$val ) {
+        \$slf->_hitfound(1);
         my \$ref = \$slf->__$_();
         if ( defined \$ref ) {
             push \@\$ref, \$val;
@@ -355,6 +374,7 @@ sub $_ {
     my \$val = shift;
     \$slf->ScrapeDetailPage(\$slf->url()) if defined(\$slf->_skipDetailPage()) && \$slf->_skipDetailPage() != 3;
     if ( defined \$val ) {
+        \$slf->_hitfound(1);
         my \$ref = \$slf->__$_();
         if ( defined \$ref ) {
             push \@\$ref, \$val;
@@ -379,13 +399,20 @@ EOT
         die $@ if $@;
     }
 
-    eval "\$self = new WWW::Scraper::Response$SubClass\::_struct_";
-    bless $self, "WWW::Scraper::Response$SubClass";
+    eval "\$self = new WWW::Scraper::Response$SubClass";
     
-    $self->_fieldCount(${AlreadyDeclared{$SubClass}}[0]);
-    $self->_fieldNames(${AlreadyDeclared{$SubClass}}[1]);
-
     return $self;
+}
+
+# private - friend of WWW::Scraper.
+sub _AddToHitList {
+    my ($self,$hit) = @_;
+    my $subHitList = $self->SubHitList;
+    unless ( $subHitList ) {
+        $subHitList = [];
+        $self->SubHitList($subHitList);
+    }
+    push @$subHitList, $hit;
 }
 
 sub plug_elem {
@@ -398,17 +425,21 @@ sub plug_elem {
         # I don't know how it happens, but happened with ::CNN a lot. gdw.2002.09.09
         eval { $self->$name(\$_); }; #die $@ if $@;
     }
+    $self->_hitfound(1);
 }
 sub plug_url {
     my ($self, $url) = @_;
     $self->add_url($url);
     $self->url(\$url);
+    $self->_hitfound(1);
 }
 
 
 # Return a table of names and origins for all data result columns.
 sub GetFieldNames {
-    $_[0]->_fieldNames();
+    my $SubClass = ref(shift);
+    $SubClass =~ s{^WWW\::Scraper\::Response}{};
+    return $AlreadyDeclared{$SubClass}[1];
 }
 
 # Return a table of names and titles for all data result columns.
@@ -455,40 +486,53 @@ sub content {
 # The default Response class "detail page" frame is null.
 sub scraperDetail { undef }
 
-sub toString {
-    my ($self) = @_;
+sub toString { shift->asString(@_) }
+sub asString {
+    my ($self, $mod, $tabnum) = @_;
+    my $answer = '';
+
+    $mod = 0 unless $mod; # Prevents useless diagnostics message.
+    $tabnum = 0 unless $tabnum; # Prevents useless diagnostics message.
+
+    $answer .= "    "x$tabnum."#--- ".ref($self)." ---#\n";
     my %resultTitles = %{$self->GetFieldTitles()};# unless %resultTitles;
     my %results = %{$self->GetFieldValues()};
 #        for ( keys %resultTitles ) {
     my $fieldNames = $self->GetFieldNames();
     for ( keys %$fieldNames ) {
-        if ( 1 ) {
+        if ( $mod == 0 ) {
             my @value = $self->$_;
-            print "$resultTitles{$_}: (";
+            $answer .= "    "x$tabnum."$resultTitles{$_}: (";
             my $comma = '';
             for ( @value ) {
                 #next unless defined $_ and defined $$_; #hmm. . . how does this happen, in eBay.
-                print "$comma'$$_'";# if $results{$_};
+                $answer .= "$comma'$$_'";# if $results{$_};
                 $comma = ', ';
             }
-            print ")\n";
+            $answer .= ")\n";
         } else {
             my $value = $self->$_;
 #                print "$resultTitles{$_}:= '$results{$_}'\n";# if $results{$_};
             if ( defined $value ) {
-                print "$_: '$$value'\n";# if $results{$_};
+                $answer .= "    "x$tabnum."$_: '$$value'\n";# if $results{$_};
             } else {
-                print "$_: <NULL>\n";# if $results{$_};
+                $answer .= "    "x$tabnum."$_: <NULL>\n";# if $results{$_};
             }
         }
     }
+    if ( my $subHitList = $self->SubHitList ) {
+        for ( @$subHitList ) {
+            $answer .= $_->toString(0,$tabnum+1);
+        }
+    }
+    $answer .= "\n";
 }
 
 
 # Pairs in the $anchors hash are combined into <A> anchor tags.
-sub toHTML {
+sub toHTML { shift->asHtml(@_) }
+sub asHtml {
     my ($self, $anchors) = @_;
-    
     my $result = "<TABLE BORDER='4'>"; #<DT>from:</DT><DD>".$self->{'searchObject'}->scraperName()."</DD>\n";
     my %results = %{$self->GetFieldValues()};
     my %resultTitles = %{$self->GetFieldTitles()};
@@ -571,13 +615,13 @@ sub ScrapeDetailPage {
 
     my $scraper = $self->_ScraperEngine();
 
-    print STDERR 'DETAIL PAGE: '.$url. "\n" if ($self->_ScraperEngine->ScraperTrace('U'));
+    print STDERR 'DETAIL PAGE: '.$$url. "\n" if ($scraper->ScraperTrace('U'));
 
     eval {
         # Why does http_request() cause Scraper::Brainpower to fail "Object Not Found" on next_url?        
         # this code from WWW::Search::http_request().
         use HTTP::Request;
-        my $request = new HTTP::Request('GET', $url);
+        my $request = new HTTP::Request('GET', $$url);
         
         if ($scraper->is_http_proxy_auth_data)
         {
@@ -587,7 +631,8 @@ sub ScrapeDetailPage {
         $scraper->{'_cookie_jar'}->add_cookie_header($request) if ref($scraper->{'_cookie_jar'});
         
         my $ua = $scraper->{'user_agent'};
-        $detail = $ua->request($request)->content();
+        my $response = $ua->request($request);
+        $detail = $response->content();
     };
     return if $@;
         

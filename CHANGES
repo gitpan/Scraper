@@ -1,6 +1,10 @@
 
 Revision history for WWW::Search::Scraper (::*).
 
+v3.01 - OPCODES ! ! You can invent and use your own scraping operations in the Scraper frames themselves!
+	Fixed native_query() so you can change the query and get new results (without re-instantiating
+	the scraper). Thanks to Alan Derhaag!
+v3.00 - Reorganization of distribution files - bundling.
 v2.27 - A major correction in the way Scraper discovers the content with the 'A' option.
         Significant improvements to NortherLight interface.
         Dogpile - now gets all client search engines' results, plus "Search the next 10 engines"!

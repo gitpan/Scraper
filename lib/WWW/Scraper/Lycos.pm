@@ -102,7 +102,7 @@ sub testParameters {
 
 # Access methods for the structural declarations of this Scraper engine.
 sub scraperRequest { $scraperRequest }
-sub scraperFrame { $_[0]->SUPER::scraperFrame($scraperFrame); }
+sub scraperFrame { return $scraperFrame; $_[0]->SUPER::scraperFrame($scraperFrame); }
 
 1;
 

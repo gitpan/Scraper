@@ -2,7 +2,7 @@
 # `make test'. After `make install' it should work as `perl test.pl'
 
 use ExtUtils::testlib;
-use lib 't/lib','../blib/lib','./blib/lib';
+use lib 't/lib','./blib/lib';
 use Test::More;
 $VERSION = sprintf("%d.%02d", q$Revision: 1.07 $ =~ /(\d+)\.(\d+)/);
 my @TestTheseOnly;# = qw(Sherlock); # this is active only when WWW::Scraper::isGlennWood;
@@ -12,7 +12,7 @@ my @TestTheseOnly;# = qw(Sherlock); # this is active only when WWW::Scraper::isG
 # Change 1..1 below to 1..last_test_to_print .
 # (It may become useful if the test is moved to ./t subdirectory.)
 
-use WWW::Scraper(qw(2.19));
+use WWW::Scraper(qw(3.01));
 BEGIN { select STDERR; $| = 1; select STDOUT; $| = 1; }
 END {
     }

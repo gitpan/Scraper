@@ -397,7 +397,7 @@ Specified at L<WWW::Search>.
 
 =head1 AUTHOR
 
-C<WWW::Search::NorthernLight> is written and maintained
+C<WWW::Scraper::NorthernLight> is written and maintained
 by Glenn Wood, http://search.cpan.org/search?mode=author&query=GLENNWOOD.
 
 =head1 COPYRIGHT

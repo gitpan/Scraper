@@ -50,11 +50,12 @@ my $scraperRequest =
                       {    'areaID'         => '1'
                           ,'subAreaID'      => '0'
                           ,'group'          => 'S'
-                          ,'cat'            => '6'
+                          ,'cat'            => 'all'
                           ,'new_cat'        => '6'
                           ,'catAbbreviation' => 'car'
                           ,'group'          => 'J'
                           ,'type_search'    => ''
+                          ,'min_ask'        => '' # catAbbreviation='car'
                           ,'max_ask'        => '' # catAbbreviation='car'
                           ,'query'          => ''
                       }
@@ -103,15 +104,17 @@ sub testParameters {
                 ,'expectedOnePage' => 50
                 ,'expectedMultiPage' => 100
                 ,'expectedBogusPage' => 0
+# http://www.craigslist.org/cgi-bin/search?areaID=1&subAreaID=0&catAbbreviation=car&group=S&type_search=&query=Honda&cat=6&minAsk=min&maxAsk=max
                 ,'testNativeOptions' => {  'areaID'         => '1'
                                           ,'subAreaID'      => '0'
                                           ,'group'          => 'S'
-                                          ,'cat'            => '6'
+                                          ,'cat'            => 'all'
                                           ,'new_cat'        => '6'
                                           ,'catAbbreviation' => 'car'
-                                          ,'group'          => 'J'
+                                          ,'group'          => 'S'
                                           ,'type_search'    => ''
-                                          ,'max_ask'        => '' # catAbbreviation='car'
+                                          ,'min_ask'        => 'min'
+                                          ,'max_ask'        => 'max'
                                         }
                 ,'usesPOST' => 1
            };
@@ -217,7 +220,7 @@ or the specialized CraigsList searches described in options.
 
 =head1 AUTHOR
 
-C<WWW::Search::CraigsList> is written and maintained
+C<WWW::Scraper::CraigsList> is written and maintained
 by Glenn Wood, http://search.cpan.org/search?mode=author&query=GLENNWOOD.
 
 =head1 COPYRIGHT

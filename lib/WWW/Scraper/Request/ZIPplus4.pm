@@ -3,7 +3,7 @@ package WWW::Scraper::Request::ZIPplus4;
 use strict;
 
 use vars qw($VERSION @ISA);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.0 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Scraper::Request;
 use base qw( WWW::Scraper::Request );

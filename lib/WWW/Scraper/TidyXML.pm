@@ -82,7 +82,7 @@ sub new {
             }
             unlink 'temp.html';
             $string = \$rslt;
-        } elsif ( $WWW::Search::TidyXML::DaveRaggettVersion == 2 ) {
+        } elsif ( $WWW::Scraper::TidyXML::DaveRaggettVersion == 2 ) {
             $rslt = `tidy -upper -asxml -numeric --show-warnings no --write-back yes --clean yes --force-output yes --error-file temp.err temp.html >tidy.stdout 2>tidy.stderr`;
             if ( $? ) {
                 open TMP, "<temp.err"; my $err = join '',<TMP>; close TMP;
@@ -111,7 +111,7 @@ sub new {
     }
 
     $self->m_asString($string);
-    $self->m_isTidyd($WWW::Search::TidyXML::DaveRaggettVersion);
+    $self->m_isTidyd($WWW::Scraper::TidyXML::DaveRaggettVersion);
     return $self;
 }
 
@@ -210,6 +210,31 @@ sub getMarkedText {
     return $sub_string;
 }
 
+my $AttributeGrabber = qr/(?:\s*\w[\w\d]*=(?:(?:"(?:(?:\\")|(?:[^"]))*")|(?:'(?:(?:\\')|(?:[^']))*')|(?:[^'"][^ >]*)))/;
+sub Attributes {
+    my ($self, $attrs) = @_;
+    
+    my $attributes = {};
+    my (@attrs) = ($attrs =~ m{($AttributeGrabber)}gs);
+    for ( @attrs ) {
+        my ($name, $attr) = (m{\s*(\w[\w\d]*)=(.*)$});
+        $attr =~ s{^'(.*)'$}{$1} unless $attr =~ s{^"(.*)"$}{$1};
+        $attributes->{lc $name} = $attr;
+    }
+    return $attributes;
+}
+
+sub getMarkedTextAndAttributes {
+    my ($self, $tag, $withContent) = @_;
+    
+    my ($sub_string, $attrs) = $self->getMarkedText($tag, $withContent);
+    return undef unless $sub_string;
+
+    my $attributes = $self->Attributes($attrs);    
+    return ($sub_string, $attributes) if wantarray;
+    return $attributes;
+}
+
 sub isNotTestable {
    my ($self, $scraperEngine) = @_;
     my $rslt = `tidy -version 2>tidy.stderr`;
@@ -221,30 +246,30 @@ sub isNotTestable {
 
 sub getTidyVersion {
 
-    unless ( $WWW::Search::TidyXML::DaveRaggettVersion ) {
+    unless ( $WWW::Scraper::TidyXML::DaveRaggettVersion ) {
         my $rslt = `tidy -version 2>tidy.version`;
         if ( $? ) {
-            $WWW::Search::TidyXML::DaveRaggettVersion = -1;
+            $WWW::Scraper::TidyXML::DaveRaggettVersion = -1;
         } else {
             open TMP, "<tidy.version"; $rslt = join "\n",<TMP>; close TMP;
             # Dave Raggett
             #HTML Tidy release date: 30th April 2000
             #See http://www.w3.org/People/Raggett for details
             if ( $rslt =~ m{HTML Tidy release date: 30th April 2000} ) {
-                $WWW::Search::TidyXML::DaveRaggettVersion = 1;
+                $WWW::Scraper::TidyXML::DaveRaggettVersion = 1;
             } else {
-                $WWW::Search::TidyXML::DaveRaggettVersion = 2;
+                $WWW::Scraper::TidyXML::DaveRaggettVersion = 2;
             }
         }
     }
-    return $WWW::Search::TidyXML::DaveRaggettVersion;
+    return $WWW::Scraper::TidyXML::DaveRaggettVersion;
 }
 
 # Pick an input parameter according to the version of tidy.exe.
 sub accordingToTidyVersion {
     WWW::Scraper::TidyXML::getTidyVersion();
-    if ( $WWW::Search::TidyXML::DaveRaggettVersion > 0 ) {
-        return $_[$WWW::Search::TidyXML::DaveRaggettVersion-1];
+    if ( $WWW::Scraper::TidyXML::DaveRaggettVersion > 0 ) {
+        return $_[$WWW::Scraper::TidyXML::DaveRaggettVersion-1];
     } else {
         return undef;
     }

@@ -273,7 +273,7 @@ for some of the categories the functions are:
 
 =head1 AUTHOR
 
-C<WWW::Search::Beaucoup> is written and maintained
+C<WWW::Scraper::Beaucoup> is written and maintained
 by Glenn Wood, http://search.cpan.org/search?mode=author&query=GLENNWOOD.
 
 =head1 COPYRIGHT

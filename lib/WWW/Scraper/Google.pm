@@ -16,57 +16,61 @@ use WWW::Scraper(qw(2.27 generic_option addURL trimTags));
 use strict;
 
 my $scraperRequest = 
-        { 
-            # This engine is driven from it's <form> page
-            'type' => 'FORM'
-            ,'formNameOrNumber' => 0 # name=f, without quotes - Scraper needs a little work to make that ok.
-            ,'submitButton' => 'btnG'
-            
-            # This is the basic URL on which to get the form to build the query.
-            ,'url' => 'http://www.Google.com'
-
-           # specify defaults, by native field names
-           ,'nativeQuery' => 'q'
-           ,'nativeDefaults' => { 'hl' => 'en' }
-            
-            # specify translations from canonical fields to native fields
-           ,'fieldTranslations' =>
-                   {
-                       '*' =>
-                           {    'skills'    => 'q'
-                               ,'*'         => '*'
-                           }
-                   }
-            # Miscellaneous options for the Scraper operation.
-           ,'cookies' => 0
-       };
+{
+     'fieldTranslations' => {
+               '*' => {
+                   '*' => '*'
+                 }
+             },
+#http://www.google.com/search?hl=en&lr=&ie=UTF-8&oe=utf-8&safe=active&q=turntable&btnG=Google+Search                 'SKIP' => '' 
+     'nativeDefaults' => {
+            'q' => 'turntable',
+            #'as_eq' => 'turntable',
+            #'oe' => 'utf-8',
+            #'as_q' => '',
+            'lr' => '',
+            'hl' => 'en',
+            'btnG' => 'Google Search',
+            'safe' => 'active',
+            #'as_epq' => 'google com',
+            #'as_sitesearch' => '',
+            #'as_oq' => '',
+            'ie' => 'UTF-8'
+               },
+     'nativeQuery' => undef,
+     'url' => 'http://www.google.com/search?',
+     'cookies' => 0,
+     'type' => 'QUERY',
+     'defaultRequestClass' => undef
+   };
 
 my $scraperFrame =
-       [ 'HTML', 
-          [ 
-                  [ 'NEXT', 1, '[^>]>Next<' ], # Google keeps changing their formatting, so watch out!
-                  [ 'COUNT', '[,0-9]+</b> of about <b>([,0-9]+)</b>'] ,
-                  [ 'TABLE', '#4' ],
-                  [ 'HIT*',
-                    [  
-                       [ 'BODY', '<p>', '</font></font>',
-                          [
-                              [ 'AN', 'url', 'title' ],
-                              [ 'REGEX', '<font size=-1>(.*?)<br>', 'sampleText'],
-                              [ 'REGEX', '<font size=-1>Description:(.*?)<br>', 'description'],
-                              [ 'BODY',  '<span class=f>.*?Category:', '<br>',
-                                [
-                                  [ 'AN', 'categoryURL',  'category' ]
-                                ]
-                              ],
-                              [ 'AN', 'cachedURL',  undef ],
-                              [ 'AN', 'similarPagesURL', undef ]
-                          ]
-                       ]
+[ 'HTML', 
+  [ 
+    [ 'NEXT', 1, '[^>]>Next<' ], # Google keeps changing their formatting, so watch out!
+    [ 'COUNT', '[,0-9]+</b> of about <b>([,0-9]+)</b>'] ,
+    [ 'TABLE', '#4' ],
+    [ 'DIV',
+       [
+              [ 'HIT*',
+                [  
+                  [ 'AN', 'url', 'title' ],
+                  #[ 'REGEX', '<font size=-1>(.*?)<br>', 'sampleText'],
+                  [ 'REGEX', 'Description:(.*?)<br>', 'description'],
+                  [ 'REGEX', '<b>...</b>\s*(.*?)<br>', 'description'],
+                  [ 'BODY',  'Category:', '<br>',
+                    [
+                      [ 'AN', 'categoryURL',  'category' ]
                     ]
-                  ]
-           ]
-       ];
+                  ],
+                  [ 'AN', 'cachedURL',  undef ],
+                  [ 'AN', 'similarPagesURL', undef ]
+                ]
+              ]
+       ]
+    ]
+  ]
+];
 
 
 
@@ -81,11 +85,20 @@ sub testParameters {
     }
     
     return {
-                 'SKIP' => '' 
-                ,'testNativeQuery' => 'search scraper'
-                ,'expectedOnePage' => 9
-                ,'expectedMultiPage' => 41
-                ,'expectedBogusPage' => 1
+        'SKIP' => '' 
+            ,'testNativeQuery' => 'search scraper'
+            ,'expectedOnePage' => 9
+            ,'expectedMultiPage' => 41
+            ,'expectedBogusPage' => 1
+            ,'testNativeOptions' =>
+                {
+                   'q' => 'turntable',
+                   'lr' => '',
+                   'hl' => 'en',
+                   'btnG' => 'Google Search',
+                   'safe' => 'active',
+                   'ie' => 'UTF-8'
+                }
            };
 }
 
@@ -105,7 +118,7 @@ sub import
     }
 
     @_ = ($package, @exports);
-    goto &Exporter::import;
+    goto &WWW::Scraper::import;
 }
 
 # Access methods for the structural declarations of this Scraper engine.

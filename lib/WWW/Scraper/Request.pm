@@ -1,3 +1,23 @@
+#
+#
+# Creates a new interface class based on the following call -
+#
+#    package WWW::Scraper::Request::Job;
+#    sub new {
+#       shift;
+#       my $self = WWW::Scraper::Request::new(
+#                   'Job',
+#                  ,{   
+#                      'skills' => ''
+#                     ,'locations' => ''
+#                     ,'payrate' => ''
+#                   }
+#                  ,@_
+#                  );
+#       return $self;
+#    }
+#
+
 package WWW::Scraper::Request;
 
 use strict;
@@ -188,7 +208,8 @@ sub _init {
           $self->$mthd($options_ref->{$_})
         } keys %$options_ref;
 
-    $self->_native_query($native_query);
+    $self->_native_query($native_query) unless ref($native_query) eq 'HASH';
+    $self->_native_options($native_query) if ref($native_query) eq 'HASH';
     $self->_native_options($options_ref) if ref($options_ref) eq 'HASH';
 
     return $self;

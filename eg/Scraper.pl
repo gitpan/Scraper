@@ -28,7 +28,7 @@ modify it under the same terms as Perl itself.
 
 use strict;
 use lib './lib';
-use WWW::Scraper(qw(1.48));
+use WWW::Scraper(qw(3.01), {'PRINT_VERSION'=>1});
 use WWW::Scraper::Request;
 use vars qw($VERSION);
 use diagnostics;

@@ -302,7 +302,7 @@ Also helps de-duplicate a mailing list.
 
 =head1 DESCRIPTION
 
-This class is an ZIPplus4 specialization of WWW::Search.
+This class is an ZIPplus4 specialization of WWW::Scraper.
 It handles making and interpreting ZIPplus4 searches
 F<http://www.ZIPplus4.com>.
 

@@ -29,7 +29,7 @@ modify it under the same terms as Perl itself.
 use strict;
 use lib './lib';
 use SOAP::Lite;
-use WWW::Search::Scraper::WSDL(qw(1.00));
+use WWW::Scraper::WSDL(qw(1.00));
 use vars qw($VERSION);
 use diagnostics;
 
@@ -44,7 +44,7 @@ $VERSION = sprintf("%d.%02d", q$Revision: 1.0 $ =~ /(\d+)\.(\d+)/);
     $query = 'MSFT' unless $query;
     $debug = 'U'      unless $debug;
 
-    my $scraper = new WWW::Search::Scraper::WSDL( $url );
+    my $scraper = new WWW::Scraper::WSDL( $url );
 
     print $scraper->{'_service'}->getQuote($query);
 
@@ -64,7 +64,7 @@ __END__
         }
     }
 
-    my $request = new WWW::Search::Scraper::Request($scraper,$query,$options);
+    my $request = new WWW::Scraper::Request($scraper,$query,$options);
     $scraper->setScraperTrace($debug);
     
 #    $request->skills($query);

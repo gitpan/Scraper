@@ -2,7 +2,7 @@ package WWW::Scraper::Request::WSDL;
 use strict;
 
 use vars qw($VERSION @ISA);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.0 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Scraper::Request;
 use base qw( WWW::Scraper::Request );
