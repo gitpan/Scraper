@@ -96,7 +96,7 @@ modify it under the same terms as Perl itself.
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::SearchResult);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/);
 require WWW::SearchResult;
 my %AlreadyDeclared;
 
@@ -423,8 +423,7 @@ sub toHTML {
     
     my $url = $results{'url'};
     $url = $$url if ref($url);
-#    $url = WWW::Search::unescape_query($url); # I don't know who's encoding this, but we want it back!
-    $result .= "<TR><TD COLSPAN='3'>$resultTitles{'title'}: <A HREF='$url'>$results{'title'}</A></TD></TR>\n";
+    $result .= "<TR><TD COLSPAN='3'>$resultTitles{'title'}: <A HREF='#' onclick='window.open(\"$url\",\"$resultTitles{'title'}\")'>$results{'title'}</A></TD></TR>\n";
     
     $result .= "<TR><TD COLSPAN='3'>$resultTitles{'company'}: <A HREF='$results{'companyProfileURL'}'>$results{'company'}</A></TD></TR>\n"
         if ($results{'companyProfileURL'});
@@ -447,7 +446,6 @@ sub toHTML {
         }
         $result .= "</TD></TR>\n";
     }
-#    $result .= "<DT>from:</DT><DD>".$self->{'searchObject'}->getName()."</DD>\n";
     return $result.'</TABLE>';
 }
 

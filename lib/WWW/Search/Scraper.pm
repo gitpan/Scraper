@@ -10,7 +10,7 @@ require Exporter;
 use vars qw($VERSION $MAINTAINER @ISA @EXPORT @EXPORT_OK);
 @EXPORT = qw(testParameters);
 
-$VERSION = '2.24';
+$VERSION = '2.25';
 
 my $CVS_VERSION = sprintf("%d.%02d", q$Revision: 1.65 $ =~ /(\d+)\.(\d+)/);
 $MAINTAINER = 'Glenn Wood http://search.cpan.org/search?mode=author&query=GLENNWOOD';
@@ -44,6 +44,7 @@ use Class::Struct;
                  ,'_wwwSearchBackend' => '$'
                  ,'_forInterator'     => '$'
                  ,'_retryGetCount'    => '$'
+                 ,'_tidyXmlObject'    => '$'
               }
            );
 }
@@ -70,7 +71,7 @@ sub new {
     }
     $self->_wantsNativeRequest($wantsNativeRequest);
 
-    $self->{'agent_name'} = "Mozilla/WWW::Search::Scraper/$VERSION";
+    $self->{'agent_name'} = 'Mozilla/4.0 (compatible; MSIE 4.01; Windows 95)';#"Mozilla/WWW::Search::Scraper/$VERSION";
     $self->{'agent_e_mail'} = 'glenwood@alumni.caltech.edu;MartinThurn@iname.com';
 
     $self->{'scraperQF'} = 0; # Explicitly declare 'scraperQF' as the deprecated mode.
@@ -722,6 +723,7 @@ sub scrape { my ($self, $content, $debug, $scraperFrame, $hit) = @_;
 # private
 sub scraperHTML { my ($self, $scaffold_array, $content, $hit, $debug) = @_;
     my $TidyXML = new WWW::Search::Scraper::TidyXML();
+    $self->_tidyXmlObject($TidyXML);
     $TidyXML->m_asString($content);
     return $self->scraper($$scaffold_array[1], $TidyXML, $hit, $debug);
 }
@@ -736,6 +738,7 @@ sub scraperTidyXML { my ($self, $scaffold_array, $content, $hit, $debug) = @_;
         $content = &$datParser($self, $hit, $content);
     }
     my $TidyXML = new WWW::Search::Scraper::TidyXML($content);
+    $self->_tidyXmlObject($TidyXML);
     return $self->scraper($$scaffold_array[$i], $TidyXML, $hit, $debug);
 }
 
@@ -865,7 +868,8 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
                     $hit->plug_url($url);
                 } 
                 elsif ( $binding) {
-                    $hit->plug_elem($binding, &$datParser($self, $hit, $sub_string));
+                    my $dat = &$datParser($self, $hit, $sub_string);
+                    $hit->plug_elem($binding, $dat) if defined $dat;
                 }
                 $total_hits_found = 1;
                 next SCAFFOLD;
@@ -889,7 +893,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
                 next SCAFFOLD;
             }
             my $binding = $$scaffold[3];
-            $hit->plug_elem($binding, $sub_string);
+            $hit->plug_elem($binding, $sub_string) if defined $sub_string;
             $total_hits_found = 1;
             next SCAFFOLD;
         }
@@ -1030,7 +1034,8 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
                    $hit->plug_url($url);
                 } 
                 elsif ( $binding) {
-                   $hit->plug_elem($binding, &$datParser($self, $hit, $sub_string));
+                    my $dat = &$datParser($self, $hit, $sub_string);
+                   $hit->plug_elem($binding, $dat) if defined $dat;
                 }
                 $total_hits_found = 1;
                 next SCAFFOLD;
@@ -1095,7 +1100,8 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
                     $hit->plug_url($url);
                 } 
                 elsif ( $binding) {
-                    $hit->plug_elem($binding, &$datParser($self, $hit, $sub_string));
+                    my $dat = &$datParser($self, $hit, $sub_string);
+                    $hit->plug_elem($binding, $dat) if defined $dat;
                 }
                 $total_hits_found = 1;
                 next SCAFFOLD;
@@ -1114,7 +1120,8 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
                 print "<A> binding: $$scaffold[2]: '$sub_string', $$scaffold[1]: '$2'\n" if ($self->ScraperTrace('d'));
                 my $datParser = $$scaffold[3];
                 $datParser = \&WWW::Search::Scraper::trimTags unless $datParser;
-                $hit->plug_elem($$scaffold[2], &$datParser($self, $hit, $sub_string));
+                my $dat = &$datParser($self, $hit, $2);
+                $hit->plug_elem($$scaffold[2], $dat) if defined $dat;
 
                my ($url) = new URI::URL($2, $self->{_base_url});
                $url = $url->abs();
@@ -1123,7 +1130,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
                    $hit->plug_url($url);
                }
                else {
-                   $hit->plug_elem($lbl, $url);
+                   $hit->plug_elem($lbl, $url) if defined $url;
                }
                $total_hits_found = 1;
             }
@@ -1138,7 +1145,8 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
                 
                 my $datParser = $$scaffold[3];
                 $datParser = \&WWW::Search::Scraper::trimTags unless $datParser;
-                $hit->plug_elem($$scaffold[2], &$datParser($self, $hit, $2));
+                my $dat = &$datParser($self, $hit, $2);
+                $hit->plug_elem($$scaffold[2], $dat) if defined $dat;
 
                my ($url) = new URI::URL($1, $self->{_base_url});
                $url = $url->abs();
@@ -1147,7 +1155,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
                    $hit->plug_url($url);
                }
                else {
-                   $hit->plug_elem($lbl, $url);
+                   $hit->plug_elem($lbl, $url) if defined $url;
                }
                $total_hits_found = 1;
             }
@@ -1185,7 +1193,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
                     else {
                         my $dt = $self->trimTags($hit, shift @dts);
                         print "REGEX binding '$_' => $dt\n" if ($self->ScraperTrace('d'));
-                        $hit->plug_elem($_, $dt);
+                        $hit->plug_elem($_, $dt) if defined $dt;
                     }
                 }
                 $total_hits_found = 1;
@@ -1197,7 +1205,8 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
             my $binding = $$scaffold[1];
             my $datParser = $$scaffold[2];
             $datParser = \&WWW::Search::Scraper::null unless $datParser;
-            $hit->plug_elem($binding, &$datParser($self, $hit, $sub_string));
+            my $dat = &$datParser($self, $hit, $sub_string);
+            $hit->plug_elem($binding, $dat) if defined $dat;
             next SCAFFOLD;
 
         } elsif ( $tag eq 'FOR' ) {
@@ -1234,7 +1243,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
                     $sub_string = &$datParser($self, $hit, $sub_string);
                 }
                 print "<XPath> binding: $binding: $sub_string\n" if ($self->ScraperTrace('d'));
-                $hit->plug_elem($binding, $sub_string);
+                $hit->plug_elem($binding, $sub_string) if defined $sub_string;
                 $total_hits_found = 1;
                 next SCAFFOLD;
             } else {

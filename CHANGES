@@ -1,7 +1,11 @@
 
 Revision history for WWW::Search::Scraper (::*).
 
-v2.24 - Added "optional array-context" return of Response field values.
+v2.25 - Fixed to make compatible with new versions of TidyHTML 
+		(those whose "vers 1st August 2002; built on Aug  8 2002").
+	Adapted ZIPplus4 to USPS's new format - requires changes in your clients.
+	More improvements to eBay.pm.
+v2.24 - Added "optional array-context" return of Response field values. 
 	Print a correct warning message if WWW::Search is not installed.
 	Fixed problems associated with using classic WWW::Search "native_query" mode.
 	Other improvements to eBay's "new" format.

@@ -10,9 +10,10 @@
 
 
 package WWW::Search::Scraper::TidyXML;
-$VERSION = sprintf("%d.%02d", q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.14 $ =~ /(\d+)\.(\d+)/);
 
 use strict;
+my $DaveRaggettVersion = 0; # Different versions of tidy.exe require different processing.
 
 { package WWW::Search::Scraper::TidyXML::_struct_;
 use Class::Struct;
@@ -46,20 +47,41 @@ sub new {
         print TMP fixupHtmlForTidy($string);
         close TMP;
         
-        my $rslt = `tidy -upper -asxml -numeric temp.html 2>temp.err`;
-        unless ( $rslt ) {
-            open TMP, "<temp.err"; my $err = join '',<TMP>; close TMP;
-            unless ( $err =~ m/Parsing "temp\.html"/s ) {
-                warn "$err\n";
-                die "This Scraper engine requires 'Tidy' to scrub HTML before parsing.\nGet this program from 'http://tidy.sourceforge.net/docs/Overview.html#Download'\n";
+        my $rslt;
+        if ( $self->getTidyVersion() == 1 ) {
+            $rslt = `tidy -upper -asxml -numeric -clean temp.html 2>temp.err`;
+            unless ( $rslt ) {
+                open TMP, "<temp.err"; my $err = join '',<TMP>; close TMP;
+                unless ( $err =~ m/Parsing "temp\.html"/s ) {
+                    warn "$err";
+                    die "This Scraper engine requires 'Tidy' to scrub HTML before parsing.\nGet this program from 'http://tidy.sourceforge.net/docs/Overview.html#Download'\n";
+                }
+                warn "$err";
             }
-            warn "$err\n";
+            unlink 'temp.html';
+            $string = \$rslt;
+        } elsif ( $WWW::Search::TidyXML::DaveRaggettVersion == 2 ) {
+            $rslt = `tidy -upper -asxml -numeric --show-warnings no --write-back yes --clean yes --force-output yes --error-file temp.err temp.html >tidy.stdout 2>tidy.stderr`;
+            if ( $? ) {
+                open TMP, "<temp.err"; my $err = join '',<TMP>; close TMP;
+                unless ( $err =~ m/Parsing "temp\.html"/s ) {
+                    warn "$err";
+                    die "This Scraper engine requires 'Tidy' to scrub HTML before parsing.\nGet this program from 'http://tidy.sourceforge.net/docs/Overview.html#Download'\n";
+                }
+                warn "$err";
+            }
+            open TMP, "<temp.html" or die "Can't reopen 'temp.html': $!";
+            my $xml = join '',<TMP>;
+            $string = \$xml;
+            close TMP;
+            unlink 'temp.html';
         }
-        #unlink 'temp.html';
-        $string = \$rslt;
-        $self->m_isTidyd(1);
+        else {
+            die "This Scraper engine requires 'Tidy' to scrub HTML before parsing.\nGet this program from 'http://tidy.sourceforge.net/docs/Overview.html#Download'\n";
+        }
     }
     $self->m_asString($string);
+    $self->m_isTidyd($WWW::Search::TidyXML::DaveRaggettVersion);
     return $self;
 }
 
@@ -168,7 +190,36 @@ sub isNotTestable {
     return '';
 }
 
+sub getTidyVersion {
 
+    unless ( $WWW::Search::TidyXML::DaveRaggettVersion ) {
+        my $rslt = `tidy -version 2>tidy.version`;
+        if ( $? ) {
+            $WWW::Search::TidyXML::DaveRaggettVersion = -1;
+        } else {
+            open TMP, "<tidy.version"; $rslt = join "\n",<TMP>; close TMP;
+            # Dave Raggett
+            #HTML Tidy release date: 30th April 2000
+            #See http://www.w3.org/People/Raggett for details
+            if ( $rslt =~ m{HTML Tidy release date: 30th April 2000} ) {
+                $WWW::Search::TidyXML::DaveRaggettVersion = 1;
+            } else {
+                $WWW::Search::TidyXML::DaveRaggettVersion = 2;
+            }
+        }
+    }
+    return $WWW::Search::TidyXML::DaveRaggettVersion;
+}
+
+# Pick an input parameter according to the version of tidy.exe.
+sub accordingToTidyVersion {
+    WWW::Search::Scraper::TidyXML::getTidyVersion();
+    if ( $WWW::Search::TidyXML::DaveRaggettVersion > 0 ) {
+        return $_[$WWW::Search::TidyXML::DaveRaggettVersion-1];
+    } else {
+        return undef;
+    }
+}
 1;
 
 
@@ -264,6 +315,18 @@ This took me a leisurely 30 minutes to discover and implement.
 Of course, Dogpile is remarkably well formed to begin with, 
 and even there a complete implementation does require a few more touches. 
 Take a look at Dogpile.pm for further details.
+
+=head1 SPECIAL THANKS
+
+=over 8
+
+=item To Dave Raggett <dsr@w3.org> (original author), and to Tor-Ivar Valåmo, and his SourceForge team, for TidyHTML.
+
+Without this tool, I'd have wasted untold millennia trying to keep up with many search engines.
+This tool, along with XPath and XmlSpy, makes configuring Scraper modules to new results pages extremely easy.
+See TidyHTML at http://sourceforge.net/projects/tidyhtml/.
+
+=back
 
 =head1 AUTHOR and CURRENT VERSION
 

@@ -8,27 +8,32 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
-use WWW::Search::Scraper(qw(2.12 generic_option addURL trimTags));
+use WWW::Search::Scraper(qw(2.12 generic_option addURL trimTags trimLFs));
 
 use strict;
 
 my $scraperRequest = 
         { 
             'type' => 'POST'
-#            ,'formNameOrNumber' => undef
-#            ,'submitButton' => 'Submit'
+            ,'formNameOrNumber' => '1'
+            ,'submitButton' => 'Submit'
             
             # This is the basic URL on which to get the form to build the query.
 #            ,'url' => 'http://www.usps.com/ncsc/lookups/lookup_zip+4.html'
-            ,'url' => 'http://www.usps.com/cgi-bin/zip4/zip4inq2?'
+            # _OLD ,'url' => 'http://www.usps.com/cgi-bin/zip4/zip4inq2?'
+            ,'url' => 'http://www.usps.com/zip4/zip4_response.jsp?'
            # specify defaults, by native field names
 #           ,'nativeQuery' => 'Delivery+Address'
            ,'nativeDefaults' => { 
-                                    'Firm' => ''
-                                   ,'Urbanization' => ''
+                                    'Selection' => '1'
+                                   ,'urbanization' => ''
+                                   ,'firm' => ''
+                                   ,'address2' => ''
+                                   ,'Submit.x' => '1'
+                                   ,'Submit.y' => '1'
                                 }
             
             # specify translations from canonical fields to native fields
@@ -37,19 +42,50 @@ my $scraperRequest =
                    {
                        '*' =>
                            {     
-                                 'Firm' => 'Firm'
-                                ,'Urbanization' => 'Urbanization'
-                                ,'Delivery_Address' => 'Delivery Address'
-                                ,'City' => 'city'
+                                 'City' => 'city'
                                 ,'State' => 'state'
-                                ,'Zip_Code' => 'Zip Code'
-                           }
+                                ,'Zip_Code' => 'zipcode'
+                                ,'address1' => 'address' # Weird but true!
+                                ,'*' => '*'              # Thanks to Klemens Schmid (klemens.schmid@gmx.de)!
+                           }                             # See FormSniffer at http://www.wap2web.de/formsniffer2.aspx
                    }
             # Miscellaneous options for the Scraper operation.
            ,'cookies' => 0
        };
 
+
 my $scraperFrame =
+       [ 'HTML', 
+          [ 
+             [ 'BODY', '<!--<Address Table>-->', '<!--</Address Table>-->',
+               [ 
+                  [ 'HIT*' ,
+                     [
+                        ['TABLE',
+                            [
+                                ['TD', 'firm', \&cleanUpUsps]
+                               ,['TD', 'address', \&cleanUpUsps]
+                               ,['TD', 'city', \&parseCity]
+                            ]
+                        ]
+                       ,['TABLE',
+                            [
+                                ['TD', 'carrierRoute', \&cleanUpUsps]
+                               ,['TD', 'county', \&cleanUpUsps]
+                               ,['TD', 'deliveryPoint', \&cleanUpUsps]
+                            ]
+                         ]
+                         # this regex never matches; just lets us declare fields.
+                        ,[ 'REGEX', 'neverMatch', 'state', 'zipcode' ]
+                     ]
+                  ]
+               ]
+             ]
+           ]
+       ];
+
+
+my $scraperFrame_OLD =
        [ 'HTML', 
           [ 
              [ 'BODY', 'The standardized address is:', '<CENTER',
@@ -81,15 +117,15 @@ sub testParameters {
     
     return {
                  'SKIP' => ''#'ZIPplus4 test parameters have not yet been fixed' 
-                ,'testNativeQuery' => '94043'
+                ,'testNativeQuery' => '20500'
                 ,'testNativeOptions' => {
-                                             'Delivery_Address' => '1600 Pennsylvannia Ave'
-                                            ,'City' => 'Washington'
-                                            ,'State' => 'DC'
-                                            ,'Zip_Code' => '20500'
+                                             'address1' => '1600 Pennsylvannia Ave'
+                                            ,'city' => 'Washington'
+                                            ,'state' => 'DC'
+                                            ,'zipcode' => '20500'
                                         }
-                ,'expectedOnePage' => 8
-                ,'expectedMultiPage' => 8
+                ,'expectedOnePage' => 1
+                ,'expectedMultiPage' => 1
                 ,'expectedBogusPage' => 1
            };
 }
@@ -98,6 +134,26 @@ sub testParameters {
 # Access methods for the structural declarations of this Scraper engine.
 sub scraperRequest { $scraperRequest }
 sub scraperFrame { $_[0]->SUPER::scraperFrame($scraperFrame); }
+
+
+sub cleanUpUsps {
+    my ($self, $hit, $dat) = @_;
+    $dat = $self->trimLFs($hit, $dat);
+    $dat =~ s/^County://gs;
+    $dat =~ s/^Carrier Route://gs;
+    $dat =~ s/^Delivery Point://gs;
+    $dat =~ s/\s*-->//gs;
+    return $dat;
+}
+
+sub parseCity {
+    my ($self, $hit, $dat) = @_;
+    $dat = $self->cleanUpUsps($hit, $dat);
+    $dat =~ s/^(.*)\s+(\w+)\s+(\d\d\d\d\d)\s(-\d\d\d\d)$/$1/s;
+    $hit->plug_elem('state', $2);
+    $hit->plug_elem('zipcode', "$3$4");
+    return $dat;
+}
 
 { package AddressDedup;
 # This package helps ZipPlus4.pl to de-duplicate the address list.
@@ -191,7 +247,7 @@ __END__
 =head1 NAME
 
 WWW::Search::Scraper::ZIPplus4 - Get ZIP+4 code, given street address, from www.usps.com. 
-Also helps de-duplicate a mailing list (see eg/ZipPlus4.pl)
+Also helps de-duplicate a mailing list.
 
 
 =head1 SYNOPSIS
@@ -200,25 +256,25 @@ Also helps de-duplicate a mailing list (see eg/ZipPlus4.pl)
 
 =item Simple
 
- use WWW::Search::Scraper(qw(1.48));
+ use WWW::Search::Scraper(qw(2.25));
  use WWW::Search::Scraper::Request::ZIPplus4;
 
  my $ZIPplus4 = new WWW::Search::Scraper(
          'ZIPplus4',
-        ,{   'Delivery_Address' => '1600 Pennsylvannia Ave'
-            ,'City'             => 'Washington'
-            ,'State'            => 'DC'
-            ,'Zip_Code'         => '20500'
+        ,{   'address1' => '1600 Pennsylvannia Ave'
+            ,'city'     => 'Washington'
+            ,'state'    => 'DC'
+            ,'zipcode'  => '20500'
          } );
 
  while ( my $response = $ZIPplus4->next_response() )
  {    
-     print $response->zip()."\n";
+     print $response->zipcode()."\n";
  }
 
 =item Complete
 
- use WWW::Search::Scraper(qw(1.48));
+ use WWW::Search::Scraper(qw(2.25));
  use WWW::Search::Scraper::Request::ZIPplus4;
 
  my $ZIPplus4 = new WWW::Search::Scraper( 'ZIPplus4' );
@@ -226,15 +282,15 @@ Also helps de-duplicate a mailing list (see eg/ZipPlus4.pl)
  my $request = new WWW::Search::Scraper::Request::ZIPplus4;
  
  # Note: Delivery_Address(), and either Zip_Code(), or City() and State(), are required.
- $request->Delivery_Address('1600 Pennsylvannia Ave');
- $request->City('Washington');
- $request->State('DC');
- $request->Zip_Code('20500');
+ $request->address1('1600 Pennsylvannia Ave');
+ $request->city('Washington');
+ $request->state('DC');
+ $request->zipcode('20500');
 
  $ZIPplus4->scraperRequest($request);
  while ( my $response = $ZIPplus4->next_response() )
  {    
-     for ( qw(address city state zip county carrierRoute checkDigit deliveryPoint) ) {
+     for ( qw(address city state zipcode county carrierRoute checkDigit deliveryPoint) ) {
          print "$_: ".${$response->$_()}."\n";
      }
  }
@@ -246,6 +302,18 @@ Also helps de-duplicate a mailing list (see eg/ZipPlus4.pl)
 This class is an ZIPplus4 specialization of WWW::Search.
 It handles making and interpreting ZIPplus4 searches
 F<http://www.ZIPplus4.com>.
+
+=head1 SPECIAL THANKS
+
+=over 8
+
+=item To Klemens Schmid (klemens.schmid@gmx.de), for FormSniffer.
+
+This tool is an excellent compliment to Scraper to almost instantly discover form and CGI parameters for configuring new Scraper modules.
+It instantly revealed what I was doing wrong in the new ZIPplus4 format one day (after hours of my own clumsy attempts).
+See FormSniffer at http://www.wap2web.de/formsniffer2.aspx (Win32 only).
+
+=back
 
 =head1 AUTHOR and CURRENT VERSION
 

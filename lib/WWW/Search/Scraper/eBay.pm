@@ -4,7 +4,7 @@ package WWW::Search::Scraper::eBay;
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.19 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.20 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Search::Scraper(qw(1.24 generic_option addURL trimTags trimLFs));
 
@@ -50,20 +50,40 @@ my $scraperFrame =
                                    [  
                                       [ 'TR',
                                          [
-                                            [ 'TD', 'itemNumber' ]
+                                            [ 'TD' ]
                                            ,[ 'TD', 'url', \&parseItemTitle ] #[ [ 'A', 'url', 'title' ] ] ] 
-                                           ,[ 'TD', 'price', \&trimLFs ]
+                                           ,[ 'TD', 'price', \&parsePrice ]
                                            ,[ 'TD', 'bids', \&trimLFs ]
                                            ,[ 'TD', 'endsPDT', \&trimLFs ]
                                             # this regex never matches; just lets us declare fields.
-                                           ,[ 'REGEX', 'neverMatch', 'title', 'isNew' ] #, 'isBillpoint']
+                                           ,[ 'REGEX', 'neverMatch', 'title', 'isNew', 'itemNumber' ] #, 'isBillpoint']
                                          ]
                                       ]
                                    ]
                                 ] 
                              ] 
                            ] 
-                          ,[ 'BOGUS', -2 ] # eBay's last 2 hits are bogus ("return to top", etc.).
+                          ,[ 'TABLE', '#2' ]
+                          ,[ 'HIT*' , 'Auction',
+                             [ 
+                                [ 'TABLE', '#0', 
+                                   [  
+                                      [ 'TR',
+                                         [
+                                            [ 'TD' ]
+                                           ,[ 'TD', 'url', \&parseItemTitle ] #[ [ 'A', 'url', 'title' ] ] ] 
+                                           ,[ 'TD', 'price', \&parsePrice ]
+                                           ,[ 'TD', 'bids', \&trimLFs ]
+                                           ,[ 'TD', 'endsPDT', \&trimLFs ]
+                                            # this regex never matches; just lets us declare fields.
+                                           ,[ 'REGEX', 'neverMatch', 'title', 'isNew', 'itemNumber' ] #, 'isBillpoint']
+                                         ]
+                                      ]
+                                   ]
+                                ] 
+                             ] 
+                           ] 
+                          #,[ 'BOGUS', -2 ] # eBay's last 2 hits are bogus ("return to top", etc.).
                        ] 
                      ]
                   ]
@@ -159,6 +179,17 @@ sub parseItemTitle {
    $url =~ m{=(\d+)$};
    $hit->plug_elem('itemNumber', $1);
    return $url;
+}
+
+# eBay's price sometimes contains multiple values ("Buy it Now")
+sub parsePrice {
+    my ($self, $hit, $dat) = @_;
+    for my $price ( split /<BR>/, $dat) {
+        $price = $self->trimLFs($hit, $price);
+        next unless $price;
+        $hit->plug_elem('price', $price);
+    }
+    return undef; # we already plugged the values into the $hit.
 }
 1;
 

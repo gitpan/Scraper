@@ -41,6 +41,7 @@ $VERSION = sprintf("%d.%02d", q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/);
     $engine = 'eBay'  unless $engine;
     $query =~ s/(['"])(.*)\1$/$2/;
     $debug = 'U'      unless $debug;
+    print "Scraper parameters: engine:$engine, query='$query', debug=$debug, options='$options'\n";
 
     my $scraper = new WWW::Search::Scraper( $engine );
     my $limit = 21;
@@ -83,11 +84,12 @@ $VERSION = sprintf("%d.%02d", q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/);
         my $fieldNames = $result->GetFieldNames();
         for ( keys %$fieldNames ) {
             #next unless $fieldNames->{$_} == 1;
-            if ( 0 ) {
+            if ( 1 ) {
                 my @value = $result->$_();
                 print "$resultTitles{$_}: (";
                 my $comma = '';
                 for ( @value ) {
+                    #next unless defined $_ and defined $$_; #hmm. . . how does this happen, in eBay.
                     print "$comma'$$_'";# if $results{$_};
                     $comma = ', ';
                 }

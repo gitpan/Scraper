@@ -885,9 +885,31 @@ It is activated by the following Scraper method:
 
 Lists every URL that Scraper uses to access search engines.
 
-=item setScraper('d')
+=item setScraperTrace('d')
 
 Lists, in minute detail, every parsing operation Scraper uses to interpret the responses from search engings.
+
+=back
+
+=head1 ACKNOWLEDGEMENTS
+
+=over 8
+
+=item To J.C.Wren <jcwren@jcwren.com>, for his help in improving eBay.pm
+
+and a firm boot in the pants. His was also the inspiration to facilitate array-type field results in Scraper's Response.
+
+=item To Klemens Schmid (klemens.schmid@gmx.de), for FormSniffer.
+
+This tool is an excellent compliment to Scraper to almost instantly discover form and CGI parameters for configuring new Scraper modules.
+It instantly revealed what I was doing wrong in the new ZIPplus4 format one day (after hours of my own clumsy attempts).
+See FormSniffer at http://www.wap2web.de/formsniffer2.aspx (Win32 only).
+
+=item To Dave Raggett <dsr@w3.org> (original author), and to Tor-Ivar Valåmo, and his SourceForge team, for TidyHTML.
+
+Without this tool, I'd have wasted untold millennia trying to keep up with many search engines.
+This tool, along with XPath and XmlSpy, makes configuring Scraper modules to new results pages extremely easy.
+See TidyHTML at http://sourceforge.net/projects/tidyhtml/.
 
 =back
 

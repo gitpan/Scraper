@@ -1,5 +1,4 @@
-package WWW::Search::Scraper::Request::ZIPplus4;
-
+package WWW::Search::Scraper::Request::WSDL;
 use strict;
 
 use vars qw($VERSION @ISA);
@@ -9,18 +8,23 @@ use WWW::Search::Scraper::Request;
 use base qw( WWW::Search::Scraper::Request );
 
 sub new {
+    my $class = shift;
+    my ($scraper, $native_query, $native_options) = @_;
+  
+    my $servicesDef = $scraper->{'_service'};
+    $servicesDef = $servicesDef->{'_servicesDef'};
+#    my $serviceDef = $$servicesDef{(keys %{$servicesDef})[0]};
+    my @methods = ();
+    for my $rpc ( keys %{$servicesDef} ) {
+        map { push @methods, $_ } keys %{$$servicesDef{$rpc}};
+        last;
+    }
+
     my $self = WWW::Search::Scraper::Request::new(
-         'ZIPplus4'
-        ,{
-             'firm' => ''
-            ,'urbanization' => ''
-            ,'address1' => '' # required
-            ,'address2' => '' # optional
-            ,'city' => ''     # required unless Zip is provided
-            ,'state' => ''    # required unless Zip is provided
-            ,'zipcode' => ''  # recommended, else City and State are required
-         }
+         'WSDL'
+        , \@methods
         ,@_);
+
     return $self;
 }
 
@@ -52,35 +56,23 @@ __END__
 
 =head1 NAME
 
-WWW::Search::Scraper::Request::ZIPplus4 - Canonical form for Scraper::ZIPplus4 requests
+WWW::Search::Scraper::Request::WSDL - Canonical form for Scraper::WSDL requests
 
 =head1 SYNOPSIS
 
-    use WWW::Search::Scraper::Request::ZIPplus4;
+    use WWW::Search::Scraper::Request::WSDL;
 
-    $rqst = new WWW::Search::Scraper::Request::ZIPplus4;
-    $rqst->address1('1600 Pennsylvania Ave');
-    $rqst->city('Washington');
-    $rqst->state('DC');
+    $rqst = new WWW::Search::Scraper::Request::WSDL;
+    $rqst->skills(['Perl', '!Java']);
+    $rqst->locations('CA-San Jose');
+    $rqst->payrate('100000/A');
 
 =head1 DESCRIPTION
 
 This module provides a canonical taxonomy for specifying requests to search engines (via Scraper modules).
-C<Request::ZIPplus4> is targeted toward zip+4 validations.
+C<Request::WSDL> is targeted toward job searches.
 
 See the C<WWW::Search::Scraper::Request> module for a description of how this interfaces with Scraper modules.
-
-=head1 SPECIAL THANKS
-
-=over 8
-
-=item To Klemens Schmid (klemens.schmid@gmx.de), for FormSniffer.
-
-This tool is an excellent compliment to Scraper to almost instantly discover form and CGI parameters for configuring new Scraper modules.
-It instantly revealed what I was doing wrong in the new ZIPplus4 format one day (after hours of my own clumsy attempts).
-See FormSniffer at http://www.wap2web.de/formsniffer2.aspx (Win32 only).
-
-=back
 
 =head1 AUTHOR
 

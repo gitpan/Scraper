@@ -37,8 +37,88 @@ my $scraperRequest =
      ,'cookies' => 0
    };
 
-my $scraperFrame =
+# Parse results as created by SourceForge's version.
+my $scraperFrameV2 =
 [ 'TidyXML', \&removeScriptsInHTML, 
+    [ 
+        [ 'COUNT', '<b>(\d+)</b>\s+jobs\s+shown\s+below' ]
+       ,[ 'NEXT', \&getNextPage ]
+       ,[ 'FOR', 'fiveSix', '4..6', # Sometimes FlipDog offers "Premium" listings in an extra table.
+           [
+               [ 'XPath', '/html/body/table[for(fiveSix)]/tr/td/table', #/html/body/table/tr/td/table
+                    [  
+                        [ 'HIT*',
+                            [ 
+                                [ 'XPath', 'tr[ ( hit() * 4 ) - 1 ]',
+                                    [
+                                        [ 'XPath', 'td[3]', 
+                                            [
+                                                [ 'XPath', 'a/@href', 'url', \&trimXPathHref ]
+                                               ,[ 'XPath', 'a/text()', 'title', \&trimLFs ]
+                                               ,[ 'XPath', 'a[2]/@href', 'companyURL', \&trimXPathHref ]
+                                               ,[ 'XPath', 'a[2]/text()', 'company', \&trimLFs ]
+                                            ]
+                                        ]
+                                       ,[ 'XPath', 'td[4]', 'postDate', \&trimTags, \&trimLFs ]
+                                       ,[ 'XPath', 'td[5]', 
+                                           [
+                                                [ 'XPath', 'a/@href', 'locationURL', \&trimXPathHref ]
+                                               ,[ 'XPath', 'a/text()', 'location', \&trimLFs ]
+                                           ]
+                                        ]
+                                    ]
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        ]
+    ]
+];
+
+# Parse results as created by Dave Raggett's version.
+my $scraperFrameV1 =
+[ 'TidyXML', \&removeScriptsInHTML, 
+    [ 
+        [ 'COUNT', '<b>(\d+)</b>\s+jobs\s+shown\s+below' ]
+       ,[ 'NEXT', \&getNextPage ]
+       ,[ 'FOR', 'fiveSix', '5..6', # Sometimes FlipDog offers "Premium" listings in an extra table.
+           [
+               [ 'XPath', '/html/body/table[for(fiveSix)]', #/html/body/table/tr/td/table
+                    [  
+                        [ 'HIT*',
+                            [ 
+                                [ 'XPath', 'tr[ ( hit() * 4 ) - 1 ]',
+                                    [
+                                        [ 'XPath', 'td[3]', 
+                                            [
+                                                [ 'XPath', 'span/a/@href', 'url', \&trimXPathHref ]
+                                               ,[ 'XPath', 'span/a/text()', 'title', \&trimLFs ]
+                                               ,[ 'XPath', 'span/a[2]/@href', 'companyURL', \&trimXPathHref ]
+                                               ,[ 'XPath', 'span/a[2]/text()', 'company', \&trimLFs ]
+                                            ]
+                                        ]
+                                       ,[ 'XPath', 'td[4]', 'postDate', \&trimTags, \&trimLFs ]
+                                       ,[ 'XPath', 'td[5]', 
+                                           [
+                                                [ 'XPath', 'span/a/@href', 'locationURL', \&trimXPathHref ]
+                                               ,[ 'XPath', 'span/a/text()', 'location', \&trimLFs ]
+                                           ]
+                                        ]
+                                    ]
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        ]
+    ]
+];
+
+
+my $reallyOldScraperFrame = [ 'TidyXML', \&removeScriptsInHTML, 
     [ 
         [ 'COUNT', '<b>(\d+)</b>\s+jobs\s+shown\s+below' ]
        ,[ 'NEXT', \&getNextPage ]
@@ -77,7 +157,6 @@ my $scraperFrame =
     ]
 ];
 
-
 sub init {
     my ($self) = @_;
     $self->searchEngineHome('http://www.FlipDog.com');
@@ -97,14 +176,18 @@ sub testParameters {
                  'SKIP' => &WWW::Search::Scraper::TidyXML::isNotTestable()
                 ,'testNativeQuery' => 'Java'
                 ,'expectedOnePage' => 5
-                ,'expectedMultiPage' => 21
+                ,'expectedMultiPage' => 30
                 ,'expectedBogusPage' => 0
            };
 }
 
 # Access methods for the structural declarations of this Scraper engine.
 sub scraperRequest { $scraperRequest }
-sub scraperFrame { $_[0]->SUPER::scraperFrame($scraperFrame); }
+sub scraperFrame { 
+    my $scraperFrame = WWW::Search::Scraper::TidyXML::accordingToTidyVersion(\$scraperFrameV1, \$scraperFrameV2);
+    return $scraperFrameV1 unless defined $scraperFrame;
+    return $$scraperFrame;
+}
 sub scraperDetail{ undef }
 
 
