@@ -5,7 +5,7 @@ package WWW::Search::Scraper::Brainpower;
 use strict;
 use vars qw(@ISA $VERSION);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.12 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.13 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Search::Scraper(qw(2.18 trimTags trimLFs removeScriptsInHTML cleanupHeadBody));
 use WWW::Search::Scraper::FieldTranslation(1.00);
@@ -114,6 +114,7 @@ sub init {
     my ($self) = @_;
     $self->searchEngineHome('http://www.Brainpower.com');
     $self->searchEngineLogo('<IMG SRC="http://www.brainpower.com/images/logo_circ_01.gif">');
+    return $self;
 }
 
 

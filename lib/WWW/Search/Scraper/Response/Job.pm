@@ -21,7 +21,7 @@ use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper::Response);
 use WWW::Search::Scraper::Response;
-$VERSION = sprintf("%d.%02d", q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
 
 sub new {
     my $self = WWW::Search::Scraper::Request::new(

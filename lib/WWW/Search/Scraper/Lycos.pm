@@ -8,7 +8,7 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(2.12 generic_option addURL trimTags removeScriptsInHTML));
@@ -43,21 +43,24 @@ my $scraperRequest =
        };
 
 my $scraperFrame =
-       [ 'TidyXML', \&removeScriptsInHTML, 
+       [ 'TidyXML', \&removeScriptsInHTML, \&removeDescriptionTags,
           [ 
-                  [ 'NEXT', 1, '[^>]>Next<' ]
+                  [ 'NEXT', 1, '<b>Next</b>' ]    #<b>Next</b>
+
                  ,[ 'COUNT', 'Showing\s+Results\s+<b>[\d-]+</b>\s+of\s+([\d,]+)']
-                 ,[ 'FOR', 'allTables', '2..3',
+                 ,[ 'FOR', 'allTables', '2..6',
                     [
                       [ 'XPath', '/html/body/table[2]/tr[3]/td[2]/table[for(allTables)]',
                         [
                           [ 'HIT*' ,
                             [
-                              [ 'XPath', 'tr[hit() + 1]',
+                              [ 'XPath', 'tr[hit() * 2]',
                                 [
-                                     [ 'XPath', 'td[2]/font', 'title' ]
-                                    ,[ 'XPath', 'td[3]/i/font', 'urls' ]
-                                    ,[ 'A', 'url', 'description' ],
+                                     [ 'XPath', 'td[2]/font/a/text()', 'title' ]
+                                    ,[ 'XPath', 'td[2]/font/a/@href', 'url' ]
+                                    ,[ 'XPath', 'td[2]', 'description' ]
+#                                    ,[ 'XPath', 'td[2]/i/font', 'urls' ]
+#                                    ,[ 'A', 'url', 'description' ],
                                 ]
                               ]
                             ]
@@ -70,6 +73,15 @@ my $scraperFrame =
        ];
 
 
+# Lycos has <DESCRIPTION> opening tags, but no closing ones.
+#  That seems pretty handy, but gets in the way of TidyXML.
+sub removeDescriptionTags {
+   my ($self, $hit, $xml) = @_;
+   $$xml =~ s{- <DESCRIPTION>(.*?)</\s?DESCRIPTION>}{$1}gsi;
+   $$xml =~ s{- <DESCRIPTION/>}{}gsi;
+   return $xml;
+}
+
 sub testParameters {
     my ($self) = @_;
 
@@ -78,11 +90,10 @@ sub testParameters {
     }
     
     return { 
-             'SKIP' => 'Encountered a new HTML format - I need to catch up on this!' #'Lycos test is not ready yet; gdw.2001.03.03'
-            ,'TODO' => 'Encountered a new HTML format - I need to catch up on this!'
+             'TODO' => 'Lycos is not quite right . . .'
             ,'testNativeQuery' => 'turntable'
             ,'expectedOnePage' => 9
-            ,'expectedMultiPage' => 12
+            ,'expectedMultiPage' => 20
             ,'expectedBogusPage' => 1
            };
 }

@@ -33,7 +33,7 @@ use WWW::Search::Scraper::Request;
 use vars qw($VERSION);
 use diagnostics;
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/);
 
     select STDERR; $| = 1; select STDOUT; $| = 1; 
 
@@ -61,7 +61,6 @@ $VERSION = sprintf("%d.%02d", q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/);
     my $request = new WWW::Search::Scraper::Request($scraper,$query,$options);
     $scraper->setScraperTrace($debug);
     
-#    $request->skills($query);
 #    $scraper->native_query($query); # This let's us test pre-v2.00 modules from here, too.
 
 #    $request->locations([ 'CA-San Jose'
@@ -84,16 +83,17 @@ $VERSION = sprintf("%d.%02d", q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/);
         my $fieldNames = $result->GetFieldNames();
         for ( keys %$fieldNames ) {
             #next unless $fieldNames->{$_} == 1;
-            my $value = $result->$_();
-            if ( 'ARRAY' eq ref($value) ) {
+            if ( 0 ) {
+                my @value = $result->$_();
                 print "$resultTitles{$_}: (";
                 my $comma = '';
-                for ( @$value ) {
-                    print "$comma'$_'";# if $results{$_};
+                for ( @value ) {
+                    print "$comma'$$_'";# if $results{$_};
                     $comma = ', ';
                 }
                 print ")\n";
             } else {
+                my $value = $result->$_();
 #                print "$resultTitles{$_}:= '$results{$_}'\n";# if $results{$_};
                 if ( defined $value ) {
                     print "$_: '$$value'\n";# if $results{$_};

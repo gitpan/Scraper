@@ -46,7 +46,7 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.14 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.15 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(1.48 generic_option addURL trimTags));
@@ -148,7 +148,7 @@ This converts to an array tree that looks like this:
             'ORACLE' => ["http://www.JustOracleJobs.com", 'jOracle j'] ,
             'PDA' => ["http://www.JustPDAJobs.com", 'jPDA j'] ,
             'PEOPLESOFT' => ["http://www.JustPeopleSoftJobs.com", 'jPeopleSoft j'] ,
-            'PERL' => ["http://www.JustPerlJobs.com", 'JSSearchResults.asp?'] ,
+            'PERL' => ["http://www.JustPerlJobs.com", 'JSSearchJobs.asp?'] ,
             'POWERBUILDER' => ["http://www.JustPowerBuilderJobs.com", 'jPowerBuilder j'] ,
             'PROGRESS' => ["http://www.JustProgressJobs.com", 'jProgress j'] ,
             'PROJECT MANAGER' => ["http://www.JustProjectManagerJobs.com", 'jProject Manager j'] ,
@@ -668,7 +668,7 @@ This converts to an array tree that looks like this:
 #'http://www.JustPerlJobs.com/jperj.nsf/SearchResults?OpenForm&COMP=&CONT=&ENTL=&LOCA=&LOGF=AND&NEXT=1&POST=&SKIL=01&STRT=&VISA=&query=Perl'
 my $scraperRequest = 
    { 
-      'type' => 'QUERY'       # Type of query generation is 'QUERY'
+      'type' => 'FORM'       # Type of query generation is 'QUERY'
       # This is the basic URL on which to build the query.
      ,'url' => '' # Calculated by scraperRequest().
       # This is the Scraper attributes => native input fields mapping
@@ -697,7 +697,7 @@ my $scraperRequest =
                       }
               }
            # Some more options for the Scraper operation.
-     ,'cookies' => 0
+     ,'cookies' => 1
    };
 
 my $scraperFrame =
@@ -736,7 +736,7 @@ sub testParameters {
         $self->whichTech('Perl');
     }
     return {
-                 'SKIP' => 'JustTechJobs JustChangedTheirFormat, and I haven\'t caught up with them yet.'
+                 'SKIP' => 'Gone the way of "user/password" - or something about session/cookies, anyway.'
                 ,'testNativeOptions' => { 'whichTech' => 'Perl' }                                         
            };
 }

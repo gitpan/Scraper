@@ -3,7 +3,7 @@ package WWW::Search::Scraper::Dice;
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.17 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.18 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Search::Scraper(qw(1.48 generic_option trimTags addURL));
 use WWW::Search::Scraper::FieldTranslation;
@@ -46,6 +46,8 @@ my $scraperRequest =
              }
       # Some more options for the Scraper operation.
      ,'cookies' => 0
+     # Some search engines don't connect every time - retry Dice this many times.
+     ,'retry' => 2
    };
 
 my $scraperFrame =
@@ -71,6 +73,7 @@ my $scraperFrame =
 sub init {
     my ($self) = @_;
     $self->searchEngineHome('http://www.Dice.com');
+    return $self;
 }
 
 sub testParameters {
@@ -83,7 +86,6 @@ sub testParameters {
     # 'POST' style scraperFrames can't be tested cause of a bug in WWW::Search(2.2[56]) !
     return {
                  'SKIP' => ''
-                ,'TODO' => "Dice is dicey; one moment it works, the next moment it doesn\'t (it mostly works, though)" #\nUses POST: certain versions of WWW::Search (2.25, aka 2.27, to name one) fail with POSTs."
                 ,'testNativeQuery' => 'Perl NOT Java'
                 ,'expectedOnePage' => 9
                 ,'expectedMultiPage' => 21
@@ -97,104 +99,6 @@ sub scraperRequest { $scraperRequest }
 sub scraperFrame { $scraperFrame }
 sub scraperDetail{ undef }
 
-# private
-sub native_retrieve_someX
-  {
-  my ($self) = @_;
-  my $debug = $self->{'_debug'};
-  print STDERR " *   Dice::native_retrieve_some()\n" if ($debug);
-  
-  # fast exit if already done
-  return undef if (!defined($self->{_next_url}));
-
-  my $dicesBogusErrorMessage = 'Please wait a moment and click \<b\>Reload\<\/b\> to retry your search';
-  my $bogus;
-  my ($response,$tag,$url);
-    my $still_getting_bogus_response = 0;
-	do
-	{
-		# Dice always redirects the first query to the first result page (via HTTP code 302)
-        if ($self->{_first_call})
-		{
-			print STDERR "Sending POST request to " . $self->{_next_url} .
-			"\tPOST options: " . $self->{_to_post} . "\n" 
-			if ($debug);
-			my $req = new HTTP::Request('POST', $self->{_next_url});
-			$req->content_type('application/x-www-form-urlencoded');
-			$req->content($self->{_to_post});
-			my $ua = $self->{user_agent};
-			$response = $ua->request($req);
-			$self->{'_response'} = $response;
-			if ( $response->content() =~ m/$dicesBogusErrorMessage/ )
-			{
-				$still_getting_bogus_response += 1;
-				if ( $still_getting_bogus_response < 20 )
-				{
-					print STDERR "Got '$dicesBogusErrorMessage'; will reload in three seconds.\n" if ($debug);
-					sleep 3;
-					next;
-				} else
-				{
-					print STDERR "Recieved '$dicesBogusErrorMessage' $bogus times. Can't get response from Dice.com\n" if $debug; 
-					$self->{'_next_url'} = undef;
-					return undef;
-				}
-			}
-			$still_getting_bogus_response = 0;
-            $self->{_first_call} = 0;
-
-			if ($response->content() =~ 
-				m/Sorry, no documents matched your search criteria/)
-			{
-				print STDERR "Sorry, no hits found\n" if $debug; 
-				$self->{'_next_url'} = undef;
-				return undef;
-			}
-
-			my $p = new HTML::TokeParser(\$response->content());
-			$tag = $p->get_tag("a");
-			$url = $tag->[1]{href};
-			$url =~ s/\;/\&/g;
-			$self->{'_next_url'} = $url;
-			print STDERR "Next url is " . $self->{'_next_url'} . "\n" if ($debug);
-		}
-
-        print STDERR " *   sending request (",$self->{_next_url},")\n" if ($debug);
-        $response = $self->http_request('GET', $self->{_next_url});  
-        $self->{'_response'} = $response;
-        if ( $response->content() =~ m/$dicesBogusErrorMessage/ )
-        {
-            $still_getting_bogus_response += 1;
-            if ( $still_getting_bogus_response < 20 )
-            {
-                print STDERR "Got '$dicesBogusErrorMessage'; will reload in three seconds.\n" if ($debug);
-                sleep 3;
-                next;
-            } else
-            {
-                print STDERR "Received '$dicesBogusErrorMessage' $bogus times. Can't get response from Dice.com\n" if $debug; 
-                $self->{'_next_url'} = undef;
-                return undef;
-            }
-        }
-        $still_getting_bogus_response = 0;
-
-        print STDERR " *   got response\n" if ($debug);
-        $self->{'_next_url'} = undef;
-        if (!$response->is_success)
-        {
-            print STDERR $response->error_as_HTML;
-            return undef;
-        }
-	} while ( $still_getting_bogus_response );
-  
-      my $hits_found = $self->scrape($response->content(), $self->{_debug});
-
-      # sleep so as to not overload Dice
-      $self->user_agent_delay if (defined($self->{_next_url}));
-
-      return $hits_found;
-} # native_retrieve_some
 
 
 sub titleJobID {

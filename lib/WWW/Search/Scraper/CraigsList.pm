@@ -9,7 +9,7 @@ use vars qw($VERSION @ISA);
 use WWW::Search::Scraper(qw(1.48 generic_option addURL trimTags));
 use WWW::Search::Scraper::FieldTranslation;
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.13 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.14 $ =~ /(\d+)\.(\d+)/);
 
 # Craigs List differs from other search engines in a few ways.
 # One of them is the results page is not tablulated, or data lined.
@@ -75,7 +75,6 @@ sub testParameters {
     my $isNotTestable = WWW::Search::Scraper::isGlennWood()?0:0;
     return {
                  'SKIP' => $isNotTestable
-                ,'TODO' => 'Uses POST: certain versions of WWW::Search (2.25 to name one) fail with POSTs, and CL is funny about expectedMultiPage (should be 50)'
                 ,'testNativeQuery' => 'Quality'
                 ,'expectedOnePage' => 50
                 ,'expectedMultiPage' => 100
@@ -88,6 +87,7 @@ sub init {
     my ($self) = @_;
     $self->searchEngineHome('http://www.CraigsList.org');
     $self->searchEngineLogo('<font size=5><b>craigslist</b></font>');
+    return $self;
 }
 
 

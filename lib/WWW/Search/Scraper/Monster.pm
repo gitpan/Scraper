@@ -6,7 +6,7 @@ package WWW::Search::Scraper::Monster;
 use strict;
 use vars qw(@ISA $VERSION);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.15 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.16 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Search::Scraper(qw(1.48 generic_option findNextForm trimLFs));
 use WWW::Search::Scraper::Response::Job;
@@ -35,6 +35,8 @@ my $scraperRequest =
              }
       # Some more options for the Scraper operation.
      ,'cookies' => 0
+     # Some search engines don't connect every time - retry Monster this many times.
+     ,'retry' => 2
    };
 
 my $scraperFrame =
@@ -67,7 +69,7 @@ my $scraperFrame =
                             ]
                         ]
                     ]
-                   ,[ 'BOGUS', 1 ] # The first row is column titles.
+#                   ,[ 'BOGUS', 1 ] # The first row is column titles.
                 ]
                 ]
                 ]

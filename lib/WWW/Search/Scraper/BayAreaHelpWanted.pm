@@ -6,7 +6,7 @@ package WWW::Search::Scraper::BayAreaHelpWanted;
 use strict;
 use vars qw(@ISA $VERSION);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.0 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.1 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Search::Scraper(qw(1.48 trimLFs trimLFLFs removeScriptsInHTML trimTags trimXPathHref cleanupHeadBody));
 
@@ -71,6 +71,7 @@ sub init {
     my ($self) = @_;
     $self->searchEngineHome('http://www.BayAreaHelpWanted.com');
 #    $self->searchEngineLogo('<IMG SRC="http://www.BayAreaHelpWanted.com/images/nav/BayAreaHelpWanted_job_careers_here.gif">');
+    return $self;
 }
 
 
@@ -82,7 +83,7 @@ sub testParameters {
     }
     
     return {
-                 'SKIP' => &WWW::Search::Scraper::TidyXML::isNotTestable()
+                 'SKIP' => &WWW::Search::Scraper::TidyXML::isNotTestable('BayAreaHelpWanted')
                 .'TODO' => 'Changed their format(?). How can I keep up with these, that is the question.'
                 ,'testNativeQuery' => 'Service'
                 ,'expectedOnePage' => 24

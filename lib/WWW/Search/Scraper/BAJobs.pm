@@ -6,7 +6,7 @@ package WWW::Search::Scraper::BAJobs;
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.18 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.19 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(1.48 generic_option addURL trimTags));
@@ -107,6 +107,7 @@ sub init {
     my ($self) = @_;
     $self->searchEngineHome('http://www.BAJobs.com');
     $self->searchEngineLogo('<IMG SRC="http://www.bajobs.com/graphics/bajlogo118x80.gif">');
+    return $self;
 }
 
 sub testParameters {
@@ -120,7 +121,6 @@ sub testParameters {
     my $isNotTestable = WWW::Search::Scraper::isGlennWood()?'':'';
     return { 
              'SKIP' => $isNotTestable
-            ,'TODO' => 'Uses POST: certain versions of WWW::Search (2.25, aka 2.27, to name one) fail with POSTs.'
             ,'testNativeQuery' => 'Sales'
             ,'expectedOnePage' => 9
             ,'expectedMultiPage' => 51

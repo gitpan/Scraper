@@ -4,7 +4,7 @@
 use ExtUtils::testlib;
 use lib 't/lib','../blib/lib','./blib/lib';
 use Test::More;
-$VERSION = sprintf("%d.%02d", q$Revision: 1.16 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.17 $ =~ /(\d+)\.(\d+)/);
 my @TestTheseOnly;# = qw(Sherlock); # this is active only when WWW::Search::Scraper::isGlennWood;
 
 ######################### We start with some black magic to print on failure.

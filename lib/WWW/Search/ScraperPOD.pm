@@ -53,7 +53,8 @@ ScraperPOD - A Framework for scraping results from search engines.
  for ( $model = ('Accord' 'Civic') ) {
      $scraper->scraperRequest->model($model);
      $response = $scraper->next_response() ) {
-     print $response->sellerPhoneNumber();
+     # all response fields are returned as a reference to the value.
+     print ${$response->sellerPhoneNumber()};
  }
 
 =item Single Request to variant search engines
@@ -67,7 +68,8 @@ ScraperPOD - A Framework for scraping results from search engines.
  for ( $searchEngine = ('carsforsale' '1001cars') ) {
      $scraper = new WWW::Search::Scraper($searchEngine, 'Request' => $request);
      for ( $response = $scraper->next_response() ) {
-         print $response->sellerPhoneNumber();
+         # all response fields are returned as a reference to the value.
+         print ${$response->sellerPhoneNumber()};
  }
 
 =back

@@ -6,8 +6,13 @@ use ExtUtils::MakeMaker;
 {   package MM;
 sub new {
     my $self = shift;
-    use WWW::Search;
-    if ( $WWW::Search::VERSION eq '2.26' ) {
+    
+    my $isSearch226 = 0;
+    eval { require WWW::Search; $isSearch226 = ( $WWW::Search::VERSION eq '2.26' ) };
+    if ( $@ ) {
+      warn "WWW::Search(2.28) is required for Scraper.\n";
+    }
+    if ( $isSearch226 ) {
         warn <<EOT;
 
 >    Warning: You are using WWW::Search version 2.25.
@@ -15,8 +20,7 @@ sub new {
 >    makes several Scraper modules fail. Unfortunately, the \$VERSION in
 >    WWW::Search::Search.pm(2.25) reads "2.26", and the \$VERSION in 
 >    WWW::Search::Search.pm(2.26) reads "2.28", so Scraper cannot simply
->    recommend that you "upgrade to 2.28" - that would be confusing (since 
->    there is no WWW::Search(2.28) as yet).
+>    recommend that you "upgrade to 2.28" - that would be confusing.
 >    Instead, we (Makefile.PL) recommend that you upgrade to WWW::Search(2.26)!
 >    (ignore the subsequent message "prerequisite WWW::Search 2.28 not found")
     

@@ -4,9 +4,9 @@ package WWW::Search::Scraper::eBay;
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.18 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.19 $ =~ /(\d+)\.(\d+)/);
 
-use WWW::Search::Scraper(qw(1.24 generic_option addURL trimTags));
+use WWW::Search::Scraper(qw(1.24 generic_option addURL trimTags trimLFs));
 
 use HTML::Form;
 
@@ -36,10 +36,11 @@ my $scraperRequest =
 my $scraperFrame =
         [ 'HTML', 
             [ 
-               [ 'COUNT', '([,0-9]+)</b> items found  ?for']
+               [ 'COUNT', '([,0-9]+)</b>\s+items found\s+for']
               ,[ 'BODY', '</form>', undef,
                   [  
-                     [ 'NEXT', 2, \&findNextForm ]
+                     #[ 'NEXT', 2, \&findNextForm ] # it used to be a form . . .
+                     [ 'NEXT', 1, 'Next >' ]
                     ,[ 'BODY', '<!-- eBayCacheStart -->', '<!-- eBayCacheEnd -->',
                        [ 
                            [ 'TABLE', '#0' ]
@@ -50,17 +51,19 @@ my $scraperFrame =
                                       [ 'TR',
                                          [
                                             [ 'TD', 'itemNumber' ]
-                                           ,[ 'TD', [ [ 'A', 'url', 'title' ] ] ] 
-                                           ,[ 'TD', 'price' ]
-                                           ,[ 'TD', 'bids' ]
-                                           ,[ 'TD', 'endsPDT' ]
+                                           ,[ 'TD', 'url', \&parseItemTitle ] #[ [ 'A', 'url', 'title' ] ] ] 
+                                           ,[ 'TD', 'price', \&trimLFs ]
+                                           ,[ 'TD', 'bids', \&trimLFs ]
+                                           ,[ 'TD', 'endsPDT', \&trimLFs ]
+                                            # this regex never matches; just lets us declare fields.
+                                           ,[ 'REGEX', 'neverMatch', 'title', 'isNew' ] #, 'isBillpoint']
                                          ]
                                       ]
                                    ]
                                 ] 
                              ] 
-                            ,[ 'BOGUS', -1 ] # eBay's last hit is bogus (a spacer gif).
                            ] 
+                          ,[ 'BOGUS', -2 ] # eBay's last 2 hits are bogus ("return to top", etc.).
                        ] 
                      ]
                   ]
@@ -75,7 +78,7 @@ sub testParameters {
                  'SKIP' => '' 
                 ,'testNativeQuery' => 'turntable'
                 ,'expectedOnePage' => 9
-                ,'expectedMultiPage' => 50
+                ,'expectedMultiPage' => 60
                 ,'expectedBogusPage' => 0
            };
 }
@@ -132,9 +135,31 @@ sub findNextForm {
             return $req->uri();
         }
     }
-    return undef;
+    return '';
 }
 
+
+# eBay's title sometimes includes other things, such as "new" link and "billpoint" link
+sub parseItemTitle {
+   my ($self, $hit, $dat) = @_;
+   my $next_content = $dat;
+   my ($sub_content, $frm);
+   my ($isNew, $isBillpoint) = (0,0);
+   while ( ($sub_content, $frm) = $self->getMarkedText('A', \$next_content) ) {
+      last unless $sub_content;
+      $isNew       |= ($sub_content =~ m{alt="New!"})?1:0;
+      $isBillpoint |= ($sub_content =~ m{alt="eBay Online Payments by Billpoint"})?1:0;
+      last unless $sub_content =~ m{<img}i;
+   }
+   $hit->plug_elem('title', $sub_content);
+   $hit->plug_elem('isNew', $isNew);
+#   $hit->plug_elem('isBillpoint', $isBillpoint); # need to match Billpoint *after* matching title.
+   my $url = $frm;
+   $url =~ s{a href="(.*)"}{$1};
+   $url =~ m{=(\d+)$};
+   $hit->plug_elem('itemNumber', $1);
+   return $url;
+}
 1;
 
 __END__

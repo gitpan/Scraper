@@ -8,7 +8,7 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(2.14 generic_option addURL trimLFs trimTags findNextFormInXML removeScriptsInHTML trimXPathHref));
@@ -42,6 +42,8 @@ my $scraperRequest =
                    }
             # Miscellaneous options for the Scraper operation.
            ,'cookies' => 0
+           # Some search engines don't connect every time - retry Dogpile this many times.
+           ,'retry' => 1
        };
 
 my $scraperFrame =
@@ -94,7 +96,6 @@ sub testParameters {
 
     return {
                  'SKIP' => &WWW::Search::Scraper::TidyXML::isNotTestable('Dogpile')
-                ,'TODO' => "Dogpile is still flaky; I'll let it pass this time."
                 ,'testNativeQuery' => 'turntable'
                 ,'expectedOnePage' => 9
                 ,'expectedMultiPage' => 20

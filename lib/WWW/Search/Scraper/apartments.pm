@@ -4,7 +4,7 @@ package WWW::Search::Scraper::apartments;
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/);
 use WWW::Search::Scraper::Response;
 
 use WWW::Search::Scraper(qw(1.48));

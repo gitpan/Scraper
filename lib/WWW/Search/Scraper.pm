@@ -10,9 +10,9 @@ require Exporter;
 use vars qw($VERSION $MAINTAINER @ISA @EXPORT @EXPORT_OK);
 @EXPORT = qw(testParameters);
 
-$VERSION = '2.23';
+$VERSION = '2.24';
 
-my $CVS_VERSION = sprintf("%d.%02d", q$Revision: 1.64 $ =~ /(\d+)\.(\d+)/);
+my $CVS_VERSION = sprintf("%d.%02d", q$Revision: 1.65 $ =~ /(\d+)\.(\d+)/);
 $MAINTAINER = 'Glenn Wood http://search.cpan.org/search?mode=author&query=GLENNWOOD';
 
 use Carp ();
@@ -36,12 +36,14 @@ use WWW::Search::Scraper::TidyXML;
 use Class::Struct;
     struct ( 'WWW::Search::Scraper::_struct_' =>
               {
-                  'response'         => '$'
-                 ,'searchEngineHome' => '$'
-                 ,'searchEngineLogo' => '$'
-                 ,'errorMessage'     => '$'
+                  'response'          => '$'
+                 ,'searchEngineHome'  => '$'
+                 ,'searchEngineLogo'  => '$'
+                 ,'errorMessage'      => '$'
                  ,'_wantsNativeRequest' => '$'
-                 ,'_forInterator'    => '$'
+                 ,'_wwwSearchBackend' => '$'
+                 ,'_forInterator'     => '$'
+                 ,'_retryGetCount'    => '$'
               }
            );
 }
@@ -54,8 +56,7 @@ sub new {
     my ($self, $wantsNativeRequest);
     $wantsNativeRequest = $subclass =~ s/^NativeRequest\:\:(.*)$/$1/;
     if ( $subclass =~ m-^\.\.[\/](.*)$- ) {  # Allow the form "../name" to indicate
-        $self = new WWW::Search($1);          # a WWW::Search backend. Also see "Some 
-        bless $self, 'WWW::Search::Scraper'; # searchers are not scrapers", below.
+       die "The '..\\backend' form is deprecated in favor of scraperFrame = 'WWW::Search::backend' - see HeadHunter.pm for an example.\n";
     } else {
         if ( $subclass =~ s/^(.*)\((.*)\)$/$1/ ) {
             my $subclassVersion = $2;
@@ -76,15 +77,23 @@ sub new {
     $searchName = $subclass unless $searchName;
     $self->{'scraperName'} = $searchName;
 
-    $self->{cache} = []; # This eliminates some useless "warnings" from WWW::Search(lines 544-549) during make test.
-    # Finally, call the sub-scraper's init() method.
-    $self->init();
+    # These eliminate some useless "warnings" from WWW::Search(lines 544-549) during make test, and elsewhere.
+    $self->{cache} = [];
+    $self->{_debug} ||= 0;
 
-    return $self;
+    
+    # Finally, call the sub-scraper's init() method.
+    return $self->init($subclass, $searchName);
 }
 
 # The Scraper module should override this.
 sub init {
+   my ($self, $subclass, $searchName) = @_;
+   my $scraperFrame = $self->scraperFrame();
+   if ( ${$scraperFrame}[0] =~ m{^WWW::Search::(.*)$} ) {
+      $self->_wwwSearchBackend(new WWW::Search($1)); # Uses a WWW::Search backend.
+   }
+   return $self;
 }
 
 
@@ -217,7 +226,7 @@ sub native_setup_search
                  ,'fieldTranslations' => undef # This gives us a null %inputsHash, so WWW::Search::Scraper will ignore that functionality (hopefully)
                  , 'cookies' => 0 # The WWW::Search module must maintain its own cookies.
             };
-        $self->scraperRequest($scraperRequest);
+        $self->scraperRequest($scraperRequest, $native_query, $native_options);
     }
     # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## 
     
@@ -227,13 +236,14 @@ sub native_setup_search
     #$self->setScraperTrace($self->{'_debug'}) unless $self->{'_traceFlags'};
 
     for ( $self->scraperRequest()->{'type'} ) {
-        m/SHERLOCK/  && do { return $self->native_setup_search_SHERLOCK(); };
-        m/FORM/      && do { return $self->native_setup_search_FORM(); };
-        m/QUERY|GET/ && do { return $self->native_setup_search_QUERY(); };
-        m/POST/      && do { $self->{'_http_method'} = 'POST';
-                            return $self->native_setup_search_QUERY(); };
-        m/SEARCH/    && do { return $self->native_setup_search_NULL(@_); };
-        m/WSDL/      && do { return $self->native_setup_search_WSDL(@_); };
+        m/^SHERLOCK$/    && do { return $self->native_setup_search_SHERLOCK(@_); };
+        m/^FORM$/        && do { return $self->native_setup_search_FORM(@_); };
+        m/^QUERY$|^GET$/ && do { return $self->native_setup_search_QUERY(@_); };
+        m/^POST$/        && do { $self->{'_http_method'} = 'POST';
+                              return $self->native_setup_search_QUERY(@_); };
+        m/^SEARCH$/      && do { return $self->native_setup_search_NULL(@_); };
+        m/^WSDL$/        && do { return $self->native_setup_search_WSDL(@_); };
+        m/^WWW::Search/  && do { return $self->native_setup_search_WWW_Search(@_); };
         die "Invalid mode in WWW::Search::Scraper - '$_'\n";
     }
 }
@@ -257,7 +267,7 @@ sub native_setup_search_FORM
     $self->{_next_to_retrieve} = 0;
     
     # $scraperForm = [ 'url', 'formIndex' (or formName, NYI), 'submitButtonName' or undef ]
-    my $url = $self->scraperRequest(@_)->{'url'};
+    my $url = $self->scraperRequest($native_query, $native_options)->{'url'};
     if ( ref $url ) {
         $self->{'_base_url'} = &$url($self, $self->GetRequest()->_native_query(), $self->{'native_options'});
     } else {
@@ -290,7 +300,7 @@ sub native_setup_search_FORM
     my %optsHash = %{$self->queryDefaults()};
     # Override those with what came with the request.
     my $options_ref = $self->{'native_options'};
-    foreach (sort keys %$options_ref) {
+       foreach (sort keys %$options_ref) {
         $optsHash{$_} = $$options_ref{$_};
     };
     $optsHash{$self->scraperRequest()->{'nativeQuery'}} = $self->GetRequest()->_native_query() if $self->scraperRequest()->{'nativeQuery'};
@@ -352,12 +362,12 @@ sub native_setup_search_FORM
 sub native_setup_search_QUERY
 {
     my ($self, $native_query, $native_options) = @_;
-    $self->SetRequest( new WWW::Search::Scraper::Request($self, $native_query, $native_options) ) unless ( $self->GetRequest());
+   $self->SetRequest( new WWW::Search::Scraper::Request($self, $native_query, $native_options) ) unless ( $self->GetRequest());
     
     $self->user_agent('user');
     $self->{_next_to_retrieve} = 0;
     
-    my $url = $self->scraperRequest(@_)->{'url'};
+    my $url = $self->scraperRequest($native_query, $native_options)->{'url'};
     
     if ( ref $url ) {
         $self->{'_base_url'} = &$url($self, $self->GetRequest()->_native_query(), $self->{'native_options'});
@@ -373,7 +383,6 @@ sub native_setup_search_QUERY
 #    $rqst->{'_base_url'} = $self->{'_base_url'};
 
     $self->{'_next_url'} = $self->generateQuery();
-
     print STDERR $self->{_next_url} . "\n" if $self->ScraperTrace('U');
 }
 
@@ -459,6 +468,17 @@ sub native_setup_search_WSDL
 }
 
 
+
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### 
+### Use WWW::Search "backend", attached to this Scraper canonical engine, to do the scraping.
+sub native_setup_search_WWW_Search {
+   my ($self, $native_query, $native_options) = shift;
+   $self->SetRequest( new WWW::Search::Scraper::Request($self, $native_query, $native_options) ) unless ( $self->GetRequest());
+   my $oSearch = $self->_wwwSearchBackend();
+   ($oSearch->{'native_query'}, $oSearch->{'native_options'}) = ($self->GetRequest()->_native_query(), $self->{'native_options'});
+   return $oSearch->native_setup_search($oSearch->{'native_query'}, $oSearch->{'native_options'});
+}
+
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### 
 # The options have been prepared into the Scraper Request object by prepare().
 # generateQuery() creates the HTTP query based on _scraperNativeQuery.
@@ -496,14 +516,17 @@ sub generateQuery {
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### 
 sub native_retrieve_some
 {
-    my ($self) = @_;
+    my $self = shift;
+    if ( $self->_wwwSearchBackend() ) {
+       return $self->_wwwSearchBackend()->native_retrieve_some(@_);
+    }
     my $debug = $self->{_debug};
 
     $self->{'total_hits_count'} = 0; # for HIT(i)
 
     # fast exit if already done
 AGAIN:    
-    unless ( defined($self->{_next_url}) ) {
+    unless ( $self->{_next_url} ) {
         print STDERR "END_OF_SEARCH: _next_url is empty.\n" if $self->ScraperTrace('U');
         return undef;
     };
@@ -523,46 +546,66 @@ AGAIN:
         $self->{'_first_url'} = $self->{_next_url};
         $self->{'_first_url_method'} = $method;
     }
-    my $response = $self->http_request($method, $self->{_next_url});
-
-    while ( $response->code() eq '302' ) {
-        my $redirect = $response->header('location');
-        if ( $redirect =~ m-^/- ) {
-            my $url = $self->{_next_url};
-            $url =~ m-^(\w+://[^/]*)/-;
-            $url = $1;
-            $self->{_next_url} = $url.$redirect;
-        } elsif ( ! ($redirect =~ m-^(\w+://[^/]*)-) ) {
-            my $url = $self->{_next_url};
-            $url =~ m-^(.*/)-;
-            $url = $1;
-            $self->{_next_url} = $url.$redirect;
-        } else {
-            $self->{_next_url} = $redirect;
-        }
-        print STDERR "Redirected to: '".$self->{_next_url}."'\n" if $self->ScraperTrace('U');
-        $method = $self->scraperRequest()->{'redirectMethod'} || $method;
-        $response = $self->http_request($method, $self->{_next_url});
-    }
-
-    $self->{'_last_url'} = $self->{'_next_url'}; $self->{'_next_url'} = undef;
-    $self->response($response);
     
-    unless ( $response->is_success ) {
-        $self->errorMessage("Request failed in Scraper.pm: ".$response->message());
-        print STDERR $self->errorMessage()."\n" if $self->ScraperTrace();
-        print STDERR $response->content()."\n" if $self->ScraperTrace('f'); # detailed failure reports.
-        return undef;
+    # Some search engines don't connect every time, so we might give them a couple of retries.
+    my $response;
+   $self->_retryGetCount('0');
+   while ( $self->keepRetrying() ) {
+       $response = $self->http_request($method, $self->{_next_url});
+   
+       while ( $response->code() eq '302' ) {
+           my $redirect = $response->header('location');
+           if ( $redirect =~ m-^/- ) {
+               my $url = $self->{_next_url};
+               $url =~ m-^(\w+://[^/]*)/-;
+               $url = $1;
+               $self->{_next_url} = $url.$redirect;
+           } elsif ( ! ($redirect =~ m-^(\w+://[^/]*)-) ) {
+               my $url = $self->{_next_url};
+               $url =~ m-^(.*/)-;
+               $url = $1;
+               $self->{_next_url} = $url.$redirect;
+           } else {
+               $self->{_next_url} = $redirect;
+           }
+           print STDERR "Redirected to: '".$self->{_next_url}."'\n" if $self->ScraperTrace('U');
+           $method = $self->scraperRequest()->{'redirectMethod'} || $method;
+           $response = $self->http_request($method, $self->{_next_url});
+       }
+   
+       $self->{'_last_url'} = $self->{'_next_url'}; $self->{'_next_url'} = undef;
+       $self->response($response);
+       
+       if ( $response->is_success ) {
+          last;
+       }
+       else {
+           $self->errorMessage("Request failed in Scraper.pm: ".$response->message());
+           print STDERR $self->errorMessage()."\n" if $self->ScraperTrace();
+           print STDERR $response->content()."\n" if $self->ScraperTrace('f'); # detailed failure reports.
+           return undef;
+       }
     }
-
+    
     my $hits_found = $self->scrape($response->content(), $self->{_debug});
 
-    # sleep so as to not overload the engine
+    # sleep so as to not overload the remote engine
     $self->user_agent_delay if ( defined($self->{_next_url}) );
     
     return $hits_found;
 }
 
+
+# Some search engines don't connect every time, so we might give them a couple of retries.
+sub keepRetrying {
+   my $self = shift;
+   $self->_retryGetCount($self->_retryGetCount()+1);
+   my $retryCount = $self->scraperRequest()->{'retry'} || 1;
+   if ( $self->_retryGetCount() > $retryCount ) {
+      return 0;
+   }
+   return 1;
+}
 
 
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### 
@@ -974,7 +1017,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
                 my $binding = $next_scaffold;
                 my $datParser = $$scaffold[3];
                 print STDERR  "raw dat: '$sub_string'\n" if ($self->ScraperTrace('d'));
-                if (  $self->ScraperTrace('d') ) { # print ref $ aways does something screwy
+                if (  $self->ScraperTrace('d') ) {
                   print STDERR  "datParser: ".ref($datParser)."\n";
                 };
                 $datParser = \&WWW::Search::Scraper::trimTags unless $datParser;
@@ -1282,7 +1325,8 @@ sub getMarkedText {
     my $sidx = 0;
     my $depth = 0;
 
-    while ( $$content =~ m-<(/)?$tag[^>]*?>-gsi ) {
+#    while ( $$content =~ m-<(/)?$tag[^>]*?>-gsi ) {
+    while ( $$content =~ m-<(/)?$tag(\s[^>]*?)?>-gsi ) {
         if ( $1 ) { # then we encountered an end-tag
             $depth -= 1;
             if ( $depth < 0 ) {
@@ -1306,9 +1350,10 @@ sub getMarkedText {
 
     my $rslt = substr $$content, $sidx, $eidx - $sidx, '';
     $$content =~ m/./;
-    $rslt =~ m-^<($tag[^>]*?)>(.*?)</$tag\s*[^>]*?>$-si;
-    return ($2, $1) if wantarray;
-    return $2;
+#    $rslt =~ m-^<($tag[^>]*?)>(.*?)</$tag\s*[^>]*?>$-si;
+    $rslt =~ m-^<($tag(\s[^>]*?)?)>(.*?)</$tag\s*[^>]*?>$-si;
+    return ($3, $1) if wantarray;
+    return $3;
 }
 
 
@@ -1407,6 +1452,12 @@ sub null { # Strip tag clutter from $_;
 # Alternative name for the next_result() method for Scraper.
 sub next_response {
     my $self = shift;
+    if ( my $oSearch = $self->_wwwSearchBackend() ) {
+$oSearch->{'_debug'} = 1;
+   $self->SetRequest( new WWW::Search::Scraper::Request($self, $self->{'native_query'}, $self->{'native_options'}) ) unless ( $self->GetRequest());
+   ($oSearch->{'native_query'}, $oSearch->{'native_options'}) = ($self->GetRequest()->_native_query(), $self->{'native_options'});
+       return $oSearch->next_result(@_);
+    }
     $self->next_result(@_);
 }
 

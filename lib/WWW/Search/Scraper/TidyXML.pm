@@ -10,7 +10,7 @@
 
 
 package WWW::Search::Scraper::TidyXML;
-$VERSION = sprintf("%d.%02d", q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/);
 
 use strict;
 
@@ -56,7 +56,6 @@ sub new {
             warn "$err\n";
         }
         #unlink 'temp.html';
-
         $string = \$rslt;
         $self->m_isTidyd(1);
     }

@@ -8,7 +8,7 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(2.12 generic_option addURL trimTags));
@@ -81,7 +81,6 @@ sub testParameters {
     
     return {
                  'SKIP' => ''#'ZIPplus4 test parameters have not yet been fixed' 
-                ,'TODO' => 'ZIPplus4 test parameters have not yet been fixed'#'Uses POST: certain versions of WWW::Search (2.25 to name one) fail with POSTs.'
                 ,'testNativeQuery' => '94043'
                 ,'testNativeOptions' => {
                                              'Delivery_Address' => '1600 Pennsylvannia Ave'

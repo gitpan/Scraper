@@ -21,7 +21,7 @@ package WWW::Search::Scraper::$scraperName;
 
 \@ISA = qw(WWW::Search::Scraper Exporter);
 # This is an appropriate VERSION calculation to use for CVS revision numbering.
-\$VERSION = sprintf("%d.%02d", q\$Revision: 1.1 $ \=\~ /(\\d+)\.(\\d+)/);
+\$VERSION = sprintf("%d.%02d", q\$Revision: 1.2 $ \=\~ /(\\d+)\.(\\d+)/);
 
 use WWW::Search::Scraper(qw(2.19 generic_option trimLFs trimTags findNextFormInXML removeScriptsInHTML trimXPathHref));
 

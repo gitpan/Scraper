@@ -2,7 +2,7 @@ package WWW::Search::Scraper::Request;
 
 use strict;
 use vars qw($VERSION @ISA);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/);
 
 my %AlreadyDeclared;
 my $VirtualCount;
@@ -33,7 +33,7 @@ sub new {
     while ( my $whatzit = shift ) {
         if ( my $rf = ref $whatzit ) {
             if ( 'HASH' eq $rf ) {
-                $options = $whatzit;
+               map { $options->{$_} = $whatzit->{$_} } keys %$whatzit;
             }
             elsif ( 'ARRAY' eq $rf ) {
                 $declaredMethodNames = $whatzit unless $declaredMethodNames; # not sure why the "unless" is necessary . . .
@@ -43,7 +43,7 @@ sub new {
                 if ( !$whatzit->_wantsNativeRequest() and $scraperRequest->{'defaultRequestClass'} ) {
                     $SubClass = $scraperRequest->{'defaultRequestClass'};
                     $SubClassNormal = "$SubClass" unless $SubClassNormal;
-                    eval "use WWW::Search::Scraper::Request::$SubClass;\$self = new WWW::Search::Scraper::Request::$SubClassNormal;";
+                    eval "use WWW::Search::Scraper::Request::$SubClass;\$self = new WWW::Search::Scraper::Request::$SubClassNormal\(\@_);";
                     die $@ if $@;
                     $isCanonical = $SubClass;
                     $SubClassNormal = "$SubClass";
@@ -181,7 +181,7 @@ sub FieldTitles {
 
 sub _init {
     my ($self, $native_query, $options_ref) = @_;
-
+    
     $self->_native_query($native_query) if ( $native_query );
     map { my $mthd = $_; $mthd =~ s/\s/_/g;
           $self->$mthd($options_ref->{$_})

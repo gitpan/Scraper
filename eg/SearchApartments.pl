@@ -32,7 +32,7 @@ modify it under the same terms as Perl itself.
 use WWW::Search::Scraper(qw(1.48));
 use strict;
 use vars qw($VERSION);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
 
 
     my $scraper = new WWW::Search::Scraper( 'apartments', {'search_debug' => 0} );

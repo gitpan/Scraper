@@ -6,7 +6,7 @@ package WWW::Search::Scraper::FlipDog;
 use strict;
 use vars qw(@ISA $VERSION);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.12 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Search::Scraper(qw(1.48 trimLFs trimLFLFs removeScriptsInHTML trimTags trimXPathHref));
 
@@ -82,6 +82,7 @@ sub init {
     my ($self) = @_;
     $self->searchEngineHome('http://www.FlipDog.com');
     $self->searchEngineLogo('<IMG SRC="http://www.flipdog.com/images/nav/flipdog_job_careers_here.gif">');
+    return $self;
 }
 
 

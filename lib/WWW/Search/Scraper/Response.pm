@@ -96,7 +96,7 @@ modify it under the same terms as Perl itself.
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::SearchResult);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/);
 require WWW::SearchResult;
 my %AlreadyDeclared;
 
@@ -231,9 +231,7 @@ sub new {
             map { $subFields{$_} = (defined $subFields{$_})?3:2 } fieldCapture($scraperDetailFrame);
         }
 
-        my @subFields = join '\'=>\'$\',\'', keys %subFields;
-        my $subFieldsStruct = join '\'=>\'$\',\'', join '\'=>\'$\',\'', keys %subFields;
-        
+        my $subFieldsStruct = join '\'=>\'@\',\'__', keys %subFields;
         die "No fields were found in the scraperFrames for WWW::Search::Scraper::Response$SubClass\n" unless keys %subFields;
 
         eval <<EOT;
@@ -252,7 +250,7 @@ use Class::Struct;
                 ,'_ScraperEngine'  => '\$'
                 ,'_Scraper_debug'  => '\$'
 # Now for the $SubClass specific members.
-,'$subFieldsStruct'=>'\$'
+,'__$subFieldsStruct'=>'\@'
                 }
            );
 }
@@ -275,31 +273,90 @@ EOT
     $self->_fieldCount(${AlreadyDeclared{$SubClass}}[0]);
     $self->_fieldNames(${AlreadyDeclared{$SubClass}}[1]);
 
+    # Build 'wantarray' context sensitive accessors for all fields
     # Build lazy-accessors for fields available from the Details page.
     my $fieldNames = $self->_fieldNames();
-    my $detailAccessors = "\n";
+    my $accessors = '';
     for ( keys %$fieldNames ) {
-        if ( $fieldNames->{$_} == 2 ) {
-            $detailAccessors .= "sub $_ { my \$slf = shift; \$slf->ScrapeDetailPage(); \$slf->SUPER::$_(\@_) }\n";
-        }
-        elsif ( $fieldNames->{$_} == 3 ) {
-            $detailAccessors .= "sub $_ { my \$slf = shift; \$slf->ScrapeDetailPage() if \$slf->_skipDetailPage() != 3; \$slf->SUPER::$_(\@_) }\n";
+        if ( $fieldNames->{$_} == 1 ) {
+            $accessors .= <<EOT;
+sub $_ {
+    my \$slf = shift;
+    my \$val = shift;
+    if ( defined \$val ) {
+        my \$ref = \$slf->__$_();
+        if ( defined \$ref ) {
+            push \@\$ref, \$val;
+        } else {
+            \$slf->__$_(1,\$val);
         }
     }
+    if ( wantarray ) {
+        return \@{\$slf->__$_()};
+    } else {
+        return \${\$slf->__$_()}[0];
+    }
+}
+EOT
+        }
+        if ( $fieldNames->{$_} == 2 ) {
+            $accessors .= <<EOT;
+sub $_ {
+    my \$slf = shift;
+    my \$val = shift;
+    \$slf->ScrapeDetailPage();
+    if ( defined \$val ) {
+        my \$ref = \$slf->__$_();
+        if ( defined \$ref ) {
+            push \@\$ref, \$val;
+        } else {
+            \$slf->__$_(1,\$val);
+        }
+    }
+    if ( wantarray ) {
+        return \@{\$slf->__$_()};
+    } else {
+        return \${\$slf->__$_()}[0];
+    }
+}
+EOT
+        }
+        elsif ( $fieldNames->{$_} == 3 ) {
+            $accessors .= <<EOT;
+sub $_ {
+    my \$slf = shift;
+    my \$val = shift;
+    \$slf->ScrapeDetailPage() if defined(\$slf->_skipDetailPage()) && \$slf->_skipDetailPage() != 3;
+    if ( defined \$val ) {
+        my \$ref = \$slf->__$_();
+        if ( defined \$ref ) {
+            push \@\$ref, \$val;
+        } else {
+            \$slf->__$_(1,\$val);
+        }
+    }
+    if ( wantarray ) {
+        return \@{\$slf->__$_()};
+    } else {
+        return \${\$slf->__$_()}[0];
+    }
+}
+EOT
+        }
+    }
+
     my $warn = $^W;
     $^W = 0; # Eliminates useless "warnings" during make test.
-    eval "{package WWW::Search::Scraper::Response$SubClass; $detailAccessors } 1";
+    eval "{package WWW::Search::Scraper::Response$SubClass; $accessors } 1";
     $^W = $warn;
     die $@ if $@;
     
-
     return $self;
 }
 
-
 sub plug_elem {
     my ($self, $name, $value) = @_;
-    return unless $name;
+    return unless defined $name;
     $self->_elem($name, $value);
     $self->$name(\$value);
 }
@@ -330,7 +387,7 @@ sub GetFieldValues {
     my $self = shift;
     my $answer = {
 #                'relevance'  => $self->relevance()
-               'url'        => $self->url()
+               'url'        => scalar $self->url()
            };
     for ( keys %$self ) {
         $answer->{$_} = $self->{$_} unless $_ =~ /^_/ or $_ eq 'url';
@@ -405,7 +462,7 @@ sub SkipDetailPage {
 sub ScrapeDetailPage {
     my $self = shift;
 
-    return if $self->_skipDetailPage() == 1;
+    return if defined($self->_skipDetailPage()) && $self->_skipDetailPage() == 1;
     
     my $detail = $self->_gotDetailPage();
     return if $detail;

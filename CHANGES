@@ -1,6 +1,10 @@
 
 Revision history for WWW::Search::Scraper (::*).
 
+v2.24 - Added "optional array-context" return of Response field values.
+	Print a correct warning message if WWW::Search is not installed.
+	Fixed problems associated with using classic WWW::Search "native_query" mode.
+	Other improvements to eBay's "new" format.
 v2.23 - eBay moved their search page from 'search.html' to 'basicsearch.html'.
 	ZIPPlus4 - problems with "Zip_Code" method solved.
 	Updated Monster.pm to Monster's new <TABLE> structure.
