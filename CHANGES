@@ -1,6 +1,11 @@
 
 Revision history for WWW::Search::Scraper (::*).
 
+v2.13 - Make Scraper comply with new sanity checks in later versions of WWW::Search.
+	Upgraded Monster.pm to Monster.com's new "RELATED RESOURCES for <query>" format.
+	Fix fatal flaw in Brainpower.pm.
+	Some improvements to "make test".
+	Improvements in handling of redirects from the search engines.
 v2.12 - HotJobs.pm is not working in this version, so we've put it on leave . . .
 	Make dependant on Tie::Persistent - rt.cpan.org: Ticket #74
 	Try to be nice to Google.com via LWP::RobotUA.

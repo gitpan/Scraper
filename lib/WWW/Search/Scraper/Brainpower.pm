@@ -5,7 +5,7 @@ package WWW::Search::Scraper::Brainpower;
 use strict;
 use vars qw(@ISA $VERSION);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Search::Scraper(qw(1.48 trimLFs trimLFLFs));
 use WWW::Search::Scraper::FieldTranslation(1.00);
@@ -13,14 +13,15 @@ use WWW::Search::Scraper::Request::Job(1.00);
 
 my $scraperQuery = 
    { 
-      'type' => 'POST'       # Type of query generation is 'POST'
+      'type' => 'QUERY'       # Type of query generation is 'POST'
       # This is the basic URL on which to build the query.
       ,'url' => 'http://www.brainpower.com/IndListProject.asp?'
       # This is the Scraper attributes => native input fields mapping
       ,'nativeQuery' => 'skills'
       ,'nativeDefaults' =>
-                      {    'navItem' => 'searchprojects'  # This is a hidden field, presumably declares "search"
+                      {    'navItem' => 'searchProjects'  # This is a hidden field, presumably declares "search"
                           ,'submit1' => 1                 # This is the actual submit button.
+                          #,'pageSize' => 100              # pageSize has no effect on Brainpower.com
                           ,'title'   => 'ALL'             # All job designations.
                           #,'title' => 'AP'               # Application Programmer.
                           ,'searchType' => 1              # searchType = ANY words.
@@ -37,7 +38,7 @@ my $scraperQuery =
                       }
               }
       # Some more options for the Scraper operation.
-     ,'cookies' => 0
+     ,'cookies' => 1
    };
 
 my $scraperFrame =
@@ -52,7 +53,7 @@ my $scraperFrame =
                    [ 'TABLE', 
                       [
                           ['TR', '#1' ],
-                         ,[ 'HIT*', 'Job::Brainpower',
+                         ,[ 'HIT*', #'Job::Brainpower',
                              [ 
                                  [ 'TR', 
                                      [
@@ -65,9 +66,9 @@ my $scraperFrame =
                                  ]
                                 ,[ 'TR' ]
                              ]
-                            ,[ 'BOGUS', 1 ]  #Bogus result at the beginning . . .
-                            ,[ 'BOGUS', -1 ] # and at the end!
                           ]
+#                         ,[ 'BOGUS', 1 ]  #Bogus result at the beginning . . .
+                         ,[ 'BOGUS', -1 ] # and at the end!
                       ]
                    ]
                  ]

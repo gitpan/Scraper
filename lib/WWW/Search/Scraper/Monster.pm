@@ -6,7 +6,7 @@ package WWW::Search::Scraper::Monster;
 use strict;
 use vars qw(@ISA $VERSION);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Search::Scraper(qw(1.48 generic_option findNextForm trimLFs));
 use WWW::Search::Scraper::Response::Job;
@@ -41,30 +41,29 @@ my $scraperFrame =
     [ 
                    #<B>Jobs <B>1</B> to <B>6</B> of <B>6</B></B>
                    #<B>Jobs <B>1</B> to <B>6</B> of more than <B>6,000</B></B>
-        [ 'COUNT', ' <B>([0-9,]+?)</B></B>' ]
+        [ 'COUNT', 'Jobs \d+ to \d+ of (\d+)' ]  # Jobs 1 to 50 of 241
        ,[ 'NEXT', \&findNextForm ]
-       ,[ 'TABLE', 
-            [  
-                [ 'TABLE' ]
-               ,[ 'TABLE', 
-                   [
-                       [ 'HIT*', 'Job',
-                            [ 
-                                [ 'TR', 
-                                    [
-                                        [ 'TD' ] # Listing number.
-                                       ,[ 'TD', 'postDate' ]
-                                       ,[ 'TD', 'location', \&trimLFs ]
-                                       ,[ 'TD', [ [ 'A', 'url', 'title' ] ] ]
-                                       ,[ 'TD', 'company' ]
-                                    ]
+       ,[ 'BODY', '<!-- Jobs \S+ of \S+ -->', undef,
+          [
+            [ 'TABLE', 
+               [
+                   [ 'HIT*', 'Job',
+                        [ 
+                            [ 'TR', 
+                                [
+                                    [ 'TD' ] # Listing number.
+                                   ,[ 'TD', 'postDate' ]
+                                   ,[ 'TD', 'location', \&trimLFs ]
+                                   ,[ 'TD', [ [ 'A', 'url', 'title' ] ] ]
+                                   ,[ 'TD', 'company' ]
                                 ]
                             ]
                         ]
-                       ,[ 'BOGUS', 1 ] # The first row is column titles.
                     ]
+                   ,[ 'BOGUS', 1 ] # The first row is column titles.
                 ]
             ]
+          ]
         ]
     ]
 ];            

@@ -9,12 +9,12 @@ use strict;
 require Exporter;
 use vars qw($VERSION $MAINTAINER @ISA @EXPORT @EXPORT_OK);
 
-$VERSION = '2.12';
+$VERSION = '2.13';
 
 @EXPORT = qw(findNextForm);
 @EXPORT_OK = qw(findNextForm);
 @ISA = qw(WWW::Search Exporter);
-my $CVS_VERSION = sprintf("%d.%02d", q$Revision: 1.52 $ =~ /(\d+)\.(\d+)/);
+my $CVS_VERSION = sprintf("%d.%02d", q$Revision: 1.53 $ =~ /(\d+)\.(\d+)/);
 $MAINTAINER = 'Glenn Wood <glenwood@alumni.caltech.edu>';
 
 use Carp ();
@@ -55,6 +55,8 @@ sub new {
 }
 
 
+# Help avoid embarrassment when Glenn releases test, debug or tracing code to CPAN!
+sub isGlennWood { return $ENV{'VSROOT'} and ($ENV{'USERNAME'} eq 'Glenn') and ($ENV{'USERDOMAIN'} eq 'ORCHID'); }
 
 sub generic_option 
 {
@@ -101,6 +103,7 @@ sub ScraperTrace {
 sub request {
     my ($self, $rqst) = @_;
     
+    my $nonBlankWWWSearchNativeQuery = 'nonBlankWWWSearchNativeQuery';
     if ( $rqst ) {
         # Make sure the request object is ready for us.
         $rqst->prepare($self);
@@ -109,7 +112,12 @@ sub request {
         $self->{'_debug'} = $rqst->Scraper_debug();
 
         $self->{'_scraperRequest'} = $rqst;
+        
+        $nonBlankWWWSearchNativeQuery = $rqst->_native_query();
     }
+    
+    # WWW::Search(2.26) required native_query to be non-blank, even before it hands it off to Scraper!
+    $self->{'native_query'} = $nonBlankWWWSearchNativeQuery unless $self->{'native_query'};
 
     return $self->{'_scraperRequest'};
 }
@@ -120,6 +128,7 @@ sub native_setup_search
 {
     my $self = shift;
     my ($native_query, $native_options) = @_;
+    $native_query = WWW::Search::unescape_query($native_query); # Thanks, but no thanks, Search.pm!
 
     # Provides some backward compatibility, perhaps . . .
     $self->{'_options'}{'scraperQuery'} = $self->scraperQuery();
@@ -157,8 +166,6 @@ sub native_setup_search
 
     # Gimmick to get native_query (ala WWW::Search) to work.
     $native_query = $self->request()->_native_query() unless $native_query;
-    $native_query = $self->_native_query() unless $native_query;
-    $native_query = WWW::Search::unescape_query($native_query); # Thanks, but no thanks, Search.pm!
     $self->request()->_native_query($native_query);
 
     # These traceFlags will ultimately come from many places . . .
@@ -422,15 +429,20 @@ AGAIN:
     my $method = $self->{'_http_method'};
     $method = 'POST' unless $method;
 
-    print STDERR "Fetching NEXT_URL: '".$self->{_next_url}."'\n" if $self->ScraperTrace('U');
+    print STDERR "Fetching NEXT_URL via $method: '".$self->{_next_url}."'\n" if $self->ScraperTrace('U');
     
     my $response = $self->http_request($method, $self->{_next_url});
 
-    while ( $response->code() eq '302' ) {
+        while ( $response->code() eq '302' ) {
         my $redirect = $response->header('location');
         if ( $redirect =~ m-^/- ) {
             my $url = $self->{_next_url};
-            $url =~ m-(\w+://[^/]*)/-;
+            $url =~ m-^(\w+://[^/]*)/-;
+            $url = $1;
+            $self->{_next_url} = $url.$redirect;
+        } elsif ( ! ($redirect =~ m-^(\w+://[^/]*)-) ) {
+            my $url = $self->{_next_url};
+            $url =~ m-^(.*/)-;
             $url = $1;
             $self->{_next_url} = $url.$redirect;
         } else {
@@ -493,7 +505,7 @@ sub scrape { my ($self, $content, $debug) = @_;
    for (${$self->scraperFrame()}[0]) {
        return $self->scraperHTML(${$self->scraperFrame()}[1], \$content, undef, $debug) if m/HTML/;
    }
-   die "Scraper format '${$self->scraperFrame()}[0]' is not implemented in version $VERSION of Scraper.pm\n";
+   die "Scraper format '${$self->scraperFrame()}[0]' is not implemented in version $VERSION of Scraper.pm for ".ref($self)."\n";
 }
 
 # private
