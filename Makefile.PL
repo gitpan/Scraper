@@ -8,7 +8,7 @@ use ExtUtils::MakeMaker;
 WriteMakefile(
     'NAME'	=> 'Scraper',
     'VERSION_FROM' => "lib/WWW/Search/Scraper.pm", # finds $VERSION
-    'PREREQ_PM' => { 'WWW::Search' => 2.15
+    'PREREQ_PM' => { 'WWW::Search' => 2.26
                     ,'HTML::Form' => 0.02
                     ,'Text::ParseWords' => 3.2
                     ,'Storable' => '0.6'

@@ -45,11 +45,11 @@ $VERSION = sprintf("%d.%02d", q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/);
     $scraper->techiesLocation('bayarea') if $engine eq 'techies'; # www.techies.com is special.
     $scraper->sherlockPlugin('http://sherlock.mozdev.org/yahoo.src') if $engine eq 'Sherlock'; # Sherlock is extra special.
 
-    my $request = new WWW::Search::Scraper::Request($query);
+    my $request = new WWW::Search::Scraper::Request::Job($query);
     $request->Scraper_debug($debug);
     
-#    $request->skills($query);
-    $scraper->native_query($query); # This let's us test pre-v2.00 modules from here, too.
+    $request->skills($query);
+#    $scraper->native_query($query); # This let's us test pre-v2.00 modules from here, too.
 
 #    $request->locations([ 'CA-San Jose'
 #                         ,'CA-Mountain View'

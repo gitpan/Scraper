@@ -141,7 +141,7 @@ sub getNextPage {
     return $url;
 }
 
-sub newHit {
+sub newHitX {
     my $self = new WWW::Search::Scraper::Response::Job::FlipDog;
     return $self;
 }

@@ -2,7 +2,7 @@
 # `make test'. After `make install' it should work as `perl test.pl'
 
 use ExtUtils::testlib;
-$VERSION = sprintf("%d.%02d", q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/);
 
 ######################### We start with some black magic to print on failure.
 
@@ -19,9 +19,12 @@ open TMP, "<MANIFEST";
 my @modules;
 while (<TMP>) {
     if ( m-^lib/WWW/Search/Scraper/(\w+)\.pm$- ) {
-        next if $1 eq 'Request';         # This one's not an engine.
-        next if $1 eq 'Response';        # This one's not an engine.
-        next if $1 eq 'FieldTranslation';# This one's not an engine.
+        next if $1 eq 'Request';          # This one's not an engine.
+        next if $1 eq 'Response';         # This one's not an engine.
+        next if $1 eq 'FieldTranslation'; # This one's not an engine.
+        next if $1 eq 'TidyXML';          # This one's not an engine.
+        next if $1 eq 'Dogpile';          # We're not ready to test TidyXML modules, yet.
+
 #       next if $1 eq 'Sherlock';    # We're not smart enough to test Sherlock, yet!
         next if $1 eq 'apartments';  # went flippo - I'll fix this later.
         next if $1 eq 'BAJobs';     # BAJobs is sick this month - I'll fix later.
@@ -187,6 +190,7 @@ sub setupStandardAndExceptionalOptions {
                          'apartments' => 'New York'
                         ,'eBay'     => 'turntable'
                         ,'Dice'     => 'Perl NOT Java'
+                        ,'Dogpile'  => 'Scraper'
                         ,'Google'   => 'turntable'
                         ,'HotJobs'  => 'Administrative Assistant'
                         ,'Monster'  => 'Administrative Assistant'
@@ -207,6 +211,7 @@ sub setupStandardAndExceptionalOptions {
 
     my %defaultPageCounts = (
                                  'CraigsList' => (9,20,0)
+                                ,'Dogpile' => (9,50,0)
                                 ,'FlipDog' => (5,5,0)
                                 ,'techies' => (9,9,0)
                             );

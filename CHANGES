@@ -1,7 +1,8 @@
 
 Revision history for WWW::Search::Scraper (::*).
 
-v2.14 - Add "use URI::URL", otherwise fails in Linux 2.2
+v2.15 - Added TidyXML.pm base class for new Scraper modules.
+	Added Dogpile.com - this is our first TidyXML implementation!
 v2.13 - Make Scraper comply with new sanity checks in later versions of WWW::Search.
 	Upgraded Monster.pm to Monster.com's new "RELATED RESOURCES for <query>" format.
 	Fix fatal flaw in Brainpower.pm.

@@ -1,5 +1,5 @@
 
-package WWW::Search::Scraper::Google;
+package WWW::Search::Scraper::Dogpile;
 
 
 #####################################################################
@@ -8,26 +8,29 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.16 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.1 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
-use WWW::Search::Scraper(qw(2.12 generic_option addURL trimTags));
+use WWW::Search::Scraper(qw(2.14 generic_option addURL trimTags findNextFormInXML));
 
 use strict;
 
+# Example query - http://search.lycos.com/main/default.asp?lpv=1&loc=searchhp&query=Perl
 my $scraperQuery = 
         { 
             # This engine is driven from it's <form> page
-            'type' => 'FORM'
-            ,'formNameOrNumber' => undef
-            ,'submitButton' => 'btnG'
+            'type' => 'QUERY'
             
             # This is the basic URL on which to get the form to build the query.
-            ,'url' => 'http://www.Google.com'
+            ,'url' => 'http://search.dogpile.com/texis/search?'
 
            # specify defaults, by native field names
            ,'nativeQuery' => 'q'
-           ,'nativeDefaults' => { 'hl' => 'en' }
+           ,'nativeDefaults' => { 'Fetch.x' => '1'
+                                 ,'Fetch.y' => '1'
+                                 ,'geo' => 'no'
+                                 ,'fs' => 'The Web'
+                                }
             
             # specify translations from canonical fields to native fields
            ,'fieldTranslations' =>
@@ -42,31 +45,40 @@ my $scraperQuery =
        };
 
 my $scraperFrame =
-       [ 'HTML', 
+       [ 'TidyXML', \&removeEmptyPs,
           [ 
-                  [ 'NEXT', 1, '[^>]>Next<' ], # Google keeps changing their formatting, so watch out!
-                  [ 'COUNT', '[,0-9]+</b> of about <b>([,0-9]+)</b>'] ,
-                  [ 'TABLE', '#4' ],
-                  [ 'HIT*' ,
-                    [  
-                       [ 'BODY', '<p>', '</font></font>',
-                          [
-                              [ 'AN', 'url', 'title' ],
-                              [ 'REGEX', '<font size=-1>(.*?)<br>', 'sampleText'],
-                              [ 'REGEX', '<font size=-1>Description:(.*?)<br>', 'description'],
-                              [ 'BODY',  '<span class=f>.*?Category:', '<br>',
-                                [
-                                  [ 'AN', 'categoryURL',  'category' ]
-                                ]
-                              ],
-                              [ 'AN', 'cachedURL',  undef ],
-                              [ 'AN', 'similarPagesURL', undef ]
-                          ]
-                       ]
-                    ]
+             [ 'BODY', '<table border="0">\s*<TR>\s*<TD>', '</TD>\s*</TR>\s*</TABLE>', 
+                [
+                   [ 'NEXT', 2, \&findNextFormInXML ]
+                ]
+             ]
+            ,[ 'XML', 'html.body',
+              [
+                [ 'HIT*' ,
+                  [
+                    [ 'XML', 'p',
+                      [
+                         [ 'A', 'url', 'title' ]
+                        ,[ 'XML', 'i', 'company' ]
+                      ]
+                    ],
                   ]
-           ]
+                ]
+              ]
+            ]
+          ]
        ];
+
+
+sub removeEmptyPs {
+    my ($self, $hit, $xml) = @_;
+    
+    # remove empty <P/> tags, for Dogpile.pm
+    $$xml =~ s-<p>(\s*?)</p>--gsi;
+    return $xml;
+}
+
+
 
 
 sub import
@@ -99,24 +111,24 @@ __END__
 
 =head1 NAME
 
-WWW::Search::Scraper::Google - class for searching www.Google.com
+WWW::Search::Scraper::Dogpile - class for searching www.Dogpile.com
 
 
 =head1 SYNOPSIS
 
     require WWW::Search::Scraper;
-    $search = new WWW::Search::Scraper('Google');
+    $search = new WWW::Search::Scraper('Dogpile');
 
 
 =head1 DESCRIPTION
 
-This class is an Google specialization of WWW::Search.
-It handles making and interpreting Google searches
-F<http://www.Google.com>.
+This class is an Dogpile specialization of WWW::Search.
+It handles making and interpreting Dogpile searches
+F<http://www.Dogpile.com>.
 
 =head1 AUTHOR and CURRENT VERSION
 
-C<WWW::Search::Scraper::Google> is written and maintained
+C<WWW::Search::Scraper::Dogpile> is written and maintained
 by Glenn Wood, <glenwood@alumni.caltech.edu>.
 
 =head1 COPYRIGHT

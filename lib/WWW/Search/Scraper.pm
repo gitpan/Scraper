@@ -9,23 +9,22 @@ use strict;
 require Exporter;
 use vars qw($VERSION $MAINTAINER @ISA @EXPORT @EXPORT_OK);
 
-$VERSION = '2.14';
+$VERSION = '2.15';
 
-@EXPORT = qw(findNextForm);
-@EXPORT_OK = qw(findNextForm);
 @ISA = qw(WWW::Search Exporter);
-my $CVS_VERSION = sprintf("%d.%02d", q$Revision: 1.53 $ =~ /(\d+)\.(\d+)/);
+my $CVS_VERSION = sprintf("%d.%02d", q$Revision: 1.56 $ =~ /(\d+)\.(\d+)/);
 $MAINTAINER = 'Glenn Wood <glenwood@alumni.caltech.edu>';
 
 use Carp ();
 use WWW::Search( qw(strip_tags) );
-use URI::URL; # Somehow, without this WWW::Search fails 'POST' in Linux 2.2.
 use WWW::Search::Scraper::Request;
 use WWW::Search::Scraper::Response;
+use WWW::Search::Scraper::TidyXML;
 
 @EXPORT_OK = qw(escape_query unescape_query generic_option 
                 strip_tags trimTags trimLFs trimLFLFs
-                @ENGINES_WORKING addURL);
+                @ENGINES_WORKING addURL 
+                findNextForm findNextFormInXML);
 
 sub new {
     my ($class, $subclass, $searchName) = @_;
@@ -114,7 +113,7 @@ sub request {
 
         $self->{'_scraperRequest'} = $rqst;
         
-        $nonBlankWWWSearchNativeQuery = $rqst->_native_query();
+        $nonBlankWWWSearchNativeQuery = $rqst->_native_query() || $nonBlankWWWSearchNativeQuery;
     }
     
     # WWW::Search(2.26) required native_query to be non-blank, even before it hands it off to Scraper!
@@ -505,17 +504,63 @@ sub postSelect {
 sub scrape { my ($self, $content, $debug) = @_;
    for (${$self->scraperFrame()}[0]) {
        return $self->scraperHTML(${$self->scraperFrame()}[1], \$content, undef, $debug) if m/HTML/;
+       return $self->scraperTidyXML($self->scraperFrame(), \$content, undef, $debug) if m/TidyXML/;
    }
    die "Scraper format '${$self->scraperFrame()}[0]' is not implemented in version $VERSION of Scraper.pm for ".ref($self)."\n";
 }
 
 # private
 sub scraperHTML { my ($self, $scaffold_array, $content, $hit, $debug) = @_;
+    my $TidyXML = new WWW::Search::Scraper::TidyXML();
+    $TidyXML->m_asString($content);
+    return $self->scraper(${$self->scraperFrame()}[1], $TidyXML, undef, $debug);
+}
+
+# private
+sub scraperTidyXML { my ($self, $scaffold_array, $content, $hit, $debug) = @_;
+    my $TidyXML = new WWW::Search::Scraper::TidyXML($content);
+    # Execute any preprocessors this TidyXML may declare.
+    my $i = 1;
+    while ( 'ARRAY' ne ref $$scaffold_array[$i] ) {
+        my $datParser = $$scaffold_array[$i];
+        $i += 1;
+        $TidyXML->m_asString(&$datParser($self, $hit, $TidyXML->m_asString()));
+    }
+    return $self->scraper($$scaffold_array[$i], $TidyXML, undef, $debug);
+}
+
+
+# private
+sub scraperRecurse { my ($self, $sub_string, $sub_xml, $next_scaffold, $TidyXML, $hit, $debug) = @_;
+
+    my $myTidyXML = $TidyXML;
+    unless ( $myTidyXML ) {
+        $myTidyXML = new WWW::Search::Scraper::TidyXML unless $myTidyXML;
+        $myTidyXML->m_asString($sub_string);
+        $myTidyXML->m_asXML($sub_xml);
+        if ( $sub_string ) {
+            $$sub_string =~ m/<(\w+)/;
+            $myTidyXML->m_implicitRootNode($1);
+        } 
+        else {
+            die "non-recursing scraperRecurse is not implemented.";
+        }
+    } 
+        
+    my $total_hits_found = $self->scraper($next_scaffold, $myTidyXML, $hit, $debug);
+
+    return $total_hits_found;
+}
+   
+# private
+sub scraper { my ($self, $scaffold_array, $TidyXML, $hit, $debug) = @_;
     
 	# Here are some variables that we use frequently done here.
     my $total_hits_found = 0;
     
-    my ($sub_content, $next_scaffold);
+    my $sub_string = undef;
+    my $sub_xml = undef;
+    my $next_scaffold = undef;
 
 SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
         my $tag = $$scaffold[0];
@@ -533,7 +578,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
             }
             $next_scaffold = $$scaffold[2];
             $next_scaffold = $$scaffold[1] unless defined $next_scaffold;
-            $sub_content = $$content;
+            #tidy $sub_content = $TidyXML->asString();
         }
         elsif ( 'HIT*' eq $tag )
         {
@@ -559,22 +604,27 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
                 }
                 $hit = $self->newHit($resultType);
                 $hit->{'searchObject'} = $self;
-            } while ( $self->scraperHTML($next_scaffold, $content, $hit, $debug) );
+#            } while ( $self->scraper($next_scaffold, $TidyXML, $hit, $debug) );
+            
+            } while ( $self->scraperRecurse(undef, undef, $next_scaffold, $TidyXML, $hit, $debug) );
             next SCAFFOLD;
         }
     
         elsif ( 'BODY' eq $tag )
         {  
-            $sub_content = '';
+            $sub_string = undef;
             if ( $$scaffold[1] and $$scaffold[2] ) {
-                $$content =~ s-$$scaffold[1](.*?)$$scaffold[2]--si; # Strip off the adminstrative clutter at the beginning and end.
-                $sub_content = $1;
+                ${$TidyXML->asString()} =~ s-$$scaffold[1](.*?)$$scaffold[2]--si; # Strip off the adminstrative clutter at the beginning and end.
+                $sub_string = $1;
+                $sub_xml = undef;
             } elsif ( $$scaffold[1] ) {
-                $$content =~ s-$$scaffold[1](.*)$-$1-si; # Strip off the adminstrative clutter at the beginning.
-                $sub_content = $1;
+                ${$TidyXML->asString()} =~ s-$$scaffold[1](.*)$-$1-si; # Strip off the adminstrative clutter at the beginning.
+                $sub_string = $1;
+                $sub_xml = undef;
             } elsif ( $$scaffold[2] ) {
-                $$content =~ s-^(.*?)$$scaffold[2]-$1-si; # Strip off the adminstrative clutter at the end.
-                $sub_content = $1;
+                ${$TidyXML->asString()} =~ s-^(.*?)$$scaffold[2]-$1-si; # Strip off the adminstrative clutter at the end.
+                $sub_string = $1;
+                $sub_xml = undef;
             } else {
                 next SCAFFOLD;
             }
@@ -582,21 +632,23 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
         }
     	
         elsif ( 'CALLBACK' eq $tag ) {
-            ($sub_content, $next_scaffold) = &{$$scaffold[1]}($self, $hit, $content, $scaffold, \$total_hits_found);
+            ($sub_string, $next_scaffold) = &{$$scaffold[1]}($self, $hit, $TidyXML->asString(), $scaffold, \$total_hits_found);
+            $sub_xml = undef;
             next SCAFFOLD unless $next_scaffold;
         }
     	
         elsif ( 'DATA' eq $tag )
         {
-            $sub_content = '';
+            $sub_string = '';
             if ( $$scaffold[1] and $$scaffold[2] ) {
-                $$content =~ s-$$scaffold[1](.*?)$$scaffold[2]--si;
-                $sub_content = $1;
+                ${$TidyXML->asString()} =~ s-$$scaffold[1](.*?)$$scaffold[2]--si;
+                $sub_string = $1;
+                $sub_xml = undef;
             } else {
                 next SCAFFOLD;
             }
             my $binding = $$scaffold[3];
-            $hit->_elem($binding, $sub_content);
+            $hit->_elem($binding, $sub_string);
             $total_hits_found = 1;
             next SCAFFOLD;
         }
@@ -604,7 +656,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
         elsif ( 'COUNT' eq $tag )
     	{
             $self->approximate_result_count(0);
-    		if ( $$content =~ m/$$scaffold[1]/si )
+    		if ( ${$TidyXML->asString()} =~ m/$$scaffold[1]/si )
     		{
     			print STDERR  "approximate_result_count: '$1'\n" if $debug;
     			$self->approximate_result_count ($1);
@@ -621,10 +673,11 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
             $$scaffold[1] = $$scaffold[2] 
                 if ( $$scaffold[1] eq 1 or $$scaffold[1] eq 2 );
 
+            $sub_xml = undef;
             if ( ref $$scaffold[1] )
             {
                 my $datParser = $$scaffold[1];
-                $self->{'_next_url'} = &$datParser($self, $hit, $$content);                
+                $self->{'_next_url'} = &$datParser($self, $hit, ${$TidyXML->asString()});                
                 print STDERR  "NEXT_URL: $self->{'_next_url'}\n" if $debug;
                 next SCAFFOLD;
             }
@@ -637,11 +690,12 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
                 my $next_url_button = $$scaffold[2]; # accomodates some earlier versions of Scraper.pm modules.
                 $next_url_button = $$scaffold[1] unless $next_url_button;
                 print STDERR  "next_url_button: $next_url_button\n" if $debug;
-                my $next_content = $$content;
-                while ( my ($sub_content, $url) = $self->getMarkedText('A', \$next_content) ) 
+                my $next_content = ${$TidyXML->asString()};
+                
+                while ( my ($sub_string, $url) = $self->getMarkedText('A', \$next_content) ) 
                 {
-                    last unless $sub_content;
-                    if ( $sub_content =~ m-$next_url_button-si )
+                    last unless $sub_string;
+                    if ( $sub_string =~ m-$next_url_button-si )
                     {
                         $url =~ s-A\s+HREF=--si;
                         if ( $url =~ m-^'([^']*)'\s*$- ) {
@@ -668,8 +722,9 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
 
         elsif ( 'HTML' eq $tag )
         {
-            $$content =~ m-<HTML>(.*)</HTML>-si;
-            $sub_content = $1;
+            ${$TidyXML->asString()} =~ m-<HTML>(.*)</HTML>-si;
+            $sub_string = $1;
+            $sub_xml = undef;
             $next_scaffold = $$scaffold[1];
         }
 
@@ -686,7 +741,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
     		{
                 for (1..$1)
     			{
-                    my $x = $self->getMarkedText($tag, $content); # and throw it away.
+                    my $x = $self->getMarkedText($tag, $TidyXML->asString()); # and throw it away.
     			}
                 $next_scaffold = $$scaffold[2];
             }
@@ -695,19 +750,21 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
                 $next_scaffold = $$scaffold[2];
                 die "Element-name form of <$tag> is not implemented, yet.";
             }
-            next SCAFFOLD unless $sub_content = $self->getMarkedText($tag, $content);
+            $sub_xml = undef;
+            next SCAFFOLD unless $sub_string = $self->getMarkedText($tag, $TidyXML->asString());
         }
 
     	elsif ( $tag =~ m/^(TD|DT|DD|DIV)$/ )
         {
-            next SCAFFOLD unless $sub_content = $self->getMarkedText($tag, $content); # and throw it away.
+            $sub_xml = undef;
+            next SCAFFOLD unless $sub_string = $self->getMarkedText($tag, $TidyXML->asString()); # and throw it away.
 #    		next SCAFFOLD unless ( $$content =~ s-(<$tag\s*[^>]*>(.*?)</$tag\s*[^>]*>)--si );  $sub_content = $2;
     		$next_scaffold = $$scaffold[1];
             if ( 'ARRAY' ne ref $next_scaffold  ) # if next_scaffold is an array ref, then we'll recurse (below)
             {
                my $binding = $next_scaffold;
                my $datParser = $$scaffold[2];
-               print STDERR  "raw dat: '$sub_content'\n" if $debug;
+               print STDERR  "raw dat: '$sub_string'\n" if $debug;
                if ( $debug ) { # print ref $ aways does something screwy
                   print STDERR  "datParser: ";
                   print STDERR  ref $datParser;
@@ -715,15 +772,15 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
                };
                $datParser = \&WWW::Search::Scraper::trimTags unless $datParser;
                print STDERR  "binding: '$binding', " if $debug;
-               print STDERR  "parsed dat: '".&$datParser($self, $hit, $sub_content)."'\n" if $debug;
+               print STDERR  "parsed dat: '".&$datParser($self, $hit, $sub_string)."'\n" if $debug;
                 if ( $binding eq 'url' )
                 {
-                    my $url = new URI::URL(&$datParser($self, $hit, $sub_content), $self->{_base_url});
+                    my $url = new URI::URL(&$datParser($self, $hit, $sub_string), $self->{_base_url});
                     $url = $url->abs;
                     $hit->add_url($url);
                 } 
                 elsif ( $binding) {
-                    $hit->_elem($binding, &$datParser($self, $hit, $sub_content));
+                    $hit->_elem($binding, &$datParser($self, $hit, $sub_string));
                 }
                 $total_hits_found = 1;
                 next SCAFFOLD;
@@ -732,7 +789,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
         elsif ( 'A' eq $tag ) 
         {
             my $lbl = $$scaffold[1];
-            if ( $$content =~ s-<A[^>]+?HREF="([^"]+)"[^>]*>(.*?)</A>--si )
+            if ( ${$TidyXML->asString()} =~ s-<A[^>]+?HREF="([^"]+)"[^>]*>(.*?)</A>--si )
             {
                 print "<A> binding: $$scaffold[2]: '$2', $$scaffold[1]: '$1'\n" if $debug;
                 my $datParser = $$scaffold[3];
@@ -754,7 +811,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
         elsif ( 'AN' eq $tag ) 
         {
             my $lbl = $$scaffold[1];
-            if ( $$content =~ s-<A[^>]+?HREF=([^>]+)>(.*?)</A>--si )
+            if ( ${$TidyXML->asString()} =~ s-<A[^>]+?HREF=([^>]+)>(.*?)</A>--si )
             {
                 print "<A> binding: $$scaffold[2]: '$2', $$scaffold[1]: '$1'\n" if $debug;
                 
@@ -779,7 +836,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
             my @ary = @$scaffold;
             shift @ary;
             my $regex = shift @ary;
-            if ( $$content =~ s/$regex//si )
+            if ( ${$TidyXML->asString()} =~ s/$regex//si )
             {
                 my @dts = ($1,$2,$3,$4,$5,$6,$7,$8,$9);
                 for ( @ary ) 
@@ -801,12 +858,32 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
             next SCAFFOLD;
         } elsif ( $tag eq 'RESIDUE' )
         {
-            $sub_content = $$content;
+            $sub_string = ${$TidyXML->asString()};
             my $binding = $$scaffold[1];
             my $datParser = $$scaffold[2];
             $datParser = \&WWW::Search::Scraper::null unless $datParser;
-            $hit->_elem($binding, &$datParser($self, $hit, $sub_content));
+            $hit->_elem($binding, &$datParser($self, $hit, $sub_string));
             next SCAFFOLD;
+        } elsif ( $tag eq 'XML' )
+        {
+            my $binding = $$scaffold[2];
+            if ( 'ARRAY' eq ref $binding ) {
+                $sub_string = ${$TidyXML->asString($$scaffold[1])}; # because asXML() doesn't work, yet.
+                #$sub_xml = $TidyXML->asXML();
+                #$sub_string = undef;
+                $next_scaffold = $binding;
+            } elsif ( defined $$scaffold[2] ) {
+                if ( $sub_string = ${$TidyXML->asString($$scaffold[1])} ) {
+                    $hit->_elem($binding, $sub_string);
+                    $total_hits_found = 1;
+                }
+                next SCAFFOLD;
+            } else {
+#                $sub_string = ${$TidyXML->asString($$scaffold[1])}; # because asXML() doesn't work, yet.
+                $TidyXML->asString($$scaffold[1]); # because asXML() doesn't work, yet.
+                next SCAFFOLD;
+            }
+
         }
         elsif ( $tag eq 'BOGUS' )
         {
@@ -829,18 +906,17 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
         }
         elsif ( $tag eq 'TRACE' )
         {
-            my $x = $$content;
+            my $x = ${$TidyXML->asString()};
             $x =~ s/\r//gs;
             print STDERR "TRACE:\n'$x'\n";
             $total_hits_found += $$scaffold[1];
         } elsif ( $tag eq 'CALLBACK' ) {
-            &{$$scaffold[1]}($self, $hit, $content, $debug);
+            &{$$scaffold[1]}($self, $hit, $TidyXML->asString(), $debug);
         } else {
-            die "Unrecognized tag: '$tag'";
+            die "Unrecognized ScraperFrame option: '$tag'";
         }
 
-        # So it's all set up to recurse to the next layer - - -
-        $total_hits_found += $self->scraperHTML($next_scaffold, \$sub_content, $hit, $debug);
+        $total_hits_found += $self->scraperRecurse(\$sub_string, $sub_xml, $next_scaffold, undef, $hit, $debug);
     }
     return $total_hits_found;
 }
@@ -1004,6 +1080,35 @@ sub findNextForm {
     return undef;
 }
 
+# #######################################################################################
+# Get the Next URL from a <form> on the page.
+# Sometimes there's just a NEXT form, sometimes there's a PREV form and a NEXT form . . .
+sub findNextFormInXML {
+    my ($self, $hit, $dat) = @_;
+    
+    my $next_content = $dat;
+    while ( my ($sub_content, $frm) = $self->getMarkedText('FORM', \$next_content) ) {
+        last unless $sub_content;
+        # Reconstruct the form that contains the NEXT data.
+        my $asHTML = "<form $frm>$sub_content</form>";
+        $asHTML =~ s-/>->-gs;
+        my @forms = HTML::Form->parse($asHTML, $self->{'_base_url'});
+        my $form = $forms[0];
+
+        my $submit_button;
+        for ( $form->inputs() ) {
+            if ( $_->value() =~ m/Next/ ) {
+                $submit_button = $_;
+                last;
+            }
+        }
+        if ( $submit_button ) {
+            my $req = $submit_button->click($form); #
+            return $req->uri();
+        }
+    }
+    return undef;
+}
 
 
 

@@ -14,6 +14,7 @@ lib/WWW/Search/Scraper/CraigsList.pm
 lib/WWW/Search/Scraper/CraigsList.Job.locations
 lib/WWW/Search/Scraper/Dice.pm
 lib/WWW/Search/Scraper/Dice.Job.locations
+lib/WWW/Search/Scraper/Dogpile.pm
 lib/WWW/Search/Scraper/eBay.pm
 lib/WWW/Search/Scraper/FlipDog.pm
 lib/WWW/Search/Scraper/Google.pm
@@ -31,6 +32,7 @@ lib/WWW/Search/Scraper/Request/Job.pm
 lib/WWW/Search/Scraper/Response/Auction.pm
 lib/WWW/Search/Scraper/Response/Job.pm
 lib/WWW/Search/Scraper/Response/Sherlock.pm
+lib/WWW/Search/Scraper/TidyXML.pm
 eg/SearchApartments.pl
 eg/SearchJobs.pl
 eg/Sherlock.pl
