@@ -28,12 +28,12 @@ modify it under the same terms as Perl itself.
 
 use strict;
 use lib './lib';
-use WWW::Search::Scraper(qw(1.48));
-use WWW::Search::Scraper::Request;
+use WWW::Scraper(qw(1.48));
+use WWW::Scraper::Request;
 use vars qw($VERSION);
 use diagnostics;
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.01 $ =~ /(\d+)\.(\d+)/);
 
     select STDERR; $| = 1; select STDOUT; $| = 1; 
 
@@ -45,7 +45,7 @@ $VERSION = sprintf("%d.%02d", q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/);
 
     print "Scraper parameters: engine:$engine, query='$query', debug=$debug, options='$options'\n";
 
-    my $scraper = new WWW::Search::Scraper( $engine );
+    my $scraper = new WWW::Scraper( $engine );
     $scraper->artifactFolder('tmp');
     my $limit = 21;
 
@@ -62,7 +62,7 @@ $VERSION = sprintf("%d.%02d", q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/);
         }
     }
 
-    my $request = new WWW::Search::Scraper::Request($scraper,$query,$options);
+    my $request = new WWW::Scraper::Request($scraper,$query,$options);
     $scraper->setScraperTrace($debug);
     
 #    $scraper->native_query($query,$options); # This let's us test pre-v2.00 modules from here, too.
@@ -86,7 +86,7 @@ $VERSION = sprintf("%d.%02d", q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/);
     my $resultCount = 0;
     my $latestPageNumber = 0;
     while ( my $result = $scraper->next_response() ) {
-        if ( $scraper->artifactFolder() && ($scraper->pageNumber != $latestPageNumber) ) {
+        if ( $scraper->artifactFolder && ($scraper->pageNumber != $latestPageNumber) ) {
             $latestPageNumber = $scraper->pageNumber();
             open OUT, ">tmp/$engine"."_pg_$latestPageNumber.htm" || warn "Can't open 'tmp/$engine"."_pg_$latestPageNumber.htm' to write: $!";
             print OUT $scraper->response->content;

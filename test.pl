@@ -4,15 +4,15 @@
 use ExtUtils::testlib;
 use lib 't/lib','../blib/lib','./blib/lib';
 use Test::More;
-$VERSION = sprintf("%d.%02d", q$Revision: 1.17 $ =~ /(\d+)\.(\d+)/);
-my @TestTheseOnly;# = qw(Sherlock); # this is active only when WWW::Search::Scraper::isGlennWood;
+$VERSION = sprintf("%d.%02d", q$Revision: 1.07 $ =~ /(\d+)\.(\d+)/);
+my @TestTheseOnly;# = qw(Sherlock); # this is active only when WWW::Scraper::isGlennWood;
 
 ######################### We start with some black magic to print on failure.
 
 # Change 1..1 below to 1..last_test_to_print .
 # (It may become useful if the test is moved to ./t subdirectory.)
 
-use WWW::Search::Scraper(qw(2.19));
+use WWW::Scraper(qw(2.19));
 BEGIN { select STDERR; $| = 1; select STDOUT; $| = 1; }
 END {
     }
@@ -57,34 +57,37 @@ EOT
     open TMP, "<MANIFEST";
     my (@modules, @skipModules, @todoModules);
     while (<TMP>) {
-        if ( my ($scraperEngine) = m-^lib/WWW/Search/Scraper/(\w+)\.pm$- ) {
-            
+        if ( my ($scraperEngine) = m-^lib/WWW/Scraper/(\w+)\.pm$- ) {
+                        
             # If parameters supplied to "make test", then test just those engines.
-            if ( WWW::Search::Scraper::isGlennWood and @TestTheseOnly ) {
+            if ( WWW::Scraper::isGlennWood and @TestTheseOnly ) {
                 my $testThis;
                 map { $testThis = ( $scraperEngine eq $_ ) } @TestTheseOnly;
                 unless ( $testThis ) {
-                    TRACE(0, "    - $1 will not be tested: it is not in the \@TestTheseOnly list.\n");
+                    TRACE(0, "    - $scraperEngine will not be tested: it is not in the \@TestTheseOnly list.\n");
                     next;
                 }
             }
 
             my $testParameters;
-            eval "use WWW::Search::Scraper::$1; \$testParameters = &WWW::Search::Scraper::$1\::testParameters()";
+            eval "use WWW::Scraper::$1; \$testParameters = &WWW::Scraper::$1\::testParameters()";
             if ( $@ ) { # $@ just means the module is not a Scraper sub-class.
-                TRACE(0, "    - $1 will not be tested: it is not a Scraper sub-class.\n");
+                TRACE(0, "    - $scraperEngine will not be tested: it is not a Scraper sub-class.\n");
             }
             elsif ( $testParameters ) {
                 if ( $testParameters->{'SKIP'} ) {
-                    push @skipModules, $1;
+                    push @skipModules, $scraperEngine;
                 }
                 elsif ( $testParameters->{'TODO'} ) {
-                    push @todoModules, $1;
+                    push @todoModules, $scraperEngine;
                 }
                 else {
-                    push @modules, $1;
+                    push @modules, $scraperEngine;
                 }
-                TRACE(0, "    + $1\n");
+                my $mod_version;
+                eval "\$mod_version = \$WWW::Scraper::$scraperEngine\:\:VERSION;";
+                $mod_version = '' unless $mod_version;
+                TRACE(0, "    + $1($mod_version)\n");
             }
         }
     }
@@ -96,9 +99,9 @@ EOT
     ok(1, "$testCount Scraper modules listed in MANIFEST (".scalar(@modules).','.scalar(@todoModules).','.scalar(@skipModules).')');
     
 use strict;
-use WWW::Search::Scraper(qw(2.13));
-use WWW::Search::Scraper::Request;
-    ok(1, "WWW::Search::Scraper loaded");
+use WWW::Scraper(qw(2.13));
+use WWW::Scraper::Request;
+    ok(1, "WWW::Scraper loaded");
 
     push @modules, @todoModules, @skipModules;
     for my $sEngine ( sort @modules ) {
@@ -106,7 +109,7 @@ use WWW::Search::Scraper::Request;
     TODO: {
             traceBreak(); ##_##_##_##_##_##_##_##_##_##_##_##_##_##_##_##
             my $testParameters;
-            eval "\$testParameters = &WWW::Search::Scraper::$sEngine\::testParameters()";
+            eval "\$testParameters = &WWW::Scraper::$sEngine\::testParameters()";
             skip $testParameters->{'SKIP'}, 1 if $testParameters->{'SKIP'};
             local $TODO = $testParameters->{'TODO'} if $testParameters->{'TODO'};
             
@@ -134,7 +137,7 @@ use WWW::Search::Scraper::Request;
 
     close $traceFile;
 
-    if ( $countWarningMessages and WWW::Search::Scraper::isGlennWood() ) {
+    if ( $countWarningMessages and WWW::Scraper::isGlennWood() ) {
         diag "$countWarningMessages warning".(($countWarningMessages>1)?'s':'').". See file 'test.trace' for details.\n";
     }
     if ( $countErrorMessages ) {
@@ -160,7 +163,7 @@ sub TestThisEngine {
     my $jTest = 0;
 
     TRACE(0, "Test #$jTest: $sEngine\n");
-    my $oSearch = new WWW::Search::Scraper($sEngine);
+    my $oSearch = new WWW::Scraper($sEngine);
     if ( not ref($oSearch)) {
         TRACE(1, "Can't load scraper module for $sEngine: $!\n");
         return 0;
@@ -178,7 +181,7 @@ sub TestThisEngine {
     my $iResults = 0;
     my ($sQuery, $options, $onePageCount, $multiPageCount, $bogusPageCount) = $oSearch->setupStandardAndExceptionalOptions($sEngine);
     $sQuery = "Bogus" . $$ . "NoSuchWord" . time;
-    my $request = new WWW::Search::Scraper::Request($oSearch, $sQuery, $options);
+    my $request = new WWW::Scraper::Request($oSearch, $sQuery, $options);
     $oSearch->setScraperTrace($ENV{'SCRAPER_DEBUG_MODE'});
     $oSearch->SetRequest($request);
 
@@ -205,7 +208,7 @@ sub TestThisEngine {
 
     # Skip this test if no results are expected anyway.
     if ( $onePageCount ) {
-        my $request = new WWW::Search::Scraper::Request($oSearch, $sQuery, $options);
+        my $request = new WWW::Scraper::Request($oSearch, $sQuery, $options);
 
         $oSearch->native_query($sQuery); # This let's us test pre-v2.00 modules from here, too.
         $oSearch->SetRequest($request);
@@ -258,7 +261,7 @@ EOT
     if ( $multiPageCount > $onePageCount ) {
         my $maximum_to_retrieve = $multiPageCount; # 2 or 3 pages
         $oSearch->maximum_to_retrieve($maximum_to_retrieve); # 2 or 3 pages
-        my $request = new WWW::Search::Scraper::Request($oSearch, $sQuery, $options);
+        my $request = new WWW::Scraper::Request($oSearch, $sQuery, $options);
         $oSearch->native_query($sQuery); # This let's us test pre-v2.00 modules from here, too.
         $oSearch->SetRequest($request);
         $iResults = 0;
@@ -299,12 +302,12 @@ sub TRACE {
     $countWarningMessages += 1 if $_[0] == 1;
     $countErrorMessages   += 1 if $_[0] == 2;
     $traceFile->print($_[1]);
-#    print $_[1] if WWW::Search::Scraper::isGlennWood();
+#    print $_[1] if WWW::Scraper::isGlennWood();
 }
 
 
 
-{ package WWW::Search::Scraper;
+{ package WWW::Scraper;
 # Set up standard, and exceptional, options.
 sub setupStandardAndExceptionalOptions {
     my ($oSearch, $sEngine) = @_;

@@ -27,7 +27,7 @@ modify it under the same terms as Perl itself.
 use strict;
 use WWW::Search::Scraper::FieldTranslation;
 use vars qw($VERSION);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.0 $ =~ /(\d+)\.(\d+)/);
 
 my %ScraperLocations =
 (

@@ -34,7 +34,7 @@ EOT
 
 WriteMakefile(
     'NAME'	=> 'Scraper',
-    'VERSION_FROM' => "lib/WWW/Search/Scraper.pm", # finds $VERSION
+    'VERSION_FROM' => "lib/WWW/Scraper.pm", # finds $VERSION
     # test.pl uses this hash, also, to poll all modules we depend on
     'PREREQ_PM' => { 'WWW::Search' => 2.28
                     ,'LWP' => 5.48
