@@ -4,8 +4,8 @@ package WWW::Search::Scraper::computerjobs;
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/);
-use WWW::Search::Scraper(qw(1.48 trimLFs));
+$VERSION = sprintf("%d.%02d", q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/);
+use WWW::Search::Scraper(qw(1.48 trimLFs testParameters));
 
 my $scraperQuery = 
    { 
@@ -63,6 +63,22 @@ my $scraperFrame =
       ] 
    ]
 ];
+
+sub testParameters {
+    my ($self) = @_;
+
+    if ( ref $self ) {
+        $self->{'isTesting'} = 1;
+    }
+    
+    return { 
+             'isNotTestable' => 'has known problem with timeout'
+            ,'testNativeQuery' => 'Perl'
+            ,'expectedOnePage' => 9
+            ,'expectedMultiPage' => 11
+            ,'expectedBogusPage' => 0
+           };
+}
 
 # Access methods for the structural declarations of this Scraper engine.
 sub scraperQuery { $scraperQuery }
@@ -153,7 +169,7 @@ F<http://www.computerjobs.com>.
 =head1 AUTHOR
 
 C<WWW::Search::computerjobs> is written and maintained
-by Glenn Wood, <glenwood@alumni.caltech.edu>.
+by Glenn Wood, http://search.cpan.org/search?mode=author&query=GLENNWOOD.
 
 The best place to obtain C<WWW::Search::computerjobs>
 is from Glenn's releases on CPAN. Because www.computerjobs.com

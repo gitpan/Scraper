@@ -235,7 +235,7 @@ so watch out for that! Back up your translation files before upgrading F<WWW::Se
 =head1 AUTHOR
 
 C<WWW::Search::Scraper::FieldTranslation> is written and maintained
-by Glenn Wood, <glenwood@alumni.caltech.edu>.
+by Glenn Wood, http://search.cpan.org/search?mode=author&query=GLENNWOOD.
 
 =head1 COPYRIGHT
 

@@ -6,7 +6,7 @@ package WWW::Search::Scraper::BAJobs;
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.15 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.16 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(1.48 generic_option addURL trimTags));
@@ -110,7 +110,7 @@ sub testParameters {
     }
     
     # 'POST' style scraperFrames can't be tested cause of a bug in WWW::Search(2.2[56]) !
-    my $isNotTestable = WWW::Search::Scraper::isGlennWood()?0:(($WWW::Search::VERSION eq '2.28') or ($WWW::Search::VERSION eq '2.26'));
+    my $isNotTestable = WWW::Search::Scraper::isGlennWood()?0:0;
     return { 
              'isNotTestable' => $isNotTestable
             ,'testNativeQuery' => 'Service'
@@ -412,7 +412,7 @@ Specified at L<WWW::Search>.
 =head1 AUTHOR
 
 C<WWW::Search::BAJobs> is written and maintained
-by Glenn Wood, <glenwood@alumni.caltech.edu>.
+by Glenn Wood, http://search.cpan.org/search?mode=author&query=GLENNWOOD.
 
 =head1 COPYRIGHT
 

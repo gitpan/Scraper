@@ -100,7 +100,7 @@ To specify a weekly salary, append the rate with the characters '/W'.
 =head1 AUTHOR
 
 C<WWW::Search::Scraper::Request> is written and maintained
-by Glenn Wood, <glenwood@alumni.caltech.edu>.
+by Glenn Wood, http://search.cpan.org/search?mode=author&query=GLENNWOOD.
 
 =head1 COPYRIGHT
 

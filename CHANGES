@@ -1,6 +1,8 @@
 
 Revision history for WWW::Search::Scraper (::*).
 
+v2.17 - Added Beaucoup - yup! Beaucoup's Super Search!
+	More verbose reports from "make test" (see file 'test.trace' after "make test")
 v2.16 - Special fixes to make Scraper work with LWP versions between 5.60 and 5.63
 	Added 'CLEANUP' as a Scraper operation.
 	Significant test.pl improvements (Scraper.pm as a "testable" base-class).

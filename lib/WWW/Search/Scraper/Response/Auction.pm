@@ -13,7 +13,7 @@ WWW::Search::Scraper::Response::Auction - result class for scrapes of Auction si
 =head1 AUTHOR
 
 C<WWW::Search::Scraper::Response::Auction> is written and maintained
-by Glenn Wood, <glenwood@alumni.caltech.edu>.
+by Glenn Wood, http://search.cpan.org/search?mode=author&query=GLENNWOOD.
 
 =cut
 

@@ -3,7 +3,7 @@ package WWW::Search::Scraper::Dice;
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.12 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.13 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Search::Scraper(qw(1.48 generic_option trimTags addURL));
 use WWW::Search::Scraper::FieldTranslation;
@@ -75,7 +75,7 @@ sub testParameters {
     }
     
     # 'POST' style scraperFrames can't be tested cause of a bug in WWW::Search(2.2[56]) !
-    my $isNotTestable = WWW::Search::Scraper::isGlennWood()?0:(($WWW::Search::VERSION eq '2.28') or ($WWW::Search::VERSION eq '2.26'));
+    my $isNotTestable = WWW::Search::Scraper::isGlennWood()?0:0;
     return {
                  'isNotTestable' => $isNotTestable
                 ,'testNativeQuery' => 'Perl NOT Java'
@@ -475,7 +475,8 @@ Changes the default to $num_to_retrieve.
 
 =head1 AUTHOR
 
-Copyright (c) 2001 Glenn Wood
+Copyright (c) 2001 Glenn Wood http://search.cpan.org/search?mode=author&query=GLENNWOOD
+
 All rights reserved.
 
 This program is free software; you can redistribute it and/or

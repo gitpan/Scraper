@@ -10,7 +10,7 @@
 
 
 package WWW::Search::Scraper::TidyXML;
-$VERSION = sprintf("%d.%02d", q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/);
 
 use strict;
 
@@ -328,7 +328,7 @@ Take a look at Dogpile.pm for further details.
 =head1 AUTHOR and CURRENT VERSION
 
 C<WWW::Search::Scraper::TidyXML> is written and maintained
-by Glenn Wood, <glenwood@alumni.caltech.edu>.
+by Glenn Wood, http://search.cpan.org/search?mode=author&query=GLENNWOOD.
 
 =head1 COPYRIGHT
 

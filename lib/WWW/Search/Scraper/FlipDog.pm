@@ -6,7 +6,7 @@ package WWW::Search::Scraper::FlipDog;
 use strict;
 use vars qw(@ISA $VERSION);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Search::Scraper(qw(1.48 trimLFs trimLFLFs removeScriptsInXML));
 
@@ -119,7 +119,7 @@ sub testParameters {
                  'isNotTestable' => &WWW::Search::Scraper::TidyXML::isNotTestable() 
                 ,'testNativeQuery' => 'Java'
                 ,'expectedOnePage' => 5
-                ,'expectedMultiPage' => 5
+                ,'expectedMultiPage' => 11
                 ,'expectedBogusPage' => 0
            };
 }
@@ -404,7 +404,7 @@ for some of the categories the functions are:
 =head1 AUTHOR
 
 C<WWW::Search::FlipDog> is written and maintained
-by Glenn Wood, <glenwood@alumni.caltech.edu>.
+by Glenn Wood, http://search.cpan.org/search?mode=author&query=GLENNWOOD.
 
 =head1 COPYRIGHT
 

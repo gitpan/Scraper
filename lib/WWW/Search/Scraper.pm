@@ -10,11 +10,11 @@ require Exporter;
 use vars qw($VERSION $MAINTAINER @ISA @EXPORT @EXPORT_OK);
 @EXPORT = qw(testParameters);
 
-$VERSION = '2.16';
+$VERSION = '2.17';
 
 @ISA = qw(WWW::Search Exporter);
-my $CVS_VERSION = sprintf("%d.%02d", q$Revision: 1.58 $ =~ /(\d+)\.(\d+)/);
-$MAINTAINER = 'Glenn Wood <glenwood@alumni.caltech.edu>';
+my $CVS_VERSION = sprintf("%d.%02d", q$Revision: 1.59 $ =~ /(\d+)\.(\d+)/);
+$MAINTAINER = 'Glenn Wood http://search.cpan.org/search?mode=author&query=GLENNWOOD';
 
 use Carp ();
 use WWW::Search( 2.25, qw(strip_tags) );
@@ -60,7 +60,23 @@ sub new {
 # Help avoid embarrassment when Glenn releases test, debug or tracing code to CPAN!
 sub isGlennWood { return $ENV{'VSROOT'} and ($ENV{'USERNAME'} eq 'Glenn') and ($ENV{'USERDOMAIN'} eq 'ORCHID'); }
 # Return empty testFrame for sub-scrapers that choose not to provide one.
-sub testParameters { return undef; }
+sub testParameters {
+    my ($self) = @_;
+
+    if ( ref $self ) {
+        $self->{'isTesting'} = 1;
+    }
+    
+    # 'POST' style scraperFrames can't be tested cause of a bug in WWW::Search(2.2[56]) !
+    my $isNotTestable = WWW::Search::Scraper::isGlennWood()?0:'No testParameters provided.';
+    return { 
+             'isNotTestable' => $isNotTestable
+            ,'testNativeQuery' => 'search scraper'
+            ,'expectedOnePage' => 9
+            ,'expectedMultiPage' => 11
+            ,'expectedBogusPage' => 0
+           };
+}
 
 sub generic_option 
 {
@@ -441,6 +457,7 @@ AGAIN:
 
     print STDERR "Fetching NEXT_URL via $method: '".$self->{_next_url}."'\n" if $self->ScraperTrace('U');
     
+    $self->{'_last_url'} =$self->{_next_url};
     my $response = $self->http_request($method, $self->{_next_url});
 
         while ( $response->code() eq '302' ) {
@@ -464,7 +481,7 @@ AGAIN:
     }
 
     $self->{'_last_url'} = $self->{'_next_url'}; $self->{'_next_url'} = undef;
-    $self->{response} = $response;
+    $self->{'response'} = $response;
     
     unless ( $response->is_success ) {
         print STDERR "Request failed in Scraper.pm: ".$response->message() if $debug;
@@ -640,7 +657,35 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
             } else {
                 next SCAFFOLD;
             }
-            $next_scaffold = $$scaffold[3];
+            if ( 'ARRAY' ne ref $$scaffold[3]  ) # if next_scaffold is an array ref, then we'll recurse (below)
+            {
+                next SCAFFOLD unless $sub_string;
+
+                my $binding = $$scaffold[3];
+                my $datParser = $$scaffold[4];
+                print STDERR  "raw dat: '$sub_string'\n" if ($self->ScraperTrace('d'));
+                if (  $self->ScraperTrace('d') ) { # print ref $ aways does something screwy
+                    print STDERR  "datParser: ";
+                    print STDERR  ref $datParser;
+                    print STDERR  "\n";
+                };
+                $datParser = \&WWW::Search::Scraper::trimTags unless $datParser;
+                print STDERR  "binding: '$binding', " if ($self->ScraperTrace('d'));
+                print STDERR  "parsed dat: '".&$datParser($self, $hit, $sub_string)."'\n" if ($self->ScraperTrace('d'));
+                if ( $binding eq 'url' )
+                {
+                    my $url = new URI::URL(&$datParser($self, $hit, $sub_string), $self->{_base_url});
+                    $url = $url->abs();
+                    $hit->add_url($url);
+                } 
+                elsif ( $binding) {
+                    $hit->_elem($binding, &$datParser($self, $hit, $sub_string));
+                }
+                $total_hits_found = 1;
+                next SCAFFOLD;
+            } else {
+                $next_scaffold = $$scaffold[3];
+            }
         }
     	
         elsif ( 'CALLBACK' eq $tag ) {
@@ -701,7 +746,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
                 # will find the first anchor, even though it's not the HREF for the "next" string.
                 my $next_url_button = $$scaffold[2]; # accomodates some earlier versions of Scraper.pm modules.
                 $next_url_button = $$scaffold[1] unless $next_url_button;
-                print STDERR  "next_url_button: $next_url_button\n" if ($self->ScraperTrace('U'));
+                print STDERR  "next_url_button: $next_url_button\n" if ($self->ScraperTrace('N'));
                 my $next_content = ${$TidyXML->asString()};
                 
                 while ( my ($sub_string, $url) = $self->getMarkedText('A', \$next_content) ) 
@@ -771,6 +816,41 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
             $sub_xml = undef;
             next SCAFFOLD unless $sub_string = $self->getMarkedText($tag, $TidyXML->asString());
         }
+    	
+
+    	elsif ( 'TAG' eq $tag )
+        {
+            $sub_xml = undef;
+            $tag = $$scaffold[1];
+            next SCAFFOLD unless $sub_string = $self->getMarkedText($tag, $TidyXML->asString()); # and throw it away.
+#    		next SCAFFOLD unless ( $$content =~ s-(<$tag\s*[^>]*>(.*?)</$tag\s*[^>]*>)--si );  $sub_content = $2;
+    		$next_scaffold = $$scaffold[2];
+            if ( 'ARRAY' ne ref $next_scaffold  ) # if next_scaffold is an array ref, then we'll recurse (below)
+            {
+               my $binding = $next_scaffold;
+               my $datParser = $$scaffold[3];
+               print STDERR  "raw dat: '$sub_string'\n" if ($self->ScraperTrace('d'));
+               if (  $self->ScraperTrace('d') ) { # print ref $ aways does something screwy
+                  print STDERR  "datParser: ";
+                  print STDERR  ref $datParser;
+                  print STDERR  "\n";
+               };
+               $datParser = \&WWW::Search::Scraper::trimTags unless $datParser;
+               print STDERR  "binding: '$binding', " if ($self->ScraperTrace('d'));
+               print STDERR  "parsed dat: '".&$datParser($self, $hit, $sub_string)."'\n" if ($self->ScraperTrace('d'));
+                if ( $binding eq 'url' )
+                {
+                    my $url = new URI::URL(&$datParser($self, $hit, $sub_string), $self->{_base_url});
+                    $url = $url->abs();
+                    $hit->add_url($url);
+                } 
+                elsif ( $binding) {
+                    $hit->_elem($binding, &$datParser($self, $hit, $sub_string));
+                }
+                $total_hits_found = 1;
+                next SCAFFOLD;
+            }
+        }
 
     	elsif ( $tag =~ m/^(TD|DT|DD|DIV)$/ )
         {
@@ -809,7 +889,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
             my $lbl = $$scaffold[1];
             if ( ${$TidyXML->asString()} =~ s-<A[^>]+?HREF="([^"]+)"[^>]*>(.*?)</A>--si )
             {
-                print "<A> binding: $$scaffold[2]: '$2', $$scaffold[1]: '$1'\n" if $debug;
+                print "<A> binding: $$scaffold[2]: '$2', $$scaffold[1]: '$1'\n" if ($self->ScraperTrace('d'));
                 my $datParser = $$scaffold[3];
                 $datParser = \&WWW::Search::Scraper::trimTags unless $datParser;
                 $hit->_elem($$scaffold[2], &$datParser($self, $hit, $2));
@@ -831,7 +911,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
             my $lbl = $$scaffold[1];
             if ( ${$TidyXML->asString()} =~ s-<A[^>]+?HREF=([^>]+)>(.*?)</A>--si )
             {
-                print "<A> binding: $$scaffold[2]: '$2', $$scaffold[1]: '$1'\n" if $debug;
+                print "<A> binding: $$scaffold[2]: '$2', $$scaffold[1]: '$1'\n" if ($self->ScraperTrace('d'));
                 
                 my $datParser = $$scaffold[3];
                 $datParser = \&WWW::Search::Scraper::trimTags unless $datParser;
@@ -1192,7 +1272,7 @@ sub redirect_ok
 
 
 ##################### < E X C E P T I O N S > ######################
-# by which I mean, "What the f**k was Gisle thinking!?!"
+# some kind of problem with URI in LWP since LWP(5.60)
 eval <<EOT
     use URI::http;
     { package URI::http;
@@ -1770,7 +1850,7 @@ See F<WWW::Search::Scraper::Request.pm> for more information on Translations.
 
 =head1 AUTHOR
 
-Glenn Wood, C<glenwood@alumni.caltech.edu>.
+Glenn Wood, Chttp://search.cpan.org/search?mode=author&query=GLENNWOOD.
 
 =head1 COPYRIGHT
 

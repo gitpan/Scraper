@@ -15,7 +15,7 @@ Scraper.pl - Scrape data from a search engine.
 =head1 AUTHOR
 
 C<Scraper.pl> is written and maintained
-by Glenn Wood, <glenwood@alumni.caltech.edu>.
+by Glenn Wood, http://search.cpan.org/search?mode=author&query=GLENNWOOD.
 
 =head1 COPYRIGHT
 
@@ -95,4 +95,4 @@ $VERSION = sprintf("%d.%02d", q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/);
         last unless --$limit;
     }
 
-    print "\n$resultCount results found.\n";
+    print "\n$resultCount results found".($limit?", short of the expected":', successfully completing the test').".\n";

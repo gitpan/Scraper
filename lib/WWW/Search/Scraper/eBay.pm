@@ -4,7 +4,7 @@ package WWW::Search::Scraper::eBay;
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.16 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.17 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Search::Scraper(qw(1.24 generic_option addURL trimTags));
 
@@ -169,7 +169,7 @@ Specified at L<WWW::Search>.
 =head1 AUTHOR
 
 C<WWW::Search::eBay> is written and maintained
-by Glenn Wood, <glenwood@alumni.caltech.edu>.
+by Glenn Wood, http://search.cpan.org/search?mode=author&query=GLENNWOOD.
 
 =head1 COPYRIGHT
 

@@ -13,7 +13,7 @@ setupLocations.pl - Build "locations" translation tables for various scrapers.
 =head1 AUTHOR
 
 C<setupLocations.pl> is written and maintained
-by Glenn Wood, <glenwood@alumni.caltech.edu>.
+by Glenn Wood, http://search.cpan.org/search?mode=author&query=GLENNWOOD.
 
 =head1 COPYRIGHT
 

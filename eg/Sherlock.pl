@@ -12,7 +12,7 @@ Sherlock.pl - scrape search engines via Sherlock plugin(s)
 =head1 AUTHOR
 
 C<Sherlock.pl> is written and maintained
-by Glenn Wood, <glenwood@alumni.caltech.edu>.
+by Glenn Wood, http://search.cpan.org/search?mode=author&query=GLENNWOOD.
 
 =head1 COPYRIGHT
 

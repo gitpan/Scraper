@@ -4,7 +4,7 @@ package WWW::Search::Scraper::apartments;
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/);
 use WWW::Search::Scraper::Response;
 
 use WWW::Search::Scraper(qw(1.48));
@@ -156,7 +156,7 @@ To do
 =head1 AUTHOR
 
 C<WWW::Search::apartments> is written and maintained
-by Glenn Wood, <glenwood@alumni.caltech.edu>.
+by Glenn Wood, http://search.cpan.org/search?mode=author&query=GLENNWOOD.
 
 The best place to obtain C<WWW::Search::apartments>
 is from Glenn's releases on CPAN. Because www.apartments.com

@@ -18,7 +18,7 @@ MANIFEST and README. Others can easily be added to this list if desired.
 =head1 AUTHOR
 
 C<SearchApartments.pl> is written and maintained
-by Glenn Wood, <glenwood@alumni.caltech.edu>.
+by Glenn Wood, http://search.cpan.org/search?mode=author&query=GLENNWOOD.
 
 =head1 COPYRIGHT
 

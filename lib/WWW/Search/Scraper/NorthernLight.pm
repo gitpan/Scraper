@@ -9,7 +9,7 @@ use vars qw($VERSION @ISA);
 $VERSION = sprintf("%d.%02d", q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
-use WWW::Search::Scraper(qw(1.48 generic_option addURL trimTags));
+use WWW::Search::Scraper(qw(1.48 generic_option addURL trimTags testParameters));
 use WWW::Search::Scraper::FieldTranslation;
 
 my $scraperQuery = 
@@ -361,7 +361,7 @@ Specified at L<WWW::Search>.
 =head1 AUTHOR
 
 C<WWW::Search::NorthernLight> is written and maintained
-by Glenn Wood, <glenwood@alumni.caltech.edu>.
+by Glenn Wood, http://search.cpan.org/search?mode=author&query=GLENNWOOD.
 
 =head1 COPYRIGHT
 

@@ -13,7 +13,7 @@ WWW::Search::Scraper::Response::Job - result class for scrapes of Job Listings
 =head1 AUTHOR
 
 C<WWW::Search::Scraper::Response::Job> is written and maintained
-by Glenn Wood, <glenwood@alumni.caltech.edu>.
+by Glenn Wood, http://search.cpan.org/search?mode=author&query=GLENNWOOD.
 
 =cut
 

@@ -15,7 +15,7 @@ Sherlock.pm - Result subclass of Sherlock plugins.
 =head1 AUTHOR
 
 C<Sherlock.pm> is written and maintained
-by Glenn Wood, <glenwood@alumni.caltech.edu>.
+by Glenn Wood, http://search.cpan.org/search?mode=author&query=GLENNWOOD.
 
 =head1 COPYRIGHT
 

@@ -4,7 +4,7 @@
 use WWW::Search::Scraper(qw(2.15));
 
 use ExtUtils::testlib;
-$VERSION = sprintf("%d.%02d", q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/);
 
 ######################### We start with some black magic to print on failure.
 
@@ -24,40 +24,53 @@ use FileHandle;
     my $traceFile = new FileHandle('>test.trace') or die "Can't open test.trace file: $!";
     select ($traceFile); $| = 1; select STDOUT;
 
-open TMP, "<MANIFEST";
-my @modules;
-while (<TMP>) {
-    if ( m-^lib/WWW/Search/Scraper/(\w+)\.pm$- ) {
-        next if $1 eq 'Request';          # This one's not an engine.
-        next if $1 eq 'Response';         # This one's not an engine.
-        next if $1 eq 'FieldTranslation'; # This one's not an engine.
-        next if $1 eq 'TidyXML';          # This one's not an engine.
-
-        my $testParameters;
-        eval "use WWW::Search::Scraper::$1; \$testParameters = &WWW::Search::Scraper::$1::testParameters()";
-        # print $@; $@ just means the Scraper sub-class doesn't have a testParameters() method, yet.
-        unless ( 0 and WWW::Search::Scraper::isGlennWood() ) {
-            if ( $testParameters ) {
-                if ( $testParameters->{'isNotTestable'} ) {
-                    TRACE(1, "$1 will not be tested: $testParameters->{'isNotTestable'}\n");
-                    next;
-                }
-                # we're making this exception in 2.16 because WWW::Search seems to be broken on
-                #    http://testers.cpan.org/search?request=mac&mac=129
-                #    linux 2.2.14-5.0 i686-linux
-                if ( $VERSION eq '1.10' )
-                {
-    #                if ( $testParameters->{'usesPOST'} ) {
-    #                    print STDERR "Skipped $1 in this test: test.pl v$VERSION can not test modules that use the 'POST' method (see WWW::Search(2.26)\n";
-    #                    next;
-    #                }
+# Report current versions of modules we depend on.
+    traceBreak(); ##_##_##_##_##_##_##_##_##_##_##_##_##_##_##_##
+    print $traceFile <<EOT;
+VERSIONS OF MODULES ON WHICH SCRAPER DEPENDS
+EOT
+    open TMP, "<Makefile.PL";
+    my @makefile = <TMP>;
+    close TMP;
+    my $makefile = join '',@makefile;
+    use vars qw($prereq_pm);
+    $makefile =~ s/^.*'PREREQ_PM'\s*=>([^}]*}).*$/\$prereq_pm = \1/s;
+    eval $makefile;
+    for ( sort keys %$prereq_pm ) {
+        my $mod_version;
+        eval "use $_($$prereq_pm{$_}); \$mod_version = \$$_\:\:\VERSION;";
+        print $traceFile "    using $_($mod_version);\n";
+    }
+    traceBreak(); ##_##_##_##_##_##_##_##_##_##_##_##_##_##_##_##
+    
+    print $traceFile <<EOT;
+LIST SCRAPER SUB-CLASSES, FROM THE MANIFEST
+EOT
+    open TMP, "<MANIFEST";
+    my @modules;
+    while (<TMP>) {
+        if ( m-^lib/WWW/Search/Scraper/(\w+)\.pm$- ) {
+    
+            my $testParameters;
+            eval "use WWW::Search::Scraper::$1; \$testParameters = &WWW::Search::Scraper::$1::testParameters()";
+            if ( $@ ) { # $@ just means the module is not a Scraper sub-class.
+                TRACE(1, "    - $1 will not be tested: it is not a Scraper sub-class.\n");
+                next;
+            }
+            unless ( 0 and WWW::Search::Scraper::isGlennWood() ) {
+                if ( $testParameters ) {
+                    if ( $testParameters->{'isNotTestable'} ) {
+                        TRACE(1, "    - $1 will not be tested: $testParameters->{'isNotTestable'}\n");
+                        next;
+                    }
                 }
             }
+            push @modules, $1;
+            TRACE(1, "    + $1\n");
         }
-        push @modules, $1;
     }
-}
-close TMP;
+    close TMP;
+    traceBreak(); ##_##_##_##_##_##_##_##_##_##_##_##_##_##_##_##
     
     my $testCount = 2 + scalar(@modules) * 4;
     print STDOUT "1..$testCount\n";
@@ -83,6 +96,7 @@ use WWW::Search::Scraper::Request;
 #######################################################################################
 
 for my $sEngine ( @modules ) {
+    traceBreak(); ##_##_##_##_##_##_##_##_##_##_##_##_##_##_##_##
     
     $iTest++;
     TRACE(0, "Test #$iTest: $sEngine\n");
@@ -145,10 +159,15 @@ for my $sEngine ( @modules ) {
             $iResults = scalar(@aoResults);
         };
 
-        TRACE(0, " + got $iResults results for $sQuery\n");
+        TRACE(0, " + got $iResults results for '$sQuery'\n");
         if ( $maximum_to_retrieve > $iResults )
         {
-            TRACE(2, " --- got $iResults results for $sEngine ($sQuery), but expected $maximum_to_retrieve\n");
+            TRACE(2, " --- got $iResults results for $sEngine '$sQuery', but expected $maximum_to_retrieve\n");
+            TRACE(2, " --- base URL: $oSearch->{'_base_url'}\n");
+            TRACE(2, " --- last URL: $oSearch->{'_last_url'}\n");
+            TRACE(2, " --- next URL: $oSearch->{'_next_url'}\n");
+            TRACE(2, " --- response message: ".$oSearch->{'response'}->message()."\n");
+
             print "not ";
         }
     }
@@ -178,15 +197,17 @@ for my $sEngine ( @modules ) {
                 $iResults += 1;
             }
         };
-        TRACE(0, " ++ got $iResults multi-page results for $sQuery\n");
+        TRACE(0, " ++ got $iResults multi-page results for '$sQuery'\n");
         if ( $maximum_to_retrieve > $iResults )
           {
             # We make an exception for these jobsites, since
             #  they often turn up few Perl jobs, anyway.
-             unless ( $sEngine =~ m/Brainpower|computerjobs|guru|HotJobs|NorthernLight/ ) {
-                TRACE(2, " --- got $iResults results for multi-page $sEngine ($sQuery), but expected $maximum_to_retrieve..\n");
+                TRACE(2, " --- got $iResults results for multi-page $sEngine '$sQuery', but expected $maximum_to_retrieve..\n");
+                TRACE(2, " --- base URL: $oSearch->{'_base_url'}\n");
+                TRACE(2, " --- last URL: $oSearch->{'_last_url'}\n");
+                TRACE(2, " --- next URL: $oSearch->{'_next_url'}\n");
+                TRACE(2, " --- response message: ".$oSearch->{'response'}->message()."\n");
                 print STDOUT 'not ';
-            }
           }
     }
     print STDOUT "ok $iTest\n";
@@ -249,6 +270,12 @@ sub setupStandardAndExceptionalOptions {
 
     return ($sQuery,$options,$onePageCount,$multiPageCount,$bogusPageCount);
 }
+}
+
+sub traceBreak {
+    print $traceFile <<EOT;
+##_##_##_##_##_##_##_##_##_##_##_##_##_##_##
+EOT
 }
 
 __END__
