@@ -9,7 +9,7 @@ use vars qw($VERSION @ISA);
 use WWW::Search::Scraper(qw(1.48 generic_option addURL trimTags));
 use WWW::Search::Scraper::FieldTranslation;
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/);
 
 # Craigs List differs from other search engines in a few ways.
 # One of them is the results page is not tablulated, or data lined.
@@ -61,6 +61,19 @@ my $scraperFrame =
          ] ]
        ] ];
 
+
+sub testParameters {
+    # 'POST' style scraperFrames can't be tested cause of a bug in WWW::Search(2.2[56]) !
+    my $isNotTestable = WWW::Search::Scraper::isGlennWood()?0:(($WWW::Search::VERSION eq '2.28') or ($WWW::Search::VERSION eq '2.26'));
+    return {
+                 'isNotTestable' => $isNotTestable
+                ,'testNativeQuery' => 'Quality'
+                ,'expectedOnePage' => 9
+                ,'expectedMultiPage' => 50
+                ,'expectedBogusPage' => 0
+                ,'usesPOST' => 1
+           };
+}
 
 
 # Access methods for the structural declarations of this Scraper engine.

@@ -46,7 +46,7 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(1.48 generic_option addURL trimTags));
@@ -728,6 +728,17 @@ my $scraperFrame =
         ]
       ]
    ];
+
+sub testParameters {
+    # 'POST' style scraperFrames can't be tested cause of a bug in WWW::Search(2.2[56]) !
+    my $isNotTestable = WWW::Search::Scraper::isGlennWood()?0:(($WWW::Search::VERSION eq '2.28') or ($WWW::Search::VERSION eq '2.26'));
+    return {
+                 'isNotTestable' => $isNotTestable
+                ,'testNativeOptions' => { 'whichTech' => 'Perl' }                                         
+           };
+}
+
+
 
 # Access methods for the structural declarations of this Scraper engine.
 sub scraperQuery { 

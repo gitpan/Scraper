@@ -18,7 +18,6 @@ lib/WWW/Search/Scraper/Dogpile.pm
 lib/WWW/Search/Scraper/eBay.pm
 lib/WWW/Search/Scraper/FlipDog.pm
 lib/WWW/Search/Scraper/Google.pm
-lib/WWW/Search/Scraper/guru.pm
 lib/WWW/Search/Scraper/JustTechJobs.pm
 lib/WWW/Search/Scraper/Monster.pm
 lib/WWW/Search/Scraper/Monster.Job.locations

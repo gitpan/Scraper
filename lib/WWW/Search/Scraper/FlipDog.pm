@@ -6,9 +6,9 @@ package WWW::Search::Scraper::FlipDog;
 use strict;
 use vars qw(@ISA $VERSION);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/);
 
-use WWW::Search::Scraper(qw(1.48 trimLFs trimLFLFs));
+use WWW::Search::Scraper(qw(1.48 trimLFs trimLFLFs removeScriptsInXML));
 
 sub resultsX
   {
@@ -52,39 +52,77 @@ my $scraperQuery =
    };
 
 my $scraperFrame =
-[ 'HTML', 
+[ 'TidyXML', \&removeScriptsInXML, 
     [ 
         [ 'COUNT', 'var jobTotal = (\d+)' ]
        ,[ 'NEXT', \&getNextPage ]
-       ,[ 'BODY', 'jobs shown below', undef,
+       ,[ 'XML', 'html.body.table(5)', 
             [  
-                [ 'TR', '#1' ]
-               ,[ 'HIT*', 'Job',
+                [ 'HIT*', 'Job',
                     [ 
-                        [ 'TR', 
+                        [ 'XML', 'tr' ] # waste one leading row . . .
+                       ,[ 'XML', 'tr' ] # waste two leading rows . . .
+                       ,[ 'XML', 'tr',
                             [
-                                [ 'TD', [ [ 'A', 'companyProfileURL', undef ] ] ]
-                               ,[ 'TD', 
-                                   [
-                                      [ 'A', 'url', 'title', \&trimLFs ]
-                                     ,[ 'A', 'companyURL', undef ]
-                                     ,[ 'DIV' ]
-                                     ,[ 'DIV', 'description' ]
-                                   ]
+                                [ 'XML', 'td(3)', 
+                                    [
+                                        [ 'A', 'url', 'title', \&trimLFs ]
+                                       ,[ 'A', 'companyProfileURL', 'company', \&trimLFs ]
+                                       ,[ 'XML', 'div', 'description' ]
+                                    ]
                                 ]
-                               ,[ 'TD' ]
                                ,[ 'TD', 'location', \&parseLocation ]
-                               ]
+                               ,[ 'XML', 'td', 'postingDate' ]
+                            ]
                         ]
-                       ,[ 'TR', '#1' ]
+                       ,[ 'XML', 'tr' ] # waste one trailing row . . .
                     ]
                 ]
-#               ,[ 'BOGUS', -2 ] # The last two hits are bogus.
+            ]
+        ]
+       ,[ 'XML', 'html.body.table(5)', 
+            [  
+                [ 'HIT*', 'Job',
+                    [ 
+                        [ 'XML', 'tr' ] # waste one leading row . . .
+                       ,[ 'XML', 'tr' ] # waste two leading rows . . .
+                       ,[ 'XML', 'tr',
+                            [
+                               [ 'XML', 'td(3)', 
+                                [
+                                   [ 'A', 'url', 'title', \&trimLFs ]
+                                  ,[ 'A', 'companyProfileURL', 'company', \&trimLFs ]
+                                ]
+                              ,[ 'XML', 'div', 'description' ]
+                            ]
+                           ,[ 'TD', 'location', \&parseLocation ]
+                           ,[ 'XML', 'td', 'postingDate' ]
+                            ]
+                        ]
+                       ,[ 'XML', 'tr' ] # waste one trailing row . . .
+                    ]
+                ]
             ]
         ]
     ]
-];            
+];
 
+
+sub testParameters {
+    my ($self) = @_;
+    
+    if ( ref $self ) {
+        $self->{'isTesting'} = 1;
+    }
+    
+    return {
+                 'isNotTestable' => &WWW::Search::Scraper::TidyXML::isNotTestable() 
+                ,'testNativeQuery' => 'Java'
+                ,'expectedOnePage' => 5
+                ,'expectedMultiPage' => 5
+                ,'expectedBogusPage' => 0
+           };
+}
 
 # Access methods for the structural declarations of this Scraper engine.
 sub scraperQuery { $scraperQuery }
@@ -131,8 +169,9 @@ sub parseLocation {
 sub getNextPage {
     my ($self, $hit, $dat) = @_;
     
+    return undef unless $dat = $self->{'removedScripts'};
     return undef unless 
-        $dat =~ m/var jobCount = (\d+).*?var jobStart = (\d+).*?var jobTotal = (\d+)/s;
+        $$dat =~ m/var jobCount = (\d+).*?var jobStart = (\d+).*?var jobTotal = (\d+)/s;
     my ($jobCount, $jobStart, $jobTotal) = ($1,$2,$3);
     my $url = $self->{'_last_url'};
     $jobStart += $jobCount;

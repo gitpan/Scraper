@@ -10,7 +10,7 @@
 
 
 package WWW::Search::Scraper::TidyXML;
-$VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/);
 
 use strict;
 
@@ -46,10 +46,6 @@ sub new {
         my $rslt = `tidy -upper -asxml -numeric temp 2>temp.err`;
 #        unlink 'temp';
         die "This Scraper engine requires 'Tidy' to scrub HTML before parsing.\nGet this program from 'http://tidy.sourceforge.net/docs/Overview.html#Download'\n" unless $rslt;
-        # Strip out some regions that contain no information, but might be ill-formed output of "Tidy".
-        for ( qw( script noscript ) ) {
-            $rslt =~ s-<$_.*?</$_>--gsi;
-        }
 
         $string = \$rslt;
     }
@@ -66,7 +62,18 @@ sub TRACE {
 sub asString {
     my ($self, $xmlPath) = @_;
 
-    return $self->m_asString() unless defined $xmlPath;
+    unless ( defined $xmlPath ) {
+        my $result = $self->m_asString();
+        unless ( $result ) {
+            my $parsedXML = $self->m_asXML();
+            my $xml;
+            $xml = $parsedXML->toString() if $parsedXML;
+            $result = \$xml;
+            $self->m_asString($result);
+        }
+        return $result;
+    }
+    
     print STDERR "TidyXML::asString($xmlPath)\n" if $self->TRACE('T');
 
     my $xml = $self->m_asString();
@@ -212,6 +219,15 @@ sub getMarkedText {
     return ($2, $1) if wantarray;
     return $2;
 }
+
+sub isNotTestable {
+    my $rslt = `tidy -version 2>tidy.stderr`;
+    if ( $? ) {
+        return "This Scraper engine requires 'HTML Tidy' to scrub HTML before parsing.\nGet this program from 'http://tidy.sourceforge.net/docs/Overview.html#Download'\nMake sure it is in your execution search path.\n";
+    }
+    return '';
+}
+
 
 1;
 

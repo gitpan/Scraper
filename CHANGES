@@ -1,6 +1,9 @@
 
 Revision history for WWW::Search::Scraper (::*).
 
+v2.16 - Special fixes to make Scraper work with LWP versions between 5.60 and 5.63
+	Added 'CLEANUP' as a Scraper operation.
+	Significant test.pl improvements (Scraper.pm as a "testable" base-class).
 v2.15 - Added TidyXML.pm base class for new Scraper modules.
 	Added Dogpile.com - this is our first TidyXML implementation!
 v2.13 - Make Scraper comply with new sanity checks in later versions of WWW::Search.

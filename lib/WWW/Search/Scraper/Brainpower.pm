@@ -5,7 +5,7 @@ package WWW::Search::Scraper::Brainpower;
 use strict;
 use vars qw(@ISA $VERSION);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Search::Scraper(qw(1.48 trimLFs trimLFLFs));
 use WWW::Search::Scraper::FieldTranslation(1.00);
@@ -13,7 +13,7 @@ use WWW::Search::Scraper::Request::Job(1.00);
 
 my $scraperQuery = 
    { 
-      'type' => 'QUERY'       # Type of query generation is 'POST'
+      'type' => 'QUERY'       # Type of query generation is 'QUERY'
       # This is the basic URL on which to build the query.
       ,'url' => 'http://www.brainpower.com/IndListProject.asp?'
       # This is the Scraper attributes => native input fields mapping
@@ -117,6 +117,22 @@ my $scraperDetail =
 
 
 
+sub testParameters {
+    my ($self) = @_;
+    
+    if ( ref $self ) {
+        $self->{'isTesting'} = 1;
+    }
+    
+    return {
+                 'isNotTestable' => '' 
+                ,'testNativeQuery' => 'Perl'
+                ,'expectedOnePage' => 9
+                ,'expectedMultiPage' => 41
+                ,'expectedBogusPage' => 3
+                ,'usesPOST' => 1
+           };
+}
 
 # Access methods for the structural declarations of this Scraper engine.
 sub scraperQuery { $scraperQuery }
@@ -276,9 +292,11 @@ sub FZ { return $_[0]->ScrapeDetailPage('FZ') }
 1;
 __END__
 
+=pod
+
 =head1 NAME
 
-WWW::Search::Scraper::Brainpower - class for searching www.Brainpower.com
+WWW::Search::Scraper::Brainpower -  Brainpower.com(skills,locations,payrate) => (title,role,skillSet,type,city,state,postDate,description,FX,FY,FZ)
 
 
 =head1 SYNOPSIS

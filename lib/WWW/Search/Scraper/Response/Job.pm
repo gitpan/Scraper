@@ -21,13 +21,14 @@ use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper::Response);
 use WWW::Search::Scraper::Response;
-$VERSION = sprintf("%d.%02d", q$Revision: 1.1 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/);
 
 sub resultTitles {
     return {
                 'relevance'  => 'Relevance'
                ,'title'      => 'Title'
                ,'description' => 'Description'
+               ,'companyProfileURL'    => 'Company Profile URL'
                ,'company'    => 'Company'
                ,'location'   => 'Location'
                ,'postDate'   => 'Post-Date'
@@ -41,6 +42,7 @@ sub results {
                 'relevance'  => $self->relevance()
                ,'title'      => $self->title()
                ,'description' => $self->description()
+               ,'companyProfileURL'    => $self->companyProfileURL()
                ,'company'    => $self->company()
                ,'location'   => $self->location()
                ,'postDate'   => $self->postDate()
@@ -52,6 +54,7 @@ sub relevance { return $_[0]->_elem('relevance'); }
 sub title { return $_[0]->_elem('title'); }
 sub description { return $_[0]->_elem('description'); }
 sub company { return $_[0]->_elem('company'); }
+sub companyProfileURL { return $_[0]->_elem('companyProfileURL'); }
 sub location { return $_[0]->_elem('location'); }
 sub postDate { return $_[0]->_elem('postDate'); }
 

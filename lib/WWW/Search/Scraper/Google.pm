@@ -8,7 +8,7 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.16 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.17 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(2.12 generic_option addURL trimTags));
@@ -69,6 +69,23 @@ my $scraperFrame =
        ];
 
 
+sub testParameters {
+    my ($self) = @_;
+
+    if ( ref $self ) {
+        $self->{'isTesting'} = 1;
+    }
+    
+    return {
+                 'isNotTestable' => '' 
+                ,'testNativeQuery' => 'search scraper'
+                ,'expectedOnePage' => 9
+                ,'expectedMultiPage' => 41
+                ,'expectedBogusPage' => 0
+           };
+}
+
+
 sub import
 {
     my $package = shift;
@@ -114,7 +131,16 @@ This class is an Google specialization of WWW::Search.
 It handles making and interpreting Google searches
 F<http://www.Google.com>.
 
+=head1 INTERESTING
+
+Go to http://www.google.com and search for "search scraper"; as in 
+
+http://www.google.com/search?q=search+scraper&sourceid=opera&num=0&ie=utf-8&oe=utf-8
+
+Interesting FIRST hit !
+
 =head1 AUTHOR and CURRENT VERSION
+
 
 C<WWW::Search::Scraper::Google> is written and maintained
 by Glenn Wood, <glenwood@alumni.caltech.edu>.

@@ -35,18 +35,28 @@ $VERSION = sprintf("%d.%02d", q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/);
 
     select STDERR; $| = 1; select STDOUT; $| = 1; 
 
-    my ($engine, $query, $debug);
+    my ($engine, $query, $debug, $options);
     $engine = 'eBay'      unless $engine = $ARGV[0];
-    $query  = 'turntable' unless $query  = $ARGV[1];
     $debug = $ARGV[2];
 
     my $scraper = new WWW::Search::Scraper( $engine );
+    my $limit = 21;
 
-    $scraper->techiesLocation('bayarea') if $engine eq 'techies'; # www.techies.com is special.
-    $scraper->sherlockPlugin('http://sherlock.mozdev.org/yahoo.src') if $engine eq 'Sherlock'; # Sherlock is extra special.
+    # Most Scraper sub-classes will define their own testParameters . . .
+    # Calling testParameters() also sets up testing conditions for the module.
+    # See Dogpile.pm for the most mature example of how to set your testParameters.
+    if ( my $testParameters = $scraper->testParameters() ) {
+        $query = $testParameters->{'testNativeQuery'} unless $query;
+        $options = $testParameters->{'testNativeOptions'};
+        $options = {} unless $options;
+        $limit = $testParameters->{'expectedMultiPage'};
+        if ( $testParameters->{'isNotTestable'} ) {
+            die "Can't test $engine: $testParameters->{'isNotTestable'}\n";
+        }
+    }
 
     my $request = new WWW::Search::Scraper::Request::Job($query);
-    $request->Scraper_debug($debug);
+    $scraper->setScraperTrace($debug);
     
     $request->skills($query);
 #    $scraper->native_query($query); # This let's us test pre-v2.00 modules from here, too.
@@ -62,7 +72,6 @@ $VERSION = sprintf("%d.%02d", q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/);
     $scraper->request($request);
 
     my $resultCount = 0;
-    my $limit = 100;
     while ( my $result = $scraper->next_response() ) {
         # $result->{'_scraperSkipDetailPage'} = 1;
         $resultCount += 1;

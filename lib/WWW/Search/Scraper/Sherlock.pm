@@ -132,10 +132,11 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(2.12 addURL trimTags));
+my $isNowTesting;
 
 use HTML::Form;
 use HTTP::Cookies;
@@ -250,8 +251,10 @@ sub native_setup_search
 
     # Translate Sherlock's 'update' to the required action.
     if ( $self->{'sherlockSearchParam'}{'update'} and not $self->{'_options'}{'noUpdate'} ) {
-        print STDERR "Update method for Sherlock Plugin is not implemented, yet.\n";
-        print STDERR "See ".$self->{'sherlockSearchParam'}{'update'}." for an update.\n";
+        unless ( $self->{'isTesting'} ) {
+            print STDERR "Update method for Sherlock Plugin is not implemented, yet.\n";
+            print STDERR "See ".$self->{'sherlockSearchParam'}{'update'}." for an update.\n";
+        }
     }
     # Translate Sherlock's 'action' and 'method' to WWW::Search's parameters.
     $self->{'_options'}{'search_url'} = $self->{'sherlockSearchParam'}{'action'};
@@ -329,6 +332,23 @@ sub native_setup_search
     print STDERR $self->{_base_url} . "\n" if $self->ScraperTrace('U');
 }
 
+
+sub testParameters {
+    my ($self) = @_;
+    
+    if ( ref $self ) {
+        $self->{'isTesting'} = 1;
+        $self->sherlockPlugin('http://sherlock.mozdev.org/yahoo.src'); # Set our plugin for eg/test.pl
+    }
+    
+    return {
+                 'isNotTestable' => ''
+                ,'testNativeQuery' => 'Greeting Cards'
+                ,'expectedOnePage' => 9
+                ,'expectedMultiPage' => 11
+                ,'expectedBogusPage' => 0
+           };
+}
 
 sub scraperQuery { return $_[0]->{'scraperQuery'}; }
 

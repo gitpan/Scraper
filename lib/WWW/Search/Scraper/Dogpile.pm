@@ -8,7 +8,7 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.1 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(2.14 generic_option addURL trimTags findNextFormInXML));
@@ -45,9 +45,10 @@ my $scraperQuery =
        };
 
 my $scraperFrame =
-       [ 'TidyXML', \&removeEmptyPs,
+       [ 'TidyXML', 
           [ 
-             [ 'BODY', '<table border="0">\s*<TR>\s*<TD>', '</TD>\s*</TR>\s*</TABLE>', 
+             [ 'CLEANUP', \&removeEmptyPs ]
+            ,[ 'BODY', '<table border="0">\s*<TR>\s*<TD>', '</TD>\s*</TR>\s*</TABLE>', 
                 [
                    [ 'NEXT', 2, \&findNextFormInXML ]
                 ]
@@ -74,12 +75,27 @@ sub removeEmptyPs {
     my ($self, $hit, $xml) = @_;
     
     # remove empty <P/> tags, for Dogpile.pm
-    $$xml =~ s-<p>(\s*?)</p>--gsi;
+    $$xml =~ s-<p>\s*?</p>--gsi;
+    $$xml =~ s-<p/>--gsi;
+open TMP, ">Dogpile.xml";
+print TMP $$xml;
+close TMP;
     return $xml;
 }
 
 
 
+sub testParameters {
+    my ($self) = @_;
+
+    return {
+                 'isNotTestable' => &WWW::Search::Scraper::TidyXML::isNotTestable() 
+                ,'testNativeQuery' => 'Scraper'
+                ,'expectedOnePage' => 9
+                ,'expectedMultiPage' => 50
+                ,'expectedBogusPage' => 1
+           };
+}
 
 sub import
 {

@@ -3,7 +3,7 @@ package WWW::Search::Scraper::Dice;
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.12 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Search::Scraper(qw(1.48 generic_option trimTags addURL));
 use WWW::Search::Scraper::FieldTranslation;
@@ -11,6 +11,13 @@ use WWW::Search::Scraper::FieldTranslation;
 my $scraperQuery = 
    { 
       'type' => 'POST'       # Type of query generation is 'POST'
+     ,'redirectMethod' => 'GET' # Let me quote W3C HTTP 1.1 Specification (at http://www.w3.org/Protocols/rfc2068/rfc2068)
+                                #      Note: When automatically redirecting a POST request after receiving
+                                #     a 302 status code, some existing HTTP/1.0 user agents will
+                                #     erroneously change it into a GET request.
+                                # Yet Dice.com *relies* on the browser to change it to 'GET', otherwise it don't work!
+                                # I guess that's what's so nice about standards - there's so many to choose from!
+
       # This is the basic URL on which to build the query.
      ,'url' => 'http://jobsearch.dice.com/jobsearch/jobsearch.cgi?'
       # This is the Scraper attributes => native input fields mapping
@@ -59,6 +66,25 @@ my $scraperFrame =
          ] 
       ];
 
+
+sub testParameters {
+    my ($self) = @_;
+    
+    if ( ref $self ) {
+        $self->{'isTesting'} = 1;
+    }
+    
+    # 'POST' style scraperFrames can't be tested cause of a bug in WWW::Search(2.2[56]) !
+    my $isNotTestable = WWW::Search::Scraper::isGlennWood()?0:(($WWW::Search::VERSION eq '2.28') or ($WWW::Search::VERSION eq '2.26'));
+    return {
+                 'isNotTestable' => $isNotTestable
+                ,'testNativeQuery' => 'Perl NOT Java'
+                ,'expectedOnePage' => 9
+                ,'expectedMultiPage' => 21
+                ,'expectedBogusPage' => 0
+                ,'usesPOST' => 1
+           };
+}
 
 # Access methods for the structural declarations of this Scraper engine.
 sub scraperQuery { $scraperQuery }
@@ -232,9 +258,12 @@ sub jobID { return $_[0]->_elem('jobID'); }
 1;
 
 __END__
+
+=pod
+
 =head1 NAME
 
-WWW::Search::Scraper::Dice - class for searching www.Dice.com
+WWW::Search::Scraper::Dice - Dice(skills,locations) => (title, location ,residue)
 
 =head1 SYNOPSIS
 

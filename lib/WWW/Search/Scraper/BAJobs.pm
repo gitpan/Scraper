@@ -6,7 +6,7 @@ package WWW::Search::Scraper::BAJobs;
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.13 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.15 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(1.48 generic_option addURL trimTags));
@@ -16,17 +16,43 @@ use LWP::UserAgent;
 use HTML::Form;
 use HTTP::Cookies;
 
+# As of 2002.01.26, this is what BAJobs "Refine your search" <FORM> looks like.
+#<form action="/jobseeker/usersearch.jsp" method=post>
+#  <input type="hidden" name="searchKeywordsMethod" value=1>
+#  <input type="hidden" name="wholeWord" value="true">
+#  <input type="hidden" name="displayResultsPerPage" value="20">
+#  <input type="hidden" name="displaySortOrder" value="1">
+#  <input type="hidden" name="postingAge" value="7">
+#  <input type="hidden" name="countyList" value="">
+#  <input type="hidden" name="workTermTypeList" value="">
+#  <input type="hidden" name="jobPostingCategoryList" value="">
+#  <input type="hidden" name="industryCategoryList" value="">
+#  <p><b><font color=006699 face="arial,helvetica,sans-serif">Refine Your Search</font></b>
+#  <br>
+#  <input type=text name="searchKeywords" value=" Perl " size=40> &nbsp; &nbsp; <input type=submit value="Search">
+#</form>
+
 my $scraperQuery = 
    { 
-      'type' => 'FORM'       # Type of query generation is 'FORM'
-      # This is the basic URL on which to build the query.
-     ,'url' => 'http://www.bajobs.com/jobseeker/search.jsp'
-      # This is the Scraper attributes => native input fields mapping
+      'type' => 'POST'  # 'POST' - we used to use 'FORM', which works fine, too, but this way's a little faster.
+     
+     # This is the basic URL on which to build the query.
+     ,'url' => 'http://www.bajobs.com/jobseeker/usersearch.jsp?'
+     #,'url' => 'http://www.bajobs.com/jobseeker/search.jsp' # This one is the location of the <FORM>
+     
      ,'nativeQuery' => 'searchKeywords'
+     
      ,'nativeDefaults' =>
                             {
-                                 'displayResultsPerPage' => '100'
-                                ,'postingAge' => 30
+                                 'searchKeywordsMethod' => 1
+                                ,'wholeWord' => 'true'
+                                ,'displayResultsPerPage' => '100'
+                                ,'displaySortOrder' => 1
+                                ,'postingAge' => '7'
+                                ,'countyList' => ''
+                                ,'workTermTypeList' => ''
+                                ,'jobPostingCategoryList' => ''
+                                ,'industryCategoryList' => ''
                             }
      ,'fieldTranslations' =>
                       { '*' => 
@@ -37,7 +63,7 @@ my $scraperQuery =
                               }
                       }
       # Some more options for the Scraper operation.
-     ,'cookies' => 0
+     ,'cookies' => 1
    };
 
 my $scraperFrame =
@@ -45,7 +71,9 @@ my $scraperFrame =
            [ 
                [ 'COUNT', 'Job Postings.*?[- 0-9]+.*?of.*?<b>([,0-9]+)</b></font> total']
               ,[ 'BODY', '<!-- top prev/next -->', '<!-- end top prev/next -->',
-                 [ [ 'NEXT', 1, '<b>NEXT</b>' ] ] #, \&fixNext ] ]
+                 [ 
+               [ 'NEXT', 1, '<b>NEXT</b>' ]
+                ] #, \&fixNext ] ]
                ]
               ,[ 'BODY', '<!-- job list -->', '',
                  [  
@@ -73,6 +101,26 @@ my $scraperFrame =
            ]
         ];
 
+
+sub testParameters {
+    my ($self) = @_;
+
+    if ( ref $self ) {
+        $self->{'isTesting'} = 1;
+    }
+    
+    # 'POST' style scraperFrames can't be tested cause of a bug in WWW::Search(2.2[56]) !
+    my $isNotTestable = WWW::Search::Scraper::isGlennWood()?0:(($WWW::Search::VERSION eq '2.28') or ($WWW::Search::VERSION eq '2.26'));
+    return { 
+             'isNotTestable' => $isNotTestable
+            ,'testNativeQuery' => 'Service'
+            ,'expectedOnePage' => 9
+            ,'expectedMultiPage' => 101
+            ,'expectedBogusPage' => 0
+           };
+}
+
+
 # Access methods for the structural declarations of this Scraper engine.
 sub scraperQuery { $scraperQuery }
 sub scraperFrame { $_[0]->SUPER::scraperFrame($scraperFrame); }
@@ -86,8 +134,7 @@ sub scraperDetail{ undef }
 
 =head1 NAME
 
-WWW::Search::Scraper::BAJobs - class for searching BAJobs
-
+WWW::Search::Scraper::BAJobs - BAJobs.com(skills,locations,payrate) => (corporateBackground, postingDate, title, company, location)
 
 =head1 SYNOPSIS
 

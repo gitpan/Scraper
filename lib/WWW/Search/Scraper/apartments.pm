@@ -4,7 +4,7 @@ package WWW::Search::Scraper::apartments;
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/);
 use WWW::Search::Scraper::Response;
 
 use WWW::Search::Scraper(qw(1.48));
@@ -91,6 +91,15 @@ my $scraperFrame =
   ]
 ];
 
+
+sub testParameters {
+    #  went flippo - I'll fix this later..
+    return {
+                 'isNotTestable' => 'apartments.pm still has known bugs in it.'
+                ,'testNativeQuery' => 'New York'
+                ,'testNativeOptions' => { 'state' => 'NY' }
+           };
+}
 
 # Access methods for the structural declarations of this Scraper engine.
 sub scraperQuery { $scraperQuery }
