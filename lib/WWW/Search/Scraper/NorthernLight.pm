@@ -1,12 +1,12 @@
 
-package WWW::Search::Scraper::BAJobs;
+package WWW::Search::Scraper::NorthernLight;
 
 #####################################################################
 
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(1.44 generic_option addURL trimTags));
@@ -22,68 +22,57 @@ sub native_setup_search
     $self->{'_options'}{'scraperQuery'} =
     [ 'FORM'       # 
       # This is the basic URL on which to get the form to build the query.
-     ,['http://www.bajobs.com/jobseeker/search.jsp', 0, undef]
+     ,['http://www.northernlight.com/power.html', 'powSearch', 'search']
       # This names the native input field to recieve the query string.
      ,{  'nativeDefaults' =>
                         {
-                             'displayResultsPerPage' => '100'
-                            ,'postingAge' => 30
                         }
         ,'fieldTranslations' =>
-                { '*' => 
-                        {    'skills'    => 'searchKeywords'
-                            ,'payrate'   => undef
-                            ,'locations' => new WWW::Search::Scraper::FieldTranslation('BAJobs', 'Job', 'locations')
-                            ,'native_query' => 'searchKeywords'
+                {
+                    '*' =>
+                        {    'skills'    => 'qr'
+#                            ,'payrate'   => undef
+#                            ,'locations' => new WWW::Search::Scraper::FieldTranslation('NorthernLight', 'Job', 'locations')
+                            ,'native_query' => 'qr'
                             ,'*'         => '*'
                         }
                 }
       }
       # Some more options for the Scraper operation.
-     ,{'cookies' => 1
+     ,{'cookies' => 0
       }
     ];
-    
-#    $native_query = WWW::Search::unescape_query($native_query); # Thanks, but no thanks, Search.pm!
-#    $self->user_agent('user');
-#    $self->{_next_to_retrieve} = 0;
-#    if (!defined($self->{_options})) {
-#	$self->{_options} = {
-#	    'scraperForm_url' => ['http://www.bajobs.com/jobseeker/search.jsp', 0, 'searchKeywords', undef]
-#        };
-#    };
-#    
-#    $self->cookie_jar(HTTP::Cookies->new());
-#    
+    $self->{'_http_method'} = 'GET';
+
     $self->{'_options'}{'scrapeFrame'} = 
         [ 'HTML', 
            [ 
-               [ 'COUNT', 'Job Postings.*?[- 0-9]+.*?of.*?<b>([,0-9]+)</b></font> total']
-              ,[ 'BODY', '<!-- top prev/next -->', '<!-- end top prev/next -->',
-                 [ [ 'NEXT', 1, '<b>NEXT</b>' ] ] #, \&fixNext ] ]
-               ]
-              ,[ 'BODY', '<!-- job list -->', '',
-                 [  
-                    [ 'TABLE', '#0' ,
-                       [
-                          [ 'TR' ] , # There's an actual title row! Imagine that!
-                          [ 'HIT*' ,
-                            [  
+               [ 'COUNT', '<b>[0-9,]+ items?</b>']
+              ,[ 'NEXT', 1, 'alt="Next Page"' ]
+              ,[ 'BODY', '<!--NLBannerStart-->', '<!--NLResultListEnd-->',
+                  [  
+                     [ 'HIT*' , 'Job', #TEMP 'Job' is for testing, only. gdw.2001.08.18
+                        [  
+                           [ 'BODY', '<!--NLResultStart-->', '<!--NLResultEnd-->',
+                             [
                                [ 'TR',
                                   [
-                                     [ 'TD', [ [ 'A', 'corpURL', 'corporateBackground' ] ] ]
-                                    ,[ 'TD', 'postingDate' ]
-                                    ,[ 'A', 'url', 'title' ]
-                                    ,[ 'TD', 'company' ]
-                                    ,[ 'TD', '_clear_gif_' ]
-                                    ,[ 'TD', 'location' ]
+                                     [ 'TD' ]
+                                    ,[ 'TD', 
+                                        [
+                                           [ 'A', 'url', 'title' ]
+                                          ,['REGEX', '<!--NLResultRelevanceStart-->(\d+)% -<!--NLResultRelevanceEnd-->', 'relevance']
+                                          ,['REGEX', '&nbsp;</b>(.*?)<br>', 'description']
+                                        ]
+                                     ]
                                   ]
                                ]
-                            ]
-                          ] 
-                       ]
-                    ]
-                 ]
+                             ]
+                           ]
+                        ]
+                     ] 
+                    ,[ 'BOGUS', -1 ] # NorthernLight's last hit is bogus.
+                  ]
               ]
            ]
         ];
@@ -100,20 +89,20 @@ sub native_setup_search
 
 =head1 NAME
 
-WWW::Search::Scraper::BAJobs - class for searching BAJobs
+WWW::Search::Scraper::NorthernLight - class for searching NorthernLight
 
 
 =head1 SYNOPSIS
 
     require WWW::Search::Scraper;
-    $search = new WWW::Search::Scraper('BAJobs');
+    $search = new WWW::Search::Scraper('NorthernLight');
 
 
 =head1 DESCRIPTION
 
-This class is an BAJobs specialization of WWW::Search.
-It handles making and interpreting BAJobs searches
-F<http://www.BAJobs.com>.
+This class is an NorthernLight specialization of WWW::Search.
+It handles making and interpreting NorthernLight searches
+F<http://www.NorthernLight.com>.
 
 This class exports no public interface; all interaction should
 be done through WWW::Search objects.
@@ -127,9 +116,9 @@ None at this time (2001.05.06)
 
 =item search_url=URL
 
-Specifies who to query with the BAJobs protocol.
+Specifies who to query with the NorthernLight protocol.
 The default is at
-C<http://www.BAJobs.com/cgi-bin/job-search>.
+http://www.northernlight.com/power.html
 
 =item search_debug, search_parse_debug, search_ref
 Specified at L<WWW::Search>.
@@ -378,7 +367,7 @@ Specified at L<WWW::Search>.
 
 =head1 AUTHOR
 
-C<WWW::Search::BAJobs> is written and maintained
+C<WWW::Search::NorthernLight> is written and maintained
 by Glenn Wood, <glenwood@alumni.caltech.edu>.
 
 =head1 COPYRIGHT

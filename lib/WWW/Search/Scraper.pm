@@ -11,7 +11,7 @@ use vars qw($VERSION @ISA @EXPORT @EXPORT_OK);
 @EXPORT = qw(findNextForm);
 @EXPORT_OK = qw(findNextForm);
 @ISA = qw(WWW::Search Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.44 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.45 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search( qw(strip_tags) );
@@ -29,9 +29,13 @@ sub new {
     my $self;
     if ( $subclass =~ m-^\.\.[\/](.*)$- ) { # Allow the form "../name" to indicate
        $self = new WWW::Search($1);       # a WWW::Search backend. Also see "Some 
-    } else {                                #  searchers are not scrapers", below.
+        bless $self, 'WWW::Search::Scraper'; # searchers are not scrapers", below.
+    } else {                                
         $self = new WWW::Search("Scraper::$subclass");
     }
+
+    $self->{'agent_name'} = 'WWW::Search::Scraper/2.00';
+    $self->{'agent_e_mail'} = 'glenwood@alumni.caltech.edu;MartinThurn@iname.com';
 
     $self->{'scraperQF'} = 0; # Explicitly declare 'scraperQF' as the deprecated mode.
     $searchName = $subclass unless $searchName;
@@ -48,43 +52,112 @@ sub generic_option
     return WWW::Search::generic_option($option);
 }
 
+# A generalize get/set method for object attributes.
+sub _attr {
+    my ($self, $attr, $value) = @_;
+    my $rtn = $self->{$attr};
+    $self->{$attr} = $value if defined $value;
+# neat idea, but we've got to rewrite a lot of method invocations to make this ok. gdw.2001.07.04
+#    if ( wantarray ) {
+#        return $rtn if 'ARRAY' eq ref $rtn;
+#        return [$rtn];
+#    }
+    return $rtn;
+}
+sub request        { $_[0]->_attr('_scraperRequest', $_[1]) }
+sub query          { $_[0]->_attr('_query', $_[1]) }
+sub queryFieldName { $_[0]->_attr('_queryFieldName', $_[1]) }
+sub queryDefaults  { $_[0]->_attr('_queryDefaults', $_[1]) }
+sub queryOptions   { $_[0]->_attr('_queryOptions', $_[1]) }
+sub fieldTranslations  { $_[0]->_attr('_fieldTranslations', $_[1]) }
+
+
 sub native_setup_search
 {
     my $self = shift;
-    $_[0] = WWW::Search::unescape_query($_[0]); # Thanks, but no thanks, Search.pm!
+    my ($native_query, $native_options) = @_;
+    my $rqst = $self->{'_scraperRequest'};
     
     # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## 
-    # This pecular set of code translates old interface mode into 'scraperRequest' mode,
-    #  (unless 'scraperRequest' mode is active already).
-    unless ( $self->{'_scraperRequest'} ) {
+    #
+    # This pecular set of code translates old interface mode into 'canonical request' mode,
+    #  (unless canonical request 'scraperRequest' is active already).
+    #
+    # NOTE THAT IF THE CANONICAL REQUEST HAS BEEN SET, ALL native_setup_search() PARAMETERS ARE IGNORED!
+    #
+    # otherwise, they get picked up here.
+    if ( $rqst ) {
+        $self->{'_debug'} = $rqst->debug();
+    }
+#    else 
+    {
+        $native_query = WWW::Search::unescape_query($native_query); # Thanks, but no thanks, Search.pm!
         my $options = {};
-        for ( keys %{$self->{_options}} ) {
+        for ( keys %{$self->{'_options'}} ) {
             next if (generic_option($_));
-            $options->{$_} = $self->{_options}->{$_};
+            $options->{$_} = $self->{'_options'}->{$_};
         }
-        if ( defined($_[1]) ) {
-         	# Copy new options, unless generic_option().
-            my $nOpt = $_[1];
-    	    foreach ( keys %$nOpt ) {
-                next if (generic_option($_));
-    	        $options->{$_} = $nOpt->{$_};
-        	};
-        };
-        my $rqst = new WWW::Search::Scraper::Request($_[0], $options);
-        $self->{'_scraperRequest'} = $rqst;
-        $rqst->{'_base_url'} = $self->{'_base_url'};
+       	# Copy options set by WWW::Search::native_query(), unless generic_option().
+        $options->{'native_query'} = $self->{'native_query'} if ( $self->{'native_query'} );
+      	# Copy new options, unless generic_option().
+        my $nOpt = $self->{'native_options'};
+   	    foreach ( keys %$nOpt ) {
+            next if (generic_option($_));
+  	        $options->{$_} = $nOpt->{$_};
+    	};
+        unless ( $rqst ) {
+            $rqst = new WWW::Search::Scraper::Request($native_query, $options); 
+            $self->request($rqst);
+            $rqst->{'_base_url'} = $self->{'_base_url'};
+        } else {
+            for ( keys %$options ) {
+                $rqst->{'_fields'}->{$_} = $options->{$_} unless $rqst->{'_fields'}->{$_};
+            }
+        }
     }
     # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## 
 
-    my @qType = @{$self->{'_options'}{'scraperQuery'}};
-    return $self->native_setup_search_NULL(@_) unless @qType;
+    # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## 
+    # Get the scraperQuery declaration of this Scraper module, of fake on (as in when using a WWW::Search module).
+    my @qType = ( defined $self->{'_options'}{'scraperQuery'} ) ?
+        @{$self->{'_options'}{'scraperQuery'}}
+        : # ternary expression.
+        ( 'SEARCH'    # This is a WWW::Search module - notify native_setup_search_NULL() of that.
+          # This is the basic URL on which to build the query.
+         ,'http://www.brainpower.com/IndListProject.asp?'
+         , undef # This gives us a null %inputsHash, so WWW::Search::Scraper will ignore that functionality (hopefully)
+         , {'cookies' => 0 # The WWW::Search module must maintain its own cookies.
+          }
+        );
+    # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## 
+
+    my %inputsHash;
+    if ( defined $qType[2] ) {
+        %inputsHash = %{$qType[2]};
+        $self->queryFieldName($inputsHash{'nativeQuery'}) unless $self->queryFieldName();
+        $self->queryDefaults($inputsHash{'nativeDefaults'}) unless $self->queryDefaults();
+        $self->fieldTranslations($inputsHash{'fieldTranslations'}) unless $self->fieldTranslations();
+    }
+    
+    my %optionHash;
+    if ( defined $qType[3] ) {
+        %optionHash = %{$qType[3]};
+        # Process the options.
+        $self->cookie_jar(HTTP::Cookies->new()) if $optionHash{'cookies'};
+        foreach (sort keys %optionHash) {
+            $self->{'_scraperOptions'}{$_} = $optionHash{$_};
+        };
+    }
+    
+    $self->prepare($self->request());
 
     for ( $qType[0] ) {
-        m/SHERLOCK/ && do { $self->native_setup_search_SHERLOCK(@_); last };
-        m/FORM/     && do { $self->native_setup_search_FORM(@_); last };
-        m/QUERY/    && do { $self->native_setup_search_QUERY(@_); last };
+        m/SHERLOCK/ && do { return $self->native_setup_search_SHERLOCK(); };
+        m/FORM/     && do { return $self->native_setup_search_FORM(); };
+        m/QUERY/    && do { return $self->native_setup_search_QUERY(); };
         m/POST/     && do { $self->{'_http_method'} = 'POST';
-                            $self->native_setup_search_QUERY(@_); last };
+                            return $self->native_setup_search_QUERY(); };
+        m/SEARCH/   && do { return $self->native_setup_search_NULL(@_); };
         die "Invalid mode in WWW::Search::Scraper - '$_'\n";
     }
 }
@@ -99,21 +172,116 @@ sub native_setup_search_SHERLOCK
 
 sub native_setup_search_FORM
 {
-    die "Unimplemented mode in WWW::Search::Scraper - 'FORM'\n";
+    my($self) = @_;
+    my @qType = @{$self->{'_options'}{'scraperQuery'}};
+    my $rqst = $self->{'_scraperRequest'};
+    
+    $self->user_agent('user');
+    $self->{_next_to_retrieve} = 0;
+    
+    my $scraperForm = $qType[1];
+    # $scraperForm = [ 'url', 'formIndex' (or formName, NYI), 'submitButtonName' or undef ]
+    my $url = $$scraperForm[0];
+    if ( ref $url ) {
+        $self->{'_base_url'} = &$url($self, $rqst->query(), $self->queryOptions());
+    } else {
+        $self->{'_base_url'} = $url;
+    }
+    unless ( $self->{'_base_url'} ) {
+        print STDERR "No base url was specified by ".ref($self).".pm, so no search is possible.\n";
+        undef $self->{'_next_url'};
+        return undef;
+    }
+    $self->{'_http_method'} = 'POST' unless $self->{'_http_method'};
+    
+    print STDERR 'FORM URL: '.$self->{_base_url} . "\n" if ($self->{_debug});
+    my $response = $self->http_request($self->{'_http_method'}, $url);
+    return undef unless $response->is_success;
+   
+    my @forms = HTML::Form->parse($response->content(), $response->base());
+    my $form = $forms[$$scraperForm[1]];
+
+    # Finally figure out the url.
+    return undef unless $form;
+
+    $self->{'_http_method'} = $form->method();
+    $self->{'search_method'} = $form->method();
+    
+    # Process the inputs.
+    # Fill in the defaults, first
+    my %optsHash = %{$self->queryDefaults()};
+    # Override those with what came with the request.
+    my $options_ref = $self->queryOptions();
+    foreach (sort keys %$options_ref) {
+        $optsHash{$_} = $$options_ref{$_};
+    };
+    
+    for my $key (sort keys %optsHash) {
+        my $opts = $optsHash{$key};
+#        if ( 'ARRAY' eq ref $opts ) {
+#            for ( @$opts) {
+#                $options .= "$key=".WWW::Search::escape_query($_)."&";
+#            }
+#        } else {
+            my $field = $form->find_input($key);
+            next unless $field;
+            my $fldtyp = $field->type();
+            if ( $fldtyp eq 'option' ) {
+            my $n = 1;
+            SUBFIELD: while ( my $field = $form->find_input($key, undef, $n++) ) {
+                    for ( @{$field->{'menu'}} ) {
+                        if ( $_ eq $opts ) {
+                            $field->value($opts);
+                            last SUBFIELD;
+                        }
+                    }
+                }
+#'password'', ``hidden'', ``textarea'', ``image'', ``submit'', ``radio'',
+#``checkbox'', ``option''...my $x = $field->form_name_value();
+            }
+            else {
+                $field->value($opts);
+            }
+        }
+#bless( {
+#      'seen' => [
+#        1,
+#        0
+#      ],
+#      'menu' => [
+#        undef,
+#        '2'
+#      ],
+#      'multiple' => 'multiple',
+#      'current' => 0,
+#      'size' => '4',
+#      'type' => 'option',
+#      'name' => 'countyIDs'
+#    }, 'HTML::Form::ListInput' )
+    
+    my $submit_button = $form->find_input($$scraperForm[2], 'submit');
+    $submit_button = $form->find_input($$scraperForm[2], 'image') unless $submit_button;
+    die "Can't find 'submit' button named '$$scraperForm[2]' in '$url'" unless $submit_button;
+    my $req = $submit_button->click($form); #
+    $self->{_options}{'scraperRequest'} = $req;
+
+    $self->{_base_url} = $self->{_next_url} = $req->uri().'?'.$req->content();
+    print STDERR $self->{_base_url} . "\n" if ($self->{_debug});
 }
 
 
 sub native_setup_search_QUERY
 {
-    my($self, $native_query, $native_options_ref) = @_;
+    my($self) = @_;
     my @qType = @{$self->{'_options'}{'scraperQuery'}};
+    my $rqst = $self->{'_scraperRequest'};
     
     $self->user_agent('user');
     $self->{_next_to_retrieve} = 0;
     
     my $url = $qType[1];
     if ( ref $url ) {
-        $self->{'_base_url'} = &$url($self, $native_query, $native_options_ref);
+        $self->{'_base_url'} = &$url($self, $rqst->query(), $self->queryOptions());
     } else {
         $self->{'_base_url'} = $url;
     }
@@ -123,47 +291,9 @@ sub native_setup_search_QUERY
         return undef;
     }
     $self->{'_http_method'} = 'GET' unless $self->{'_http_method'};
-    my $rqst = $self->{'_scraperRequest'};
     $rqst->{'_base_url'} = $self->{'_base_url'};
 
-    my %inputsHash = %{$qType[2]};
-    my %optionHash = %{$qType[3]};
-
-    my $options_ref = $self->{_options};
-    if (defined($native_options_ref)) {
-    	# Copy in new options.
-    	foreach (keys %$native_options_ref) {
-    	    $options_ref->{$_} = $native_options_ref->{$_} if defined $native_options_ref->{$_};
-    	};
-    };
-    $self->{_debug} = $options_ref->{'search_debug'};
-    $self->{_debug} = 2 if ($options_ref->{'search_parse_debug'});
-    $self->{_debug} = 0 if (!defined($self->{_debug}));
-    
-    # Process the options.
-    $self->cookie_jar(HTTP::Cookies->new()) if $optionHash{'cookies'};
-    foreach (sort keys %optionHash) {
-        $self->{'_scraperOptions'}{$_} = $optionHash{$_};
-    };
-    
-    my $rqst = $self->{'_scraperRequest'};
-    $rqst->{'queryFieldName'} = $inputsHash{'scraperQuery'} unless $rqst->{'queryFieldName'};
-    $rqst->{'optionsRef'} = $options_ref;
-    $self->{'_next_url'} = $rqst->generateQuery($native_query);
-
-    # Process the inputs.
-    # (Now in sorted order for consistency regardless of hash ordering.)
-#    my $options = "$inputsHash{'scraperQuery'}=".WWW::Search::escape_query($native_query);
-#    foreach (sort keys %$options_ref) {
-#    	# printf STDERR "option: $_ is " . $options_ref->{$_} . "\n";
-#    	next if (generic_option($_));
-#        
-#        $options_ref->{$_} =~ s/\+/\,/g if($_ eq 'st');
-#        $options_ref->{$_} =~ s/\+/\&$_=/g unless($_ eq 'q');
-#
-#        $options .= "&$_=".WWW::Search::escape_query($options_ref->{$_});
-#    };
-#   $self->{'_next_url'} = $self->{'_base_url'}.$options;
+    $self->{'_next_url'} = $self->generateQuery($rqst);
 
     print STDERR $self->{_next_url} . "\n" if ($self->{_debug});
 }
@@ -172,7 +302,13 @@ sub native_setup_search_QUERY
 # This one handles the deprecated Scraper::native_setup_search()
 sub native_setup_search_NULL
 {
-    my($self, $native_query, $native_options_ref) = @_;
+    my($self) = @_;
+    
+    # This is a cheap way to get back to the non-canonical form.
+    # We'll clean up the rest of this code later, so it won't look
+    # like such a waste of time to prepare(canonical) just to come
+    # back to the legacy form here. gdw.2001.06.30
+    my ($native_query, $native_options_ref) = ($self->{'_scraperRequest'}->query(), $self->queryOptions());
     
     my $subJob = 'Perl';
     $self->user_agent('user');
@@ -211,30 +347,130 @@ sub native_setup_search_NULL
         	    "?" . $options .
             	"KEYWORDS=" . $native_query;
 
-    print STDERR $self->{_base_url} . "\n" if ($self->{_debug});
+    print STDERR $self->{_next_url} . "\n" if ($self->{_debug});
+}
+
+
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### 
+# Prepare the query and options of the Scraper module, based on the given request.
+sub prepare {
+    my ($self, $rqst) = @_;
+
+    # Make sure the request object is ready for us.
+    $rqst->prepare();
+
+    # Move the debug option from the request to the Scraper module.
+    $self->{'_debug'} = $rqst->{'_debug'};
+
+    # Move the field values from $rqst into $self, translating
+    # field names to option names according to $self->fieldTranslations.
+    # fieldTranlations{'*'} eq '*' - clone the name
+    # fieldTranlations{'*'} ne '*' - drop that field.
+    my $fields = $rqst->fields;
+    my $options_ref = $self->queryOptions();
+    unless ( $options_ref ) {
+        $options_ref = {};
+        $self->queryOptions($options_ref);
+    }
+    my $fieldTranslationsTable = $self->fieldTranslations();
+    my $fieldTranslations = $fieldTranslationsTable->{'*'}; # We'll do this until context sensitive work is done - gdw.2001.08.18
+    my $fieldTranslation;
+
+    for ( keys %$fields ) {
+        $fieldTranslation = $$fieldTranslations{$_};
+        next if defined $fieldTranslation and $fieldTranslation eq '';
+        unless ( $fieldTranslation ) {
+            if ($$fieldTranslations{'*'} eq '*' ) {
+                $fieldTranslation = $_;
+            } else {
+                next;
+            }
+        }
+        # 'fieldTranslation' may be a string naming the option, or 
+        # a subroutine tranforming the field into a (nam,val) pair,
+        # or a FieldTranslation object.
+        if ( 'CODE' eq ref $fieldTranslation ) {
+            my ($nam, $val, $postSelect) = &$fieldTranslation($self, $rqst, $$fields{$_});
+            $options_ref->{$nam} = $val;
+            # Stuff the postSelect criteria for checking later.
+            $rqst->{'_postSelect'}{$nam} = $postSelect;
+        } elsif ( ref $fieldTranslation ) { # We assume any other ref is an object of some sort.
+            my $nam = $fieldTranslation->translate($self, $rqst, $$fields{$_});
+            for ( keys %$nam ) {
+                $options_ref->{$_} = $$nam{$_};
+            }
+        }
+        else {
+            $options_ref->{$fieldTranslation} = $$fields{$_};
+        }
+    }
+}
+
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### 
+# The options have been prepared into the Scraper module object.
+# generateQuery() creates the HTTP query based on those options.
+sub generateQuery {
+    my ($self, $rqst) = @_;
+
+    # Process the inputs.
+    # (Now in sorted order for consistency regardless of hash ordering.)
+    my $options = ''; # Was scraperQuery, now fieldTranslations 
+    
+    # The following line allows us to use native_query(), ala pre-v2.00 modules, with this Scraper.pm
+    $options = $self->queryFieldName().'='.$self->{'native_query'}.'&' if $self->{'native_query'} and $self->queryFieldName();
+
+    # Fill in the defaults, first
+    my %optsHash = %{$self->queryDefaults()};
+    # Override those with what came with the request.
+    my $options_ref = $self->queryOptions();
+    foreach (sort keys %$options_ref) {
+        $optsHash{$_} = $$options_ref{$_};
+    };
+    for my $key (sort keys %optsHash) {
+        my $opts = $optsHash{$key};
+        if ( 'ARRAY' eq ref $opts ) {
+            for ( @$opts) {
+                $options .= "$key=".WWW::Search::escape_query($_)."&";
+            }
+        } else {
+            $options .= "$key=".WWW::Search::escape_query($opts)."&";
+        }
+    };
+    chop $options;
+    return $self->{'_base_url'}.$options;
 }
 
 
 
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### 
 sub native_retrieve_some
 {
     my ($self) = @_;
-    
+    my $debug = $self->{_debug};
+
     # fast exit if already done
-    return undef if ( !defined($self->{_next_url}) );
+AGAIN:    
+    unless ( defined($self->{_next_url}) ) {
+        print STDERR "END_OF_SEARCH: _next_url is empty.\n" if $debug;
+        return undef;
+    };
     
     # get some
-     if ( $self->{_debug} ) {
+     if ( $debug ) {
          my $obj = ref $self;
          print STDERR "$obj::native_retrieve_some: fetching " . $self->{_next_url} . "\n";
      }
     my $method = $self->{'_http_method'};
     $method = 'GET' unless $method;
+    print STDERR "Fetching NEXT_URL: '".$self->{_next_url}."'\n" if $debug;
     my $response = $self->http_request($method, $self->{_next_url});
     $self->{'_last_url'} = $self->{'_next_url'}; $self->{'_next_url'} = undef;
     $self->{response} = $response;
-    
-    return undef unless $response->is_success;
+
+    unless ( $response->is_success ) {
+        print STDERR "Request failed in Scraper.pm: ".$response->message() if $debug;
+        return undef ;
+    }
 
     my $hits_found = $self->scrape($response->content(), $self->{_debug});
 
@@ -245,6 +481,36 @@ sub native_retrieve_some
 }
 
 
+
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### 
+# Given a candidate hit, do post-selection.
+# Return 1 to keep this hit, 0 to cast it away.
+sub postSelect {
+    my ($self, $rqst, $rslt) = @_;
+    # By default, the Request object will do the postSelect for the Scraper module.
+    # If the Scraper module wants to override that, then it overrides this Scraper::postSelect().
+    
+    my $fields = $rqst->fields;
+    
+    my $fieldTranslationsTable = $self->fieldTranslations();
+    my $fieldTranslations = $fieldTranslationsTable->{'*'}; # We'll do this until context sensitive work is done - gdw.2001.08.18
+    my $fieldTranslation;
+
+    for ( keys %$fields ) {
+        $fieldTranslation = $$fieldTranslations{$_};
+        next if defined $fieldTranslation and $fieldTranslation eq '';
+        # 'fieldTranslation' may be a string naming the option, or 
+        # a subroutine tranforming the field into a (nam,val) pair,
+        # or a FieldTranslation object - that's the only one that'll have a postSelect() method!
+        if ( 'CODE' eq ref $fieldTranslation ) {
+        }
+        elsif ( ref $fieldTranslation ) # We assume any other ref is an object of some sort.
+        { 
+            return 0 unless $fieldTranslation->postSelect($self, $rqst, $rslt);
+        }
+    }
+    return $rqst->postSelect($self, $rslt);
+}
 
 # Public
 sub scrape { my ($self, $content, $debug) = @_;
@@ -258,7 +524,6 @@ sub scraper { my ($self, $scaffold_array, $content, $hit, $debug) = @_;
     
     my ($sub_content, $next_scaffold);
 
-
 SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
         my $tag = $$scaffold[0];
 
@@ -267,19 +532,46 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
         # 'HIT*' is special since it has pre- and post- processing (adding the hits to the hit-list).
         # All other tokens simply process data as it moves along, then they're done,
         #  so they will do a set up, then pass along to recurse on scraper() . . .
-        if ( 'HIT*' eq $tag )
+        if ( 'HIT' eq $tag ) {
+            my $resultType = $$scaffold[1];
+            if ( 'ARRAY' eq ref $resultType ) {
+                $next_scaffold = $resultType;
+                $resultType = '';
+            }
+            $next_scaffold = $$scaffold[2];
+            $next_scaffold = $$scaffold[1] unless defined $next_scaffold;
+            $sub_content = $$content;
+        }
+        elsif ( 'HIT*' eq $tag )
         {
+            my $resultType = $self->{'_options'}{'scraperResultType'};
+            $resultType = $$scaffold[1] unless $resultType;
+            if ( 'ARRAY' eq ref $resultType ) {
+                $next_scaffold = $resultType;
+                $resultType = '';
+            }
+            else
+            {
+                $resultType = "::$resultType";
+                eval "use WWW::Search::Scraper::Response$resultType";
+                if ( $@ ) {
+                    die "Can't load your Response module '$resultType': $@";
+                };
+                $next_scaffold = $$scaffold[2];
+            }
+            $next_scaffold = $$scaffold[2];
+            $next_scaffold = $$scaffold[1] unless defined $next_scaffold;
             my $hit;
             do 
             {
-                if ( $hit )
+                if ( $hit && $self->postSelect($self->request(), $hit) )
                 {
                     push @{$self->{cache}}, $hit;
                     $total_hits_found += 1;
                 }
-                $hit = $self->newHit();
+                $hit = $self->newHit($resultType);
                 $hit->{'searchObject'} = $self;
-            } while ( $self->scraper($$scaffold[1], $content, $hit, $debug) );
+            } while ( $self->scraper($next_scaffold, $content, $hit, $debug) );
             next SCAFFOLD;
         }
     
@@ -364,7 +656,15 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
                     if ( $sub_content =~ m-$next_url_button-si )
                     {
                         $url =~ s-A\s+HREF=--si;
-                        $url =~ s-^'(.*?)'\s*$-$1-si unless $url =~ s-^"(.*?)"\s*$-$1-si;
+                        if ( $url = ~ m-^'([^']*)'\s*$- ) {
+                            $url = $1;
+                        }
+                        elsif ( $url = ~ m-^"([^"]*)"\s*$- ) {
+                            $url = $1;
+                        }
+                        elsif ( $url = ~ m-^([^ >]*)'\s*$- ) {
+                            $url = $1;
+                        }
                         my $datParser = $$scaffold[3];
                         $datParser = \&WWW::Search::Scraper::null unless $datParser;
                         my $url = new URI::URL(&$datParser($self, $hit, $url), $self->{_base_url});
@@ -409,6 +709,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
             }
             next SCAFFOLD unless $sub_content = $self->getMarkedText($tag, $content);
         }
+
     	elsif ( $tag =~ m/^(TD|DT|DD|DIV)$/ )
         {
             next SCAFFOLD unless $sub_content = $self->getMarkedText($tag, $content); # and throw it away.
@@ -443,7 +744,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
         elsif ( 'A' eq $tag ) 
         {
             my $lbl = $$scaffold[1];
-            if ( $$content =~ s-<A\s+HREF="([^"]+)"[^>]*>(.*?)</A>--si )
+            if ( $$content =~ s-<A[^>]+?HREF="([^"]+)"[^>]*>(.*?)</A>--si )
             {
                 print "<A> binding: $$scaffold[2]: '$2', $$scaffold[1]: '$1'\n" if $debug;
                 my $datParser = $$scaffold[3];
@@ -465,7 +766,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
         elsif ( 'AN' eq $tag ) 
         {
             my $lbl = $$scaffold[1];
-            if ( $$content =~ s-<A\s+HREF=([^>]+)>(.*?)</A>--si )
+            if ( $$content =~ s-<A[^>]+?HREF=([^>]+)>(.*?)</A>--si )
             {
                 print "<A> binding: $$scaffold[2]: '$2', $$scaffold[1]: '$1'\n" if $debug;
                 
@@ -542,7 +843,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
         {
             my $x = $$content;
             $x =~ s/\r//gs;
-            print "TRACE:\n'$x'\n";
+            print STDERR "TRACE:\n'$x'\n";
             $total_hits_found += $$scaffold[1];
         } elsif ( $tag eq 'CALLBACK' ) {
             &{$$scaffold[1]}($self, $hit, $content, $debug);
@@ -557,7 +858,19 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
 }
 
 
-
+sub newHit {
+    my ($self, $resultType) = @_;
+    my $hit;
+    if ( 'CODE' eq ref $resultType ) {
+        $hit = &$resultType();
+    } else {
+        eval "\$hit = new WWW::Search::Scraper::Response$resultType";
+        if ( $@ ) {
+            die "Can't instantiate your Response module '$resultType': $@";
+        };
+    }
+    return $hit;
+}
 sub touchUp {
     my ($self, $hit, $dat, $datParser) = @_;
 }
@@ -700,11 +1013,6 @@ sub findNextForm {
 
 
 
-use WWW::Search::Scraper::Response;
-sub newHit {
-    my $self = new WWW::Search::Scraper::Response;
-    return $self;
-}
 
 { package WWW::Search;
 sub getName {
@@ -731,7 +1039,9 @@ sub redirect_ok
     # the conditions under which the request was issued.
 
     my($self, $request) = @_;
-    return 1 if $request->uri() =~ m-jobsearch\.dice\.com/jobsearch/jobsearch\.cgi-i;
+    return 1 if $request->uri() =~ m-seeker\.dice\.com/jobsearch/jobsearch_r\.epl-i;
+    return 1 if $request->uri() =~ m-seeker\.dice\.com/jobsearch/resultSummary\.epl-i;
+#    return 1 if $request->uri() =~ m-jobsearch\.dice\.com/jobsearch/jobsearch\.cgi-i;
     return 1 if $request->uri() =~ m-www\.bajobs\.com/jobseeker/searchresults\.jsp-i;
     return 1 if $request->uri() =~ m-\.techies\.com/Common-i;
     return 0 if $request->method eq "POST";
@@ -757,7 +1067,7 @@ WWW::Search::Scraper('engineName');
 =head1 DESCRIPTION
 
 "Scraper" is a framework for issuing queries to a search engine, and scraping the
-data from the resultant multi-page responses.
+data from the resultant multi-page responses, and the associated detail pages.
 
 As a framework, it allows you to get these results using only slight knowledge
 of HTML and Perl. (All you need to know you can learn by reading this document.)
@@ -770,10 +1080,39 @@ its results. That's where your human intelligence comes in. You need to supply h
 Scraper to help it find the right interpretation. And that is why you need some limited
 knowledge of HTML and Perl.
 
+=head1 MAJOR FEATURES
+
+=over 4
+
+=item Framing
+
+A simple opcode based language makes describing the results and details pages of new engines easy,
+and adapting to occasional changes in an existing engine's format simple.
+
+=item Canonical Requests
+
+A common Request container makes multiple search engine searches easy to implement, and 
+automatically adapts to changes.
+
+=item Canonical Response
+
+A common Response container makes interpretation of results common among all search engines possible.
+Also adapts easily to changes.
+
+=item Post-filtering
+
+Post-filtering provides a powerful client-based extension of the search capabilities to all search engines.
+
+=back
+
+=head1 BUILDING NEW SCRAPERS
+
 =head2 FRONT-END
 
 The front-end of Scraper is the part that figures out the search page and issues a query.
 There are three ways to implement this end.
+
+=head3 Three Ways to Issue Requests
 
 =over 4
 
@@ -813,6 +1152,10 @@ so your results will be limited to those appearing on the first response page.
 Sherlock parses only a half-dozen interesting fields from the data. Your client is left with the burden of parsing the
 rest from the 'result' data field.
 
+=item Sherlock parses only the first page of the response.
+
+You should set the results-per-page to a high value. Sherlock will not go to the "Mext" page.
+
 =item Not all Sherlock plugins are created equal.
 
 You'll find that many of the plugins simply do not work. This is in spite of the fact that Sherlock includes
@@ -839,6 +1182,24 @@ these fields via the {'option'=>'value'} parameter of the C<next_result()> metho
 =back
 
 See the EXAMPLES below for these two latter approaches.
+
+=head3 prepare ( Canonical )
+
+Anyway you go about executing a request, it is desirable to use a canonical interface to the user.
+This allows the user to create one request, based on a "canon" of how requests should be formed,
+that can be presented to any Scraper module and that module will understand what to do with it.
+To make this work, each Scraper module must include a method for translating the canonical request
+into a native request to their search engine. This is done with the prepare() method. If you are
+going to write your own Scraper module, then you should write a prepare() method as well.
+
+See the canonical request module F<WWW::Search::Scraper::Request> for a description of the canonical form,
+and how the Scraper module uses it to generate a native form.
+F<WWW::Search::Scraper> contains a prepare() method itself, which links up with the FieldTranslation class,
+which will translate from a canonical field to one or more native fields.
+It is based on a table lookup in so-called "tied-translation tables".
+It also performs a "postSelect()" operation (via FieldTranslation) based on a table lookup in the same "tied-translation table".
+See F<eg/setupLocations.pl> for an example of how this is used (in this case, for the canonical "locations" field).
+See guidelines presented in F<WWW::Search::Scraper::Request> to get the best, most adaptable results.
 
 =head2 BACK-END
 
@@ -930,10 +1291,15 @@ provided without quotes, then the C<AN> operation will parse it more reliably.
 =item HIT*
 
 This command declares that the hits are about to be coming!
-The first (and only) parameter of the HIT* command specifies a Scraper script, as described here,
- for parsing all the data for one complete record.
-HIT* will process that script, stashing the record away, discarding the parsed text, and continuing until
-there is no more data to be found the corresponding text.
+There are several formats for this command; they declare the hit is here, the type of the hit, and how to parse it.
+An optional second parameter names the type of WWW::Search::Scraper::Response class will encapsulate the response.
+This parameter may be a string, naming the class ('Job', or 'Apartment', for instance), or it may be a reference
+of a subroutine that instantiates the response (as if C<new WWW::Search::Scraper::Response::Job>, for instance).
+(You may override this with a 'scraperResultType' option on Scraper->new().)
+The last parameter (being second or third parameter, depending if you declare a hit type) specifies a Scraper script,
+as described here, for parsing all the data for one complete record.
+HIT* will process that script, instantiate a Response object, stash the results into it, discarding the parsed text,
+and continuing until there is no more parsable data to be found.
 
 =item REGEX
 
@@ -1220,6 +1586,26 @@ CALLBACK operation, just about any type of special treatment can be created for 
 We refer you to the code for C<WWW::Search::Sherlock> for further education on how to compose your own CALLBACK functions.
 
 =back
+
+=head1 DEPENDENCIES
+
+In addition to F<WWW::Search>, Scraper depends on these non-core modules in order to support the
+translation of requests from canonical forms to native forms.
+
+=over 8
+
+=item F<Tie::Persistent>
+
+=item F<Storable>
+
+=back
+
+The Scraper modules that do table driven field translations (from canonical requests to native requests) will have
+files included in their package representing the translation table in Storable format. The names of these files are
+<ScraperModuleName>.<requestType>.<canonicalFieldName>. E.G., Brainpower.pm owns a translation table for the 'location'
+field of the canonical Request::Job module; it is named C<Brainpower.Job.location> . 
+
+See F<WWW::Search::Scraper::Request.pm> for more information on Translations.
 
 =head1 AUTHOR
 

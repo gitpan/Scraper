@@ -132,11 +132,10 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.1 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(1.31 addURL trimTags));
-require WWW::SearchResult;
 
 use HTML::Form;
 use HTTP::Cookies;
@@ -273,7 +272,7 @@ sub native_setup_search
         {
             $resultItem = \@results;
         }
-        $resultItem = [ [ 'HIT*', $resultItem, $$interpret{'browserResultType'} ] ];
+        $resultItem = [ [ 'HIT*', 'Sherlock', $resultItem, $$interpret{'browserResultType'} ] ];
     
         my $resultList;
         if ( $$interpret{'resultListStart'} or
@@ -491,12 +490,6 @@ sub resultData {
         $$total_hits_found = 1;
     }
     return (undef, undef);
-}
-
-
-use WWW::Search::Scraper::Response::Sherlock;
-sub newHit {
-    return new WWW::Search::Scraper::Response::Sherlock;
 }
 
 1;

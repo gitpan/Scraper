@@ -119,7 +119,7 @@ modify it under the same terms as Perl itself.
 #####################################################################
 
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Search::Scraper(qw(1.42));
 
@@ -138,7 +138,8 @@ sub native_setup_search
       # This is the basic URL on which to build the query.
      ,\&makeURL
       # This is the Scraper attributes => native input fields mapping
-     ,{'scraperQuery' => 'Search'
+     ,{   'nativeQuery' => 'Search'
+         ,'nativeDefaults' => {}
       }
       # Some more options for the Scraper operation.
      ,{'cookies' => 1
@@ -157,7 +158,7 @@ sub native_setup_search
      ,[ 'BODY', 'src="/Common/Graphics/Buttons/NewSearch.gif"', undef,   # There are two forms in this
          [ [ 'BODY', undef, 'src="/Common/Graphics/Buttons/NewSearch.gif"', # result, by the same name!
              [  
-                [ 'HIT*' ,
+                [ 'HIT*' , 'Job',
                     [ [ 'TR', 
                          [
                             [ 'TD', 
@@ -193,13 +194,5 @@ sub makeURL {
     $self->{'_http_method'} = 'POST';
     return $url;
 }
-
-use WWW::Search::Scraper::Response::Job;
-sub newHit {
-    my $self = new WWW::Search::Scraper::Response::Job;
-    return $self;
-}
-
-
 
 1;

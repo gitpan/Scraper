@@ -49,7 +49,7 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(1.34 generic_option addURL trimTags));
@@ -104,7 +104,7 @@ sub native_setup_search
            ,[ 'TABLE', '#0',
               [
                 [ 'TR', '#0' ] # The first row is column titles.
-               ,[ 'HIT*' ,
+               ,[ 'HIT*' , 'Job',
                   [  
                     [ 'TD', 'relevance', \&trimLFs ]
                    ,[ 'TD', 'company',   \&trimLFs ]
@@ -183,14 +183,5 @@ sub trimLFLFs { # Strip double-LFs, then tag clutter from $_;
    # This simply rearranges the parameter list from the datParser form.
     return $self->trimTags($hit, $dat);
 }
-
-
-use WWW::Search::Scraper::Response::Job;
-sub newHit {
-    my $self = new WWW::Search::Scraper::Response::Job;
-    return $self;
-}
-
-
 
 1;

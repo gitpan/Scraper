@@ -7,7 +7,9 @@ use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
 use WWW::Search::Scraper(qw(1.41 generic_option addURL trimTags));
-$VERSION = sprintf("%d.%02d", q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/);
+use WWW::Search::Scraper::FieldTranslation;
+
+$VERSION = sprintf("%d.%02d", q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/);
 
 # Craigs List differs from other search engines in a few ways.
 # One of them is the results page is not tablulated, or data lined.
@@ -29,20 +31,29 @@ sub native_setup_search
       # This is the basic URL on which to build the query.
      ,'http://www.craigslist.org/cgi-bin/search.cgi?'
       # This is the Scraper attributes => native input fields mapping
-     ,{'scraperQuery' => 'query'
+     ,{   'nativeQuery' => 'query'
+         ,'nativeDefaults' =>
+                         {    'areaID'     => '1'
+                             ,'subAreaID'  => '0'
+                             ,'group'      => 'J'
+                             ,'catAbb'     => ''
+                             ,'areaAbbrev' => ''
+                         }
+         ,'fieldTranslations' =>
+                { '*' => 
+                     {    '*'         => '*'
+                         ,'skills'    => 'query'
+#                          ,'payrate'   => \&translatePayrate
+                         ,'locations' => new WWW::Search::Scraper::FieldTranslation('CraigsList', 'Job', 'locations')
+                         ,'native_query' => 'query'
+                     }
+                 }
       }
       # Some more options for the Scraper operation.
      ,{'cookies' => 0
       }
     ];
 
-   # Set up the default input field values.
-   $self->{_options}{'areaID'}   = '1';
-   $self->{_options}{'subAreaID'}= '0';
-   $self->{_options}{'group'}    = 'J';
-   $self->{_options}{'catAbb'}   =  '';
-   $self->{_options}{'areaAbbrev'}= '';
-    
     $self->{'_options'}{'scrapeFrame'} = 
        [ 'HTML', 
          [ [ 'BODY', '</FORM>', '' ,
@@ -59,13 +70,6 @@ sub native_setup_search
     # WWW::Search::Scraper understands all that and will setup the search.
     return $self->SUPER::native_setup_search(@_);
 }
-
-use WWW::Search::Scraper::Response;
-sub newHit {
-    my $self = new WWW::Search::Scraper::Response;
-    return $self;
-}
-
 
 1;
 __END__

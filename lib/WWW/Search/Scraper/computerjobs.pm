@@ -101,7 +101,7 @@ modify it under the same terms as Perl itself.
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/);
 use WWW::Search::Scraper(qw(1.41 trimLFs));
 
 use strict;
@@ -116,7 +116,8 @@ sub native_setup_search
       # This is the basic URL on which to build the query.
      ,'http://www.search.computerjobs.com/job_results.asp?'
       # This is the Scraper attributes => native input fields mapping
-     ,{'scraperQuery' => 's_kw'
+     ,{   'nativeQuery' => 's_kw'
+         ,'nativeDefaults' => {}
       }
       # Some more options for the Scraper operation.
      ,{'cookies' => 1
@@ -172,13 +173,6 @@ sub native_setup_search
 sub parseDescriptionAndAllThat {
     my ($self, $hit, $dat) = @_;
     return $self->trimLFLFs($hit, $dat);
-}
-
-
-use WWW::Search::Scraper::Response::Job;
-sub newHit {
-    my $self = new WWW::Search::Scraper::Response::Job;
-    return $self;
 }
 
 1;

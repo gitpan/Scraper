@@ -32,7 +32,7 @@ modify it under the same terms as Perl itself.
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::SearchResult);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/);
 require WWW::SearchResult;
 
 sub new { 
@@ -49,19 +49,25 @@ sub new {
 
 # Return a table of names and titles for all data result columns.
 sub resultTitles {
-    return {
-                'relevance'  => 'Relevance'
-               ,'url'        => 'URL'
-           };
+    my ($self) = @_;
+    my $answer = {'url' => 'URL'};
+    for ( keys %$self ) {
+        $answer->{$_} = $_ unless $_ =~ /^_/ or $_ eq 'searchObject';
+    }
+    return $answer;
 }
 
 
 sub results {
     my $self = shift;
-    return {
-                'relevance'  => $self->relevance()
-               ,'url'        => $self->url()
-           } 
+    my $answer = {
+#                'relevance'  => $self->relevance()
+               'url'        => $self->url()
+           };
+    for ( keys %$self ) {
+        $answer->{$_} = $self->{$_} unless $_ =~ /^_/ or $_ eq 'searchObject' or $_ eq 'url';
+    }
+    return $answer;
 }
 
 sub relevance { return $_[0]->_elem('result_relevance'); }
@@ -70,6 +76,7 @@ sub relevance { return $_[0]->_elem('result_relevance'); }
 # This gets the target document via HTTP GET, if needed.
 sub response {
     my ($self) = @_;
+
     my $request = HTTP::Request->new(GET => $self->url());
     $self->{'_response'} = $self->{'searchObject'}->{'user_agent'}->request($request);
     return $self->{'_response'};

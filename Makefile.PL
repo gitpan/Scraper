@@ -11,6 +11,7 @@ WriteMakefile(
     'PREREQ_PM' => { 'WWW::Search' => 2.15
                     ,'HTML::Form' => 0.02
                     ,'Text::ParseWords' => 3.2
+                    ,'Storable' => '0.6'
                    },
     ($] ge '5.005') ? (
                      'AUTHOR' => 'Glenn Wood <glenwood@alumni.caltech.edu>',

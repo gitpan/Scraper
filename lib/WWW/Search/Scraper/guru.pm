@@ -67,11 +67,10 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(1.33 generic_option addURL trimTags));
-require WWW::SearchResult;
 
 use HTML::Form;
 use HTTP::Cookies;
@@ -89,6 +88,40 @@ sub native_setup_search
 	    'scraperForm_url' => ['http://www.guru.com/guru.jhtml', '#2', 'dartKeyWordStr', undef]
         };
     };
+
+    $self->{'_options'}{'scrapeFrame'} = 
+        [ 'HTML', 
+          [ 
+            [ 'COUNT', '(\d+)</font></b>\s+matches']
+           ,[ 'NEXT', 1, 'Next (\d+)\s+gigs &gt;&gt;' ]
+           ,[ 'TABLE', '#3',
+              [
+                [ 'TABLE', '#1',
+                   [
+                     [ 'TR', '#4' ]
+                    ,[ 'HIT*' , 'Job',
+                       [  
+                         [ 'TR',
+                           [
+                             [ 'TD', 
+                               [ 
+                                  [ 'A', 'url', 'title', \&trimLFs ] 
+                                 ,[ 'RESIDUE', 'description', \&trimLFLFs ]
+                               ] 
+                             ] 
+                          ,[ 'TD', 'company', \&trimLFs ]
+                          ,[ 'TD', 'postDate', \&trimLFs ]
+                          ,[ 'TD', 'location', \&trimLFs ]
+                        ]
+                       ]
+                     ]
+                   ] 
+                  ]
+                ] 
+              ] 
+            ] 
+          ]
+        ];
     
     $self->cookie_jar(HTTP::Cookies->new());
     
@@ -113,41 +146,11 @@ sub native_setup_search
             }
         }
     }
+    unless ( $form ) {
+        print "Can't find <form> in response from $self->{_options}{'scraperForm_url'}[0]: ".$response->message;
+        return undef;
+    }
     $self->{'_http_method'} = $form->method();
-
-    $self->{'_options'}{'scrapeFrame'} = 
-        [ 'HTML', 
-          [ 
-            [ 'COUNT', '(\d+)</font></b>\s+matches']
-           ,[ 'NEXT', 1, 'Next (\d+)\s+gigs &gt;&gt;' ]
-           ,[ 'TABLE', '#3',
-              [
-                [ 'TABLE', '#1',
-                   [
-                     [ 'TR', '#4' ]
-                    ,[ 'HIT*' ,
-                       [  
-                         [ 'TR',
-                           [
-                             [ 'TD', 
-                               [ 
-                                  [ 'A', 'url', 'title', \&trimLFs ] 
-                                 ,[ 'RESIDUE', 'description', \&trimLFLFs ]
-                               ] 
-                             ] 
-                          ,[ 'TD', 'company', \&trimLFs ]
-                          ,[ 'TD', 'postDate', \&trimLFs ]
-                          ,[ 'TD', 'location', \&trimLFs ]
-                        ]
-                       ]
-                     ]
-                   ] 
-                  ]
-                ] 
-              ] 
-            ] 
-          ]
-        ];
  
     my($options_ref) = $self->{_options};
     if (defined($native_options_ref)) {
@@ -201,14 +204,5 @@ sub trimLFLFs { # Strip double-LFs, then tag clutter from $_;
    # This simply rearranges the parameter list from the datParser form.
     return $self->trimTags($hit, $dat);
 }
-
-
-use WWW::Search::Scraper::Response::Job;
-sub newHit {
-    my $self = new WWW::Search::Scraper::Response::Job;
-    return $self;
-}
-
-
 
 1;

@@ -6,10 +6,27 @@ package WWW::Search::Scraper::FlipDog;
 use strict;
 use vars qw(@ISA $VERSION);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Search::Scraper(qw(1.41 trimLFs trimLFLFs));
-require WWW::SearchResult;
+
+sub results
+  {
+  my $self = shift;
+  print STDERR " + results(",$self->{'native_query'},")\n" if $self->{debug};
+  Carp::croak "search not yet specified" if (!defined($self->{'native_query'}));
+  # Put all the SearchResults into the cache:
+  print "1\n" while ($self->retrieve_some());
+  if ($#{$self->{cache}} >= $self->{maximum_to_retrieve})
+    {
+    return @{$self->{cache}}[0..($self->{maximum_to_retrieve}-1)];
+    }
+  else 
+    {
+    return @{$self->{cache}};
+    }
+  } # results
+
 
 
 # SAMPLE
@@ -25,7 +42,12 @@ sub native_setup_search
       # This is the basic URL on which to build the query.
      ,'http://www.flipdog.com/js/jobsearch-results.html?'
       # This names the native input field to recieve the query string.
-     ,{'scraperQuery' => 'srch'
+     ,{   'nativeQuery' => 'srch'
+         ,'nativeDefaults' =>
+                         {    'loc' => 'CA-San Jose Area'
+                             ,'cat' => 'Computing/MIS-Software Development'
+                             ,'job' => '1'
+                         }
       }
       # Some more options for the Scraper operation.
      ,{'cookies' => 0
@@ -46,7 +68,7 @@ sub native_setup_search
        ,[ 'BODY', 'jobs shown below', undef,
             [  
                 [ 'TR', '#1' ]
-               ,[ 'HIT*', 
+               ,[ 'HIT*', 'Job',
                     [ 
                         [ 'TR', 
                             [
@@ -127,12 +149,6 @@ sub getNextPage {
 }
 
 
-# We're going to subclass this response since there are some extra fields on FlipDog.
-use WWW::Search::Scraper::Response::Job;
-sub newHit {
-    my $self = new WWW::Search::Scraper::Response::Job::FlipDog;
-    return $self;
-}
 { package WWW::Search::Scraper::Response::Job::FlipDog;
 use vars qw(@ISA);
 @ISA = qw(WWW::Search::Scraper::Response::Job);

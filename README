@@ -3,11 +3,37 @@
 WWW::Search::Scraper
 WWW::Search::Sherlock
 WWW::Search::Scraper::*
-WWW::SearchResult::*
+WWW::Search::Scraper::Request
+WWW::Search::Scraper::Response
+
+DEPENDENCIES -
+	WWW::Search
+	Tie::Persistent
+	Storable
 
 These modules scrape data from search engines on the WWW (much like Apple's 
-Sherlock, but these are more capable, complete, and accurate.) Complete
-documentation can be found in WWW::Search::Scraper and WWW::Search::Sherlock.
+Sherlock, but these are more capable, complete, and accurate.)
+
+Version 2.00 is a major departure from versions 1.xx
+
+*** VERSION 2.00 IS A BETA RELEASE; DO NOT USE FOR "MISSION CRITICAL" APPLICATIONS ***
+
+1. Search engies are classified by type
+   a. Job
+   b. Apartments
+   c. Auction
+   d. etc.
+2. Queries are translated from a single canonical form to each search engine
+   by that engine's Scraper module. For example,
+   a. A single location property is translated to the numerous coding and taxonomy
+      systems of the various engines.
+   b. A single price (or range) is matched to the closest price (range) of each search engine.
+3. Post-filtering base on the results page, and on detail pages, via Perl coding.
+4. Retains ease of framing the results page, and extends that to framing the detail page.
+5. Backward compatible.
+   
+Complete documentation can be found in WWW::Search::Scraper and 
+WWW::Search::Scraper::Sherlock.
 
 Special options for each type of search engine are documented in their respective modules.
 
@@ -21,7 +47,7 @@ Examples include:
 		 
 
 If you want to write new Scraper modules to access new search engines, see
-FlipDog.pm for the current "best practices".
+Brainpower.pm for the current "best practices".
 
 Happy Hunting!
 
@@ -29,8 +55,18 @@ Happy Hunting!
 AUTHOR: Glenn Wood, glenwood@alumni.caltech.edu
 
 #---------------------------------------------------------------------#
-( $VERSION ) = sprintf("%d.%02d", q$Revision: 1.38 $ =~ /(\d+)\.(\d+)/)
+( $VERSION ) = sprintf("%d.%02d", q$Revision: 2.00 $ =~ /(\d+)\.(\d+)/)
 
+v2.00 - Complete Request/Response classification framework.
+v1.39 - Added 'ResultType' parameter to HIT*. Complete refurbishment of Response
+        generation, old SearchResult type is now a simple sub-type of Response.
+	You may override this with a 'scraperResultType' option on Scraper->new(),
+	or better, in the 'HIT*' element of the Scraper module's scraperFrame.
+	Also completely refurbished the Request end - old style is now a 
+	simple sub-type of Request (auto-converted within Scraper.pm).
+	Added Request::Job.pm.
+	The most mature search engine is now Brainpower.pm. It uses Request::Job
+	properly, in the 'HIT*' element of its scraperFrame.
 v1.38 - Fix itsy-bitsy boo-boo in Scraper.pm (was not escaping input strings).
         Improved documentation in several of the modules.
 	Added Scraper::Request module for later abstraction of "requests".

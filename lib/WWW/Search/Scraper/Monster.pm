@@ -6,10 +6,11 @@ package WWW::Search::Scraper::Monster;
 use strict;
 use vars qw(@ISA $VERSION);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Search::Scraper(qw(1.43 generic_option findNextForm trimLFs));
 use WWW::Search::Scraper::Response::Job;
+use WWW::Search::Scraper::FieldTranslation(1.00);
 
 # ###############################################################################
 sub native_setup_search
@@ -28,7 +29,21 @@ sub native_setup_search
       # This is the basic URL on which to build the query.
      ,'http://jobsearch.monster.com/jobsearch.asp?'
       # This names the native input field to recieve the query string.
-     ,{'scraperQuery' => 'q'
+     ,{   'nativeQuery' => 'q'
+         ,'nativeDefaults' =>
+                         {    'brd' => '1'
+                             ,'cy'  => 'US'
+                             ,'fn'  => '6'
+                         }
+         ,'fieldTranslations' =>
+                { '*' => 
+                     {    'skills'    => 'q'
+                         ,'payrate'   => \&translatePayrate
+                         ,'locations' => new WWW::Search::Scraper::FieldTranslation('Monster', 'Job', 'locations')
+                         ,'native_query' => 'q'
+                         ,'*'         => '*'
+                     }
+                }
       }
       # Some more options for the Scraper operation.
      ,{'cookies' => 0
@@ -48,7 +63,7 @@ sub native_setup_search
                 [ 'TABLE' ]
                ,[ 'TABLE', 
                    [
-                       [ 'HIT*', 
+                       [ 'HIT*', 'Job',
                             [ 
                                 [ 'TR', 
                                     [
@@ -69,20 +84,11 @@ sub native_setup_search
     ]
 ];            
     
-    # Initialize other optional fields, for completeness and edification.
-    $self->{'_options'}{'brd'} = '1';
-    $self->{'_options'}{'cy'} = 'US';
-
+    
     # WWW::Search::Scraper understands all that and will setup the search.
     return $self->SUPER::native_setup_search(@_);
 } # native_setup_search
 
-
-use WWW::Search::Scraper::Response::Job;
-sub newHit {
-    my $self = new WWW::Search::Scraper::Response::Job;
-    return $self;
-}
 
 { package WWW::Search::Scraper::Request::Monster;
 use WWW::Search::Scraper::Request;
@@ -110,6 +116,13 @@ sub generateQuery {
 }
 
 }
+
+# Translate from the canonical Request->payrate to Monster's 'rate' option.
+sub translatePayrate {
+    my ($self, $rqst, $val) = @_;
+    return ('rate', $val);
+}
+
 
 1;
 
@@ -143,7 +156,7 @@ F<http://www.monster.com>. Monster supports Boolean logic with "and"s
 "or"s. See F<http://jobsearch.monster.com/jobsearch_tips.asp> for a full
 description of the query language.
 
-The returned WWW::SearchResult objects contain B<url>, B<title>, B<company>,
+The returned WWW::Search::Response objects contain B<url>, B<title>, B<company>,
 B<location> and B<change_date> fields.
 
 =head1 OPTIONS 

@@ -46,11 +46,10 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(generic_option addURL trimTags));
-require WWW::SearchResult;
 
 use strict;
 
@@ -665,97 +664,108 @@ This converts to an array tree that looks like this:
     };
 
 
+
 ## private
 sub native_setup_search
 {
-    my $subJob = 'Perl';
-    my($self, $native_query, $native_options_ref) = @_;
+    my $self = shift;
+    my ($native_query, $native_options_ref) = @_;
     $self->user_agent('user');
     $self->{_next_to_retrieve} = 0;
     
-    my $siteKey = $JustTechJobsDirectories{uc $native_options_ref->{'whichTech'}};
+    my $siteKey;
     
-    if (!defined($self->{_options})) {
-	$self->{_options} = {
-        'SKIL' => '01',
-        'POST' => '',
-        'VISA' => '',
-        'CONT' => '',
-        'ENTL' => '',
-        'STRT' => '',
-        'COMP' => '',
-        'LOCA' => '',
-#        'KEYW' => '',
-        'LOGF' => 'AND',
-        'NEXT' => '1',
-	    'search_url' => $$siteKey[0].'/'.$$siteKey[1].'.nsf/SearchResults'
-        };
-    };
-    # Even though JustTechJobs' search form uses POST, that doesn't seem to work for us.
-    # Doing it that way returns garbage plus "Illegal function call prea1<br><br><BR>".
-    $self->{'_http_method'} = 'GET';
+    $siteKey = $native_options_ref->{'whichTech'} if ( defined $native_options_ref->{'whichTech'} );
+    $siteKey = $self->{'_scraperRequest'}->{'_fields'}->{'whichTech'} if ( defined $self->{'_scraperRequest'}->{'_fields'}->{'whichTech'} );
+    $siteKey = $JustTechJobsDirectories{uc $siteKey};
+
+    $self->{'_options'}{'scraperQuery'} =
+    [ 'QUERY'       # Type of query generation is 'QUERY'
+        # Even though JustTechJobs' search form uses POST, that doesn't seem to work for us.
+        # Doing it that way returns garbage plus "Illegal function call prea1<br><br><BR>".
+      # This is the basic URL on which to build the query.
+     ,$$siteKey[0].'/'.$$siteKey[1].'.nsf/SearchResults?OpenForm&'
+      # This names the native input field to recieve the query string.
+     ,{   'nativeQuery' => 'KEYW'
+         ,'nativeDefaults' => {
+                            'SKIL' => '01',
+                            'POST' => '',
+                            'VISA' => '',
+                            'CONT' => '',
+                            'ENTL' => '',
+                            'STRT' => '',
+                            'COMP' => '',
+                            'LOCA' => '',
+                            'LOGF' => 'AND',
+                            'NEXT' => '1',
+                            'whichTech' => 'Perl'
+                        }
+         ,'fieldTranslations' =>
+                { '*' => 
+                        {    'skills'    => 'KEYW'
+                            ,'payrate'   => ''
+                            ,'locations' => \&translateLocations
+                            ,'whichTech' => ''
+                            ,'native_query' => 'query'
+                            ,'*'       => '*'
+                        }
+                 }
+      }
+      # Some more options for the Scraper operation.
+     ,{'cookies' => 0
+      }
+    ];
 
     $self->{'_options'}{'scrapeFrame'} = 
     [ 'HTML', 
       [ [ 'BODY', '<BODY', '</BODY>' , # Make the parsing easier for scrapeTable() by stripping off the adminstrative clutter.
           [ [ 'COUNT', '\d+ - \d+ of (\d+) matches' ] ,
             [ 'NEXT', 1, '<b>Next ' ] ,        # meaning how to find the NEXT button.
-                [ 'HIT*' ,                          # meaning the content of this array element represents hits!
+              [ 'HIT*', 'Job',                 # meaning the content of this array element represents Job hits! '
                   [
                     [ 'BODY', '<input type="checkbox" name="check_', undef,
                       [  [ 'A', 'url', 'title' ] ,
                          [ 'TD', '_blank_' ],
                          [ 'TABLE', '#0',
-                                    [ [ 'TD', '_label_' ] ,
-                                      [ 'TD', 'payrate' ],
-                                      [ 'TD', '_label_' ] ,
-                                      [ 'TD', 'company' ],
-                                      [ 'TD', '_label_' ] ,
-                                      [ 'TD', 'locations' ],
-                                      [ 'TD', '_label_' ] ,
-                                      [ 'TD', 'description' ]
-                                    ]
-                        ] ]
-                     ] ]
-                  ] ]
-           ] ]
+                            [ [ 'TD', '_label_' ] ,
+                              [ 'TD', 'payrate' ],
+                              [ 'TD', '_label_' ] ,
+                              [ 'TD', 'company' ],
+                              [ 'TD', '_label_' ] ,
+                              [ 'TD', 'locations' ],
+                              [ 'TD', '_label_' ] ,
+                              [ 'TD', 'description' ]
+                            ]
+                         ]
+                      ]
+                   ] 
+                ]
+              ]
+          ]
+        ]
+      ]
    ];
 
-    my($options_ref) = $self->{_options};
-    if (defined($native_options_ref)) {
-    	# Copy in new options.
-	    foreach (keys %$native_options_ref) {
-    	    $options_ref->{$_} = $native_options_ref->{$_} unless $_ eq 'whichTech';
-	    };
-    };
-
-    # Process the options.
-    # (Now in sorted order for consistency regarless of hash ordering.)
-    my($options) = '';
-    foreach (sort keys %$options_ref) {
-	    # printf STDERR "option: $_ is " . $options_ref->{$_} . "\n";
-    	next if (generic_option($_));
-	    $options .= $_ . '=' . $options_ref->{$_} . '&';
-    };
-
-    $self->{_debug} = $options_ref->{'search_debug'};
-    $self->{_debug} = 2 if ($options_ref->{'search_parse_debug'});
-    $self->{_debug} = 0 if ( !defined ( $self->{_debug} ) );
-    
-    # Finally figure out the url.
-	$self->{_base_url} =
-	$self->{_next_url} =
-            	$self->{_options}{'search_url'} .
-        	    "?OpenForm&" . $options .
-            	"KEYW=" . $native_query;
-
-    print STDERR $self->{_base_url} . "\n" if ($self->{_debug});
+    # WWW::Search::Scraper understands all that and will setup the search.
+    return $self->SUPER::native_setup_search(@_);
 }
 
-use WWW::Search::Scraper::Response::Job;
-sub newHit {
-    my $self = new WWW::Search::Scraper::Response::Job;
-    return $self;
+
+# Translate from the canonical Request->locations to Brainpower's 'state' option.
+sub translateLocations {
+    my ($self, $rqst, $val) = @_;
+    my @results;
+    my %alreadyDone;
+
+    my $aval = $val;
+    $aval = [$val] unless 'ARRAY' eq ref $val;
+    for my $val ( @$aval ) {
+        $val = 'CA-Silicon Valley/San Jose' if $val eq 'CA-San Jose';
+        # hmmm . . .
+        # US-CA-Silicon Valley/Peninsula
+        push @results, 'US-'.$val;
+    }
+    return ('LOCA', \@results);
 }
 
 1;

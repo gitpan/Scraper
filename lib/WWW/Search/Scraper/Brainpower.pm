@@ -5,10 +5,10 @@ package WWW::Search::Scraper::Brainpower;
 use strict;
 use vars qw(@ISA $VERSION);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Search::Scraper(qw(1.43 trimLFs trimLFLFs));
-require WWW::SearchResult;
+use WWW::Search::Scraper::FieldTranslation(1.00);
 
 
 # SAMPLE
@@ -20,27 +20,35 @@ sub native_setup_search
     my ($native_query, $native_options_ref) = @_;
     
     $self->{'_options'}{'scraperQuery'} =
-    [ 'POST'       # Type of query generation is 'POST'
+    [ 'QUERY'       # Queries should be 'QUERY', not 'POST', otherwise 2nd, 3rd, etc pages are "Object Moved".
       # This is the basic URL on which to build the query.
      ,'http://www.brainpower.com/IndListProject.asp?'
       # This names the native input field to recieve the query string.
-     ,{'scraperQuery' => 'skills'
+     ,{  'nativeQuery' => 'skills'
+        ,'nativeDefaults' =>
+                        {    'navItem' => 'searchprojects'  # This is a hidden field, presumably declares "search"
+                            ,'submit1' => 1                 # This is the actual submit button.
+                            ,'title'   => 'ALL'             # All job designations.
+                            #,'title' => 'AP'               # Application Programmer.
+                            ,'searchType' => 1              # searchType = ANY words.
+                            ,'state'      => 80             # All US States
+                            #,'state' => 5                  # California (North)
+                            ,'rate' => ''
+                        }
+        ,'fieldTranslations' =>
+                { '*' => 
+                        {    'skills'    => 'skills'
+                            ,'payrate'   => \&translatePayrate
+                            ,'locations' => new WWW::Search::Scraper::FieldTranslation('Brainpower', 'Job', 'locations')
+                            ,'native_query' => 'skills'
+                            ,'*'         => '*'
+                        }
+                }
       }
       # Some more options for the Scraper operation.
      ,{'cookies' => 1
       }
     ];
-
-    # Initialize other optional fields, for completeness and edification.
-    $self->{'_options'}{'navItem'} = 'searchprojects'; # This is a hidden field, presumably declares "search"
-    $self->{'_options'}{'submit1'} = 1;    # This is the actual submit button.
-    $self->{'_options'}{'title'} = 'ALL';  # All job designations.
-#    $self->{'_options'}{'title'} = 'AP';  # Application Programmer.
-    $self->{'_options'}{'searchType'} = 1; # searchType = ANY words.
-    $self->{'_options'}{'state'} = 80;     # All US States
-#    $self->{'_options'}{'state'} = 5;     # California (North)
-    $self->{'_options'}{'rate'} = '';      # default
-#    $self->{'_options'}{'pageSize'} = '100'; # doesn't work.
 
     # scraperFrame describes the format of the result page.
     $self->{'_options'}{'scrapeFrame'} = 
@@ -48,39 +56,71 @@ sub native_setup_search
     [ 
         [ 'COUNT', 'Your search resulted in <b>([0-9,]+)</b> jobs.' ]
        ,[ 'NEXT', 'Next&nbsp;' ]
-       ,[ 'BODY', '<!-- Begin Content Table -->', undef,
+       ,[ 'BODY', '<!-- Begin Nested Right Table Cell -->', undef,
             [  
-                [ 'TABLE',  
-                    [
-                        [ 'TABLE' ],
-                        [ 'TABLE', 
-                            [
-        [ 'TABLE', 
-            [
-                ['TR', '#1' ],
-                        [ 'HIT*', 
-                            [ 
-                                [ 'TR', 
-                                    [
-                                        [ 'TD', [ [ 'A', 'url', undef ] ] ]
-                                       ,[ 'TD' ] # There's a TD in a COMMENT, here ! ! ! all are "Any Designation".
-                                       ,[ 'TD', 'title' ]
-                                       ,[ 'TD', 'status' ]
-                                       ,[ 'TD', 'location' ]
-                                    ]
-                                ]
-                               ,[ 'TR' ]
-                            ]
-        ]]
-                            ]]
-                        ]
-                    ]
-                ]
+               [ 'TABLE', 
+                 [
+                   [ 'TABLE', 
+                      [
+                          ['TR', '#1' ],
+                         ,[ 'HIT*', 'Job',
+                             [ 
+                                 [ 'TR', 
+                                     [
+                                         [ 'TD', [ [ 'A', 'url', undef ] ] ]
+                                        ,[ 'TD' ] # There's a TD in a COMMENT, here ! ! ! all are "Any Designation".
+                                        ,[ 'TD', 'title' ]
+                                        ,[ 'TD', 'status' ]
+                                        ,[ 'TD', 'location' ]
+                                     ]
+                                 ]
+                                ,[ 'TR' ]
+                             ]
+                            ,[ 'BOGUS', -1 ]
+                          ]
+                      ]
+                   ]
+                 ]
+               ]
             ]
         ]
     ]
 ];            
 
+    # scrapeDetail describes the format of the detail page.
+    $self->{'_options'}{'scrapeDetail'} = 
+        [ 'HTML', 
+            [ 
+                [ 'BODY', '<!-- Begin Nested Right Table Cell -->', undef,
+                    [  
+                        [ 'TABLE', 
+                           [
+                              [ 'TABLE', 
+                              [
+                                  [ 'TR', '#3' ]
+                                 ,[ 'HIT', 'Job',
+                                     [ 
+                                         [ 'TR', [[ 'TD' ],[ 'TD', 'title'    ]] ]
+                                        ,[ 'TR', [[ 'TD' ],[ 'TD', 'role'     ]] ]
+                                        ,[ 'TR', [[ 'TD' ],[ 'TD', 'skillSet' ]] ]
+                                        ,[ 'TR', [[ 'TD' ],[ 'TD', 'type'     ]] ]
+                                        ,[ 'TR', [[ 'TD' ],[ 'TD', 'payrate'  ]] ]
+                                        ,[ 'TR', [[ 'TD' ],[ 'TD', 'length'   ]] ]
+                                        ,[ 'TR', [[ 'TD' ],[ 'TD', 'city'     ]] ]
+                                        ,[ 'TR', [[ 'TD' ],[ 'TD', 'state'    ]] ]
+                                        ,[ 'TR', [[ 'TD' ],[ 'TD', 'postDate' ]] ]
+                                        ,[ 'TR', [[ 'TD' ],[ 'TD', 'description' ]] ]
+                                     ]
+                                  ]
+                              ]
+                              ]
+                           ]
+                        ]
+                    ]
+                ]
+            ]
+        ];            
+    
     # WWW::Search::Scraper understands all that and will setup the search.
     return $self->SUPER::native_setup_search(@_);
 }
@@ -135,13 +175,32 @@ sub getNextPage {
     return $url;
 }
 
-
-# We're going to subclass this response since there are some extra fields on FlipDog.
-use WWW::Search::Scraper::Response::Job;
-sub newHit {
-    my $self = new WWW::Search::Scraper::Response::Job::Brainpower;
-    return $self;
+# Translate from the canonical Request->payrate to Brainpower's 'rate' option.
+sub translatePayrate {
+    my ($self, $rqst, $val) = @_;
+    return ('rate', $val);
 }
+
+
+
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### 
+# Given a candidate hit, do post-selection.
+# Return 1 to keep this hit, 0 to cast it away.
+sub postSelect {
+    my ($scraper, $rqst, $rslt) = @_;
+    
+    # Do the base postSelect, sans locations.
+    return 0 unless $rqst->postSelect($scraper, $rslt, ['locations']);
+    
+    # Go scrape the data from the details page.
+    my $detail = $rslt->content;
+    $scraper->scraper($scraper->{'_options'}{'scrapeDetail'}[1], \$detail, $rslt, 0);
+    
+    # Brainpower's too dumb to put the location in the results, we have to look at details!
+    return $scraper->SUPER::postSelect($rqst, $rslt);
+}
+
+
 { package WWW::Search::Scraper::Response::Job::Brainpower;
 use vars qw(@ISA);
 @ISA = qw(WWW::Search::Scraper::Response::Job);
@@ -149,10 +208,11 @@ use vars qw(@ISA);
 sub resultTitles {
     my $self = shift;
     my $resultT = {}; #$self->SUPER::resultTitles();
-    $$resultT{'url'} = 'url';
-    $$resultT{'title'} = 'Title';
-    $$resultT{'status'} = 'Status';
+    $$resultT{'url'}      = 'url';
+    $$resultT{'title'}    = 'Title';
+    $$resultT{'status'}   = 'Status';
     $$resultT{'location'} = 'Location';
+    $$resultT{'city'}     = 'City';
     return $resultT;
 }
 
@@ -163,10 +223,12 @@ sub results {
     $$results{'title'} = $self->title();
     $$results{'status'} = $self->status();
     $$results{'location'} = $self->location();
+    $$results{'city'} = $self->city();
     return $results;
 }
 
-sub status { return $_[0]->_elem('status'); }
+sub city     { return $_[0]->_elem('city'); }
+sub status   { return $_[0]->_elem('status'); }
 sub location { my $x = $_[0]->SUPER::location(); $x =~ s/\s+$//g; return $x;}
 }
 
@@ -269,109 +331,109 @@ Hourly rate, limit 3 digits. Optional.
 
 =item 80 => All US States                                     
 
-=item 1" => Alabama                                           
+=item 1 => Alabama                                           
 
-=item 2" => Alaska                                            
+=item 2 => Alaska                                            
 
-=item 3" => Arizona                                           
+=item 3 => Arizona                                           
 
-=item 4" => Arkansas                                          
+=item 4 => Arkansas                                          
 
-=item 5" => California(North)                                 
+=item 5 => California(North)                                 
 
-=item 6" => California(South)                                 
+=item 6 => California(South)                                 
 
-=item 7" => Colorado                                          
+=item 7 => Colorado                                          
 
-=item 8" => Connecticut                                       
+=item 8 => Connecticut                                       
 
-=item 9" => Delaware                                          
+=item 9 => Delaware                                          
 
-=item 10" => District of Columbia                              
+=item 10 => District of Columbia                              
 
-=item 11" => Florida                                           
+=item 11 => Florida                                           
 
-=item 12" => Georgia                                           
+=item 12 => Georgia                                           
 
-=item 13" => Hawaii                                            
+=item 13 => Hawaii                                            
 
-=item 14" => Idaho                                             
+=item 14 => Idaho                                             
 
-=item 15" => Illinois                                          
+=item 15 => Illinois                                          
 
-=item 16" => Indiana                                           
+=item 16 => Indiana                                           
 
-=item 17" => Iowa                                              
+=item 17 => Iowa                                              
 
-=item 18" => Kansas                                            
+=item 18 => Kansas                                            
 
-=item 19" => Kentucky                                          
+=item 19 => Kentucky                                          
 
-=item 20" => Louisiana                                         
+=item 20 => Louisiana                                         
 
-=item 21" => Maine                                             
+=item 21 => Maine                                             
 
-=item 22" => Maryland                                          
+=item 22 => Maryland                                          
 
-=item 23" => Massachusetts                                     
+=item 23 => Massachusetts                                     
 
-=item 24" => Michigan                                          
+=item 24 => Michigan                                          
 
-=item 25" => Minnesota                                         
+=item 25 => Minnesota                                         
 
-=item 26" => Mississippi                                       
+=item 26 => Mississippi                                       
 
-=item 27" => Missouri                                          
+=item 27 => Missouri                                          
 
-=item 28" => Montana                                           
+=item 28 => Montana                                           
 
-=item 29" => Nebraska                                          
+=item 29 => Nebraska                                          
 
-=item 30" => Nevada                                            
+=item 30 => Nevada                                            
 
-=item 31" => New Hampshire                                     
+=item 31 => New Hampshire                                     
 
-=item 32" => New Jersey                                        
+=item 32 => New Jersey                                        
 
-=item 33" => New Mexico                                        
+=item 33 => New Mexico                                        
 
-=item 34" => New York                                          
+=item 34 => New York                                          
 
-=item 35" => North Carolina                                    
+=item 35 => North Carolina                                    
 
-=item 36" => North Dakota                                      
+=item 36 => North Dakota                                      
 
-=item 37" => Ohio                                              
+=item 37 => Ohio                                              
 
-=item 38" => Oklahoma                                          
+=item 38 => Oklahoma                                          
 
-=item 39" => Oregon                                            
+=item 39 => Oregon                                            
 
-=item 40" => Pennsylvania                                      
+=item 40 => Pennsylvania                                      
 
-=item 41" => Rhode Island                                      
+=item 41 => Rhode Island                                      
 
-=item 42" => South Carolina                                    
+=item 42 => South Carolina                                    
 
-=item 43" => South Dakota                                      
+=item 43 => South Dakota                                      
 
-=item 44" => Tennessee                                         
+=item 44 => Tennessee                                         
 
-=item 45" => Texas                                             
+=item 45 => Texas                                             
 
-=item 46" => Utah                                              
+=item 46 => Utah                                              
 
-=item 47" => Vermont                                           
+=item 47 => Vermont                                           
 
-=item 48" => Virginia                                          
+=item 48 => Virginia                                          
 
-=item 49" => Washington                                        
+=item 49 => Washington                                        
 
-=item 50" => West Virginia                                     
+=item 50 => West Virginia                                     
 
-=item 51" => Wisconsin                                         
+=item 51 => Wisconsin                                         
 
-=item 52" => Wyoming                                           
+=item 52 => Wyoming                                           
 
 =back
 

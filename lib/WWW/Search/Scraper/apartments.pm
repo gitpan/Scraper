@@ -56,11 +56,10 @@ modify it under the same terms as Perl itself.
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/);
 use WWW::Search::Scraper::Response;
 
 use WWW::Search::Scraper(qw(1.34));
-require WWW::SearchResult;
 
 use strict;
 
@@ -76,17 +75,17 @@ sub native_setup_search
       # This is the basic URL on which to build the query.
      ,'http://www.apartments.com/search/oasis.dll?mfcisapicommand=quicksearch&QSearchType=1&'
       # This is the Scraper attributes => native input fields mapping
-     ,{'scraperQuery' => 'city'
+     ,{'nativeQuery' => 'city'
+         ,'nativeDefaults' =>
+                         {    'numbeds' => 0
+                             ,'minrnt'  => 0
+                             ,'maxrtt'  => '9999'
+                         }
       }
       # Some more options for the Scraper operation.
      ,{'cookies' => 0
       }
     ];
-
-    # Set the default field values.
-    $self->{'_options'}{'numbeds'} = 0;
-    $self->{'_options'}{'minrnt'}  = 0;
-    $self->{'_options'}{'maxrnt'}  = 9999;
 
     # scraperFrame describes the format of the result page.
     $self->{'_options'}{'scrapeFrame'} = 
@@ -166,13 +165,6 @@ sub getNextPage {
     my $url = URI::URL->new($1, $self->{'_base_url'});
     $url = $url->abs;
     return $url;
-}
-
-
-use WWW::Search::Scraper::Response;
-sub newHit {
-    my $self = new WWW::Search::Scraper::Response;
-    return $self;
 }
 
 1;

@@ -1,6 +1,136 @@
 
 package WWW::Search::Scraper::HotJobs;
 
+require Exporter;
+use strict;
+use vars qw($VERSION @ISA);
+@ISA = qw(WWW::Search::Scraper);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/);
+use WWW::Search::Scraper(qw(generic_option addURL trimTags));
+
+
+sub native_setup_search
+{
+    my($self, $native_query, $native_options_ref) = @_;
+    $self->{'_options'}{'scraperQuery'} =
+    [ 'POST'       # 
+      # This is the basic URL on which to get the form to build the query.
+     ,'http://www.hotjobs.com/cgi-bin/job-search?'
+      # This names the native input field to recieve the query string.
+     ,{  'nativeDefaults' =>
+                        {
+                            'hjax' => '3',
+#                            'ERROR_TEMPLATE' => '/htdocs/channels/tech/job-search-page-error-tech.html',
+#                            'NULL_TEMPLATE' => '/htdocs/channels/tech/refine-search-null-tech.html',
+                            'J__CITY' => '',
+                            'J__STATE' => '',
+                            'JOBSPERPAGE' => '20',
+                            'COMPANY' => '',
+                            'J__MTIME_DAYSAGO' => '',
+                            'SORT' => 'MTIME',
+#                            'TEMPLATE' => '/htdocs/channels/tech/job-search-tech.html',
+                            'INDUSTRY' => 'MIS',
+                            'PARSE_NO_NULL' => '1',
+                            'METROAREA' => '1',
+                            'AX_JOBS' => '1',
+                            'HJ_JOBS' => '1',
+                            'J__FUNCTION' => '',        # There's a separate checkbox matrix of J__FUNCTION for each INDUSTRY.
+                        }
+        ,'fieldTranslations' =>
+                { '*' => 
+                        {    'skills'    => 'KEYWORDS'
+                            ,'payrate'   => undef
+                            ,'locations' => undef
+#                            ,'locations' => new WWW::Search::Scraper::FieldTranslation('BAJobs', 'Job', 'locations')
+                            ,'native_query' => 'KEYWORDS'
+                            ,'*'         => '*'
+                        }
+                }
+      }
+      # Some more options for the Scraper operation.
+     ,{'cookies' => 1
+      }
+    ];
+    
+#    $self->user_agent('user');
+#    $self->{_next_to_retrieve} = 0;
+#    if (!defined($self->{_options})) {
+#	$self->{_options} = {
+#        };
+#    };
+#    $self->{'_http_method'} = 'POST';
+    $self->{'_options'}{'scrapeFrame'} = 
+       [ 'HTML', 
+         [ [ 'BODY', '<!-- Start Content -->', '' , # Make the parsing easier for scrapeTable() by stripping off the adminstrative clutter.
+           [ [ 'COUNT', '(\d+) jobs were found' ] ,
+['TRACE'],             
+#             [ 'TABLE', '#1' ] ,                 # or 'name' = undef; multiple <TABLE number=n> means n 'TABLE's here ,
+             [ 'NEXT', 1, 'NEXT &gt;' ] ,        # meaning how to find the NEXT button.
+             [ 'TABLE', '#0' ] ,                 # this table contained the PREVIOUS and NEXT buttons, so skip it now.
+             [ 'HIT*' , 'Job',                   # meaning the content of this array element represents hits!
+                [ [ 'TABLE',                     # each of HotJobs' results are presented in a sub-table of it's own.
+                    [
+                        [ 'TR' ] ,             # there's a nonsense row here in HotJobs' response.
+                       ,[ 'TR',                # meaning "detail*"
+                          ,[
+                              [ 'TD', 'number' ] ,           # meaning clear text binding to _elem('title').
+                             ,[ 'TD', 'title', \&addURL ]    # meaning that the job description link is here, 
+                             ,[ 'TD', 'unknown' ]            #    with the title as its hypertext.
+                             ,[ 'TD', 'company' ]
+                           ]
+                        ]
+                       ,[ 'TR',                             # meaning "detail*"
+                          ,[
+                              [ 'TD', 'unknown' ]           # 
+                             ,[ 'TD', 'description' ]           #
+                             ,[ 'TD', 'unknown' ]
+                             ,[ 'TD', 'location' ]
+                           ]
+                       ,[ 'TR' ]                        # there's another nonsense row here in HotJobs' response.
+                       ,[ 'RESIDUE', 'residue' ]
+                       ] 
+                    ]
+                ] ]
+             ]  
+           ]
+         ] ]
+      ];
+
+ 
+#    my($options_ref) = $self->{_options};
+#    if (defined($native_options_ref)) {
+#    	# Copy in new options.
+#	    foreach (keys %$native_options_ref) {
+#	        $options_ref->{$_} = $native_options_ref->{$_};
+#    	};
+#    };
+    # Process the options.
+    # (Now in sorted order for consistency regarless of hash ordering.)
+#    my($options) = '';
+#    foreach (sort keys %$options_ref) {
+#	# printf STDERR "option: $_ is " . $options_ref->{$_} . "\n";
+#	next if (generic_option($_));
+#    	$options .= $_ . '=' . $options_ref->{$_} . '&';
+#    };
+#    $self->{_debug} = $options_ref->{'search_debug'};
+#    $self->{_debug} = 2 if ($options_ref->{'search_parse_debug'});
+#    $self->{_debug} = 0 if (!defined($self->{_debug}));
+    
+#    # Finally figure out the url.
+#    $self->{_base_url} = 
+#	$self->{_next_url} =
+#            	$self->{_options}{'search_url'} .
+#        	    "?" . $options .
+#            	"KEYWORDS=" . $native_query;
+#    print STDERR $self->{_base_url} . "\n" if ($self->{_debug});
+    # WWW::Search::Scraper understands all that and will setup the search.
+    return $self->SUPER::native_setup_search(@_);
+
+} # native_setup_search
+
+1;
+
+
 =head1 NAME
 
 WWW::Search::Scraper::HotJobs - class for searching HotJobs
@@ -76,13 +206,6 @@ MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 =cut
 
 #####################################################################
-
-require Exporter;
-use strict;
-use vars qw($VERSION @ISA);
-@ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/);
-use WWW::Search::Scraper(qw(generic_option addURL trimTags));
 
 # HotJobs JobSearch submission form . . . 
 # <FORM METHOD="post" ACTION="/cgi-bin/job-search" onSubmit="return setJobType(this, this.hjax)">  
@@ -181,105 +304,4 @@ This converts to an array tree that looks like this:
  
 
 =cut                     
-
-sub native_setup_search
-{
-    my($self, $native_query, $native_options_ref) = @_;
-    $self->user_agent('user');
-    $self->{_next_to_retrieve} = 0;
-    if (!defined($self->{_options})) {
-	$self->{_options} = {
-	    'hjax' => '3',
-	    'ERROR_TEMPLATE' => '/htdocs/channels/tech/job-search-page-error-tech.html',
-	    'NULL_TEMPLATE' => '/htdocs/channels/tech/refine-search-null-tech.html',
-	    'J__CITY' => '',
-	    'J__STATE' => '',
-	    'JOBSPERPAGE' => '20',
-	    'COMPANY' => '',
-	    'J__MTIME_DAYSAGO' => '',
-	    'SORT' => 'MTIME',
-	    'TEMPLATE' => '/htdocs/channels/tech/job-search-tech.html',
-	    'INDUSTRY' => 'MIS',
-	    'PARSE_NO_NULL' => '1',
-	    'METROAREA' => '1',
-	    'AX_JOBS' => '1',
-	    'HJ_JOBS' => '1',
-	    'J__FUNCTION' => '',        # There's a separate checkbox matrix of J__FUNCTION for each INDUSTRY.
-	    'search_url' => 'http://www.hotjobs.com/cgi-bin/job-search'
-        };
-    };
-    $self->{'_http_method'} = 'POST';
-    $self->{'_options'}{'scrapeFrame'} = 
-       [ 'HTML', 
-         [ [ 'BODY', 'Your search yielded the following', '' , # Make the parsing easier for scrapeTable() by stripping off the adminstrative clutter.
-           [ [ 'COUNT', 'The following (\d+) jobs were found:' ] ,
-             [ 'COUNT', 'jobs matched your search. Only the first (\d+) are shown.' ] ,
-             [ 'TABLE', '#1' ] ,                 # or 'name' = undef; multiple <TABLE number=n> means n 'TABLE's here ,
-             [ 'NEXT', 1, 'NEXT &gt;' ] ,        # meaning how to find the NEXT button.
-             [ 'TABLE', '#0' ] ,                 # this table contained the PREVIOUS and NEXT buttons, so skip it now.
-             [ 'HIT*' ,                          # meaning the content of this array element represents hits!
-                [ [ 'TABLE',                       # each of HotJobs' results are presented in a sub-table of it's own.
-                    [
-                        [ 'TR' ] ,             # there's a nonsense row here in HotJobs' response.
-                       ,[ 'TR',                # meaning "detail*"
-                          ,[
-                              [ 'TD', 'number' ] ,           # meaning clear text binding to _elem('title').
-                             ,[ 'TD', 'title', \&addURL ]    # meaning that the job description link is here, 
-                             ,[ 'TD', 'unknown' ]            #    with the title as its hypertext.
-                             ,[ 'TD', 'company' ]
-                           ]
-                        ]
-                       ,[ 'TR',                             # meaning "detail*"
-                          ,[
-                              [ 'TD', 'unknown' ]           # 
-                             ,[ 'TD', 'description' ]           #
-                             ,[ 'TD', 'unknown' ]
-                             ,[ 'TD', 'location' ]
-                           ]
-                       ,[ 'TR' ]                        # there's another nonsense row here in HotJobs' response.
-                       ,[ 'RESIDUE', 'residue' ]
-                       ] 
-                    ]
-                ] ]
-             ]  
-           ]
-         ] ]
-      ];
-
- 
-    my($options_ref) = $self->{_options};
-    if (defined($native_options_ref)) {
-    	# Copy in new options.
-	    foreach (keys %$native_options_ref) {
-	        $options_ref->{$_} = $native_options_ref->{$_};
-    	};
-    };
-    # Process the options.
-    # (Now in sorted order for consistency regarless of hash ordering.)
-    my($options) = '';
-    foreach (sort keys %$options_ref) {
-	# printf STDERR "option: $_ is " . $options_ref->{$_} . "\n";
-	next if (generic_option($_));
-    	$options .= $_ . '=' . $options_ref->{$_} . '&';
-    };
-    $self->{_debug} = $options_ref->{'search_debug'};
-    $self->{_debug} = 2 if ($options_ref->{'search_parse_debug'});
-    $self->{_debug} = 0 if (!defined($self->{_debug}));
-    
-    # Finally figure out the url.
-    $self->{_base_url} = 
-	$self->{_next_url} =
-            	$self->{_options}{'search_url'} .
-        	    "?" . $options .
-            	"KEYWORDS=" . $native_query;
-    print STDERR $self->{_base_url} . "\n" if ($self->{_debug});
-}
-
-use WWW::Search::Scraper::Response::Job;
-sub newHit {
-    my $self = new WWW::Search::Scraper::Response::Job;
-    return $self;
-}
-
-1;
 
