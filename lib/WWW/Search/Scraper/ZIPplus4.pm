@@ -100,15 +100,99 @@ sub testParameters {
 sub scraperRequest { $scraperRequest }
 sub scraperFrame { $_[0]->SUPER::scraperFrame($scraperFrame); }
 
-1;
+{ package AddressDedup;
+# This package helps ZipPlus4.pl to de-duplicate the address list.
+# With minor or no modification, it might be useful to others, too.
+use Class::Struct;
+    struct ( 'AddressDedup' =>
+              [
+                  'Address'     => '$'
+                 ,'City'        => '$'
+                 ,'State'       => '$'
+                 ,'Zip'         => '$'
+                 ,'Name'        => '$'
+                 ,'_allColumns' => '$'
+                 ,'_zipColumn'  => '$'
+              ]
+           );
 
+sub isEqual {
+    my ($self, $other) = @_;
+
+    return 0 unless ($self->_isEqualAddress($other->Address));
+    return 0 unless ($self->_isEqualCity($other->City));
+    return 0 unless ($self->_isEqualState($other->State));
+    return 0 unless ($self->_isEqualZip($other->Zip));
+#    return 0 unless ($self->_isEqualName($other->Name));
+    
+    return 1;
+}
+sub _isEqualAddress {
+    my ($self, $str) = @_;
+    return ($self->Address eq $str);
+}
+sub _isEqualCity {
+    my ($self, $str) = @_;
+    return ($self->City eq $str);
+}
+sub _isEqualState {
+    my ($self, $str) = @_;
+    return ($self->State eq $str);
+}
+sub _isEqualZip {
+    my ($self, $str) = @_;
+    return ($self->Zip eq $str);
+}
+sub _isEqualName {
+    my ($self, $str) = @_;
+    return ($self->Name eq $str);
+}
+
+
+sub setValue {
+    my ($self, $colNums, $fullLine) = @_;
+    
+    chomp $fullLine;
+    my @cols = split ',', $fullLine;
+    $self->_allColumns(\@cols);
+
+    $self->Address($cols[$colNums->{'colAddress'}]);
+    $self->City($cols[$colNums->{'colCity'}]);
+    $self->State($cols[$colNums->{'colState'}]);
+    $self->Zip($cols[$colNums->{'colZip'}]);
+
+    $self->_zipColumn($colNums->{'colZip'});
+}
+
+sub isEmpty {
+    my ($self) = @_;
+    return 0 if $self->Address;
+    return 0 if $self->City;
+    return 0 if $self->State;
+    return 0 if $self->Zip;
+    return 0 if $self->Name;
+    return 1;
+}
+
+sub asString {
+    my ($self) = @_;
+    
+    my $allColumns = $self->_allColumns();
+
+    $$allColumns[$self->_zipColumn] = $self->Zip;
+    
+    return join ',', @$allColumns;
+}
+}
+1;
 
 __END__
 =pod
 
 =head1 NAME
 
-WWW::Search::Scraper::ZIPplus4 - Get ZIP+4 code, given street address, from www.usps.com
+WWW::Search::Scraper::ZIPplus4 - Get ZIP+4 code, given street address, from www.usps.com. 
+Also helps de-duplicate a mailing list (see eg/ZipPlus4.pl)
 
 
 =head1 SYNOPSIS

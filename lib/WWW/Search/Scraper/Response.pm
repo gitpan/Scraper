@@ -96,7 +96,7 @@ modify it under the same terms as Perl itself.
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::SearchResult);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/);
 require WWW::SearchResult;
 my %AlreadyDeclared;
 
@@ -109,7 +109,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold ) {
         $next_scaffold = undef;
         
         my $tag = $$scaffold[0];
-        if ( $tag =~ m/HIT|HIT\*|HTML/ )
+        if ( $tag =~ m/HIT|HIT\*/ )
         {
             my $resultType = $$scaffold[1];
             if ( 'ARRAY' eq ref $resultType ) {
@@ -123,7 +123,14 @@ SCAFFOLD: for my $scaffold ( @$scaffold ) {
                 #$next_scaffold = $$scaffold[1] unless defined $next_scaffold;
                 next SCAFFOLD;
             }
-        } elsif ('BODY' eq $tag) { # 'BODY', 'x', 'y' , [[.]]
+        }
+        elsif ( $tag =~ m/HTML|TidyXML|TABLE|TR|DL|FORM|FOR/ )
+        {
+            my $i = 1;
+            while ( $$scaffold[$i] and 'ARRAY' ne ref($$scaffold[$i]) ) { $i += 1; }
+            $next_scaffold = $$scaffold[$i];
+        }
+        elsif ('BODY' eq $tag) { # 'BODY', 'x', 'y' , [[.]]
             if ( 'ARRAY' ne ref $$scaffold[3]  ) # if next_scaffold is an array ref, then we'll recurse (below)
             {
                 push @fields, $$scaffold[3];
@@ -252,7 +259,8 @@ use Class::Struct;
 
 package WWW::Search::Scraper::Response$SubClass;
 use WWW::Search::Scraper::Response;
-use base qw( WWW::Search::Scraper::Response$SubClass\::_struct_ WWW::Search::Scraper::Response );
+use vars qw(\@ISA);
+\@ISA = qw( WWW::Search::Scraper::Response$SubClass\::_struct_ WWW::Search::Scraper::Response );
 
         
 1;

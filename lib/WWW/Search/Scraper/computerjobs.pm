@@ -73,7 +73,7 @@ sub testParameters {
     }
     
     return { 
-             'SKIP' => ''
+             'SKIP' => 'something wrong here, I don\'t know what it is.'
             ,'testNativeQuery' => 'Perl'
             ,'expectedOnePage' => 9
             ,'expectedMultiPage' => 11

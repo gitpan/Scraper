@@ -10,7 +10,7 @@ require Exporter;
 use vars qw($VERSION $MAINTAINER @ISA @EXPORT @EXPORT_OK);
 @EXPORT = qw(testParameters);
 
-$VERSION = '2.21';
+$VERSION = '2.22';
 
 my $CVS_VERSION = sprintf("%d.%02d", q$Revision: 1.64 $ =~ /(\d+)\.(\d+)/);
 $MAINTAINER = 'Glenn Wood http://search.cpan.org/search?mode=author&query=GLENNWOOD';
@@ -81,7 +81,7 @@ sub new {
     return $self;
 }
 
-# The sub-scraper should override this.
+# The Scraper module should override this.
 sub init {
 }
 
@@ -219,7 +219,7 @@ sub native_setup_search
     }
     # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## 
     
-    $self->SetRequest( new WWW::Search::Scraper::Request($self, $native_query, $native_options) ) unless ( $self->GetRequest());
+    #$self->SetRequest( new WWW::Search::Scraper::Request($self, $native_query, $native_options) ) unless ( $self->GetRequest());
 
     # These traceFlags will ultimately come from many places . . .
     #$self->setScraperTrace($self->{'_debug'}) unless $self->{'_traceFlags'};
@@ -231,6 +231,7 @@ sub native_setup_search
         m/POST/      && do { $self->{'_http_method'} = 'POST';
                             return $self->native_setup_search_QUERY(); };
         m/SEARCH/    && do { return $self->native_setup_search_NULL(@_); };
+        m/WSDL/      && do { return $self->native_setup_search_WSDL(@_); };
         die "Invalid mode in WWW::Search::Scraper - '$_'\n";
     }
 }
@@ -239,13 +240,16 @@ sub native_setup_search
 
 sub native_setup_search_SHERLOCK
 {
+    my ($self, $native_query, $native_options) = @_;
+    $self->SetRequest( new WWW::Search::Scraper::Request($self, $native_query, $native_options) ) unless ( $self->GetRequest());
     die "Unimplemented mode in WWW::Search::Scraper - 'SHERLOCK'\n";
 }
 
 
 sub native_setup_search_FORM
 {
-    my $self = shift;
+    my ($self, $native_query, $native_options) = @_;
+    $self->SetRequest( new WWW::Search::Scraper::Request($self, $native_query, $native_options) ) unless ( $self->GetRequest());
     
     $self->user_agent('user');
     $self->{_next_to_retrieve} = 0;
@@ -345,7 +349,8 @@ sub native_setup_search_FORM
 
 sub native_setup_search_QUERY
 {
-    my $self = shift;
+    my ($self, $native_query, $native_options) = @_;
+    $self->SetRequest( new WWW::Search::Scraper::Request($self, $native_query, $native_options) ) unless ( $self->GetRequest());
     
     $self->user_agent('user');
     $self->{_next_to_retrieve} = 0;
@@ -374,14 +379,15 @@ sub native_setup_search_QUERY
 # This one handles the deprecated Scraper::native_setup_search()
 sub native_setup_search_NULL
 {
-    my $self = shift;
+    my ($self, $native_query, $native_options) = @_;
+    $self->SetRequest( new WWW::Search::Scraper::Request($self, $native_query, $native_options) ) unless ( $self->GetRequest());
     
     die "native_setup_search_NULL() is no longer supported!";
     # This is a cheap way to get back to the non-canonical form.
     # We'll clean up the rest of this code later, so it won't look
     # like such a waste of time to prepare(canonical) just to come
     # back to the legacy form here. gdw.2001.06.30
-    my ($native_query, $native_options_ref) = ($self->GetRequest()->_native_query(), $self->{'native_options'});
+    #my ($native_query, $native_options) = ($self->GetRequest()->_native_query(), $self->{'native_options'});
     
     my $subJob = 'Perl';
     $self->user_agent('user');
@@ -394,10 +400,10 @@ sub native_setup_search_NULL
     $self->{'_http_method'} = 'GET';        # SHOULD BE PASSED IN AS AN OPTION; this is the default.
  
     my($options_ref) = $self->{_options};
-    if (defined($native_options_ref)) {
+    if (defined($native_options)) {
 	# Copy in new options.
-	foreach (keys %$native_options_ref) {
-	    $options_ref->{$_} = $native_options_ref->{$_};
+	foreach (keys %$native_options) {
+	    $options_ref->{$_} = $native_options->{$_};
 	};
     };
     # Process the options.
@@ -418,6 +424,34 @@ sub native_setup_search_NULL
             	$self->{_options}{'search_url'} .
         	    "?" . $options .
             	"KEYWORDS=" . $native_query;
+
+    print STDERR $self->{_next_url} . "\n" if $self->ScraperTrace('U');
+}
+
+
+sub native_setup_search_WSDL
+{
+    my ($self, $native_query, $native_options) = @_;
+    
+    $self->user_agent('user');
+    $self->{_next_to_retrieve} = 0;
+    
+    my $url = $self->scraperRequest(@_)->{'url'};
+    
+    if ( ref $url ) {
+        $self->{'_base_url'} = &$url($self, $self->GetRequest()->_native_query(), $self->{'native_options'});
+    } else {
+        $self->{'_base_url'} = $url;
+    }
+    unless ( $self->{'_base_url'} ) {
+        print STDERR "No base url was specified by ".ref($self).".pm, so no search is possible.\n";
+        undef $self->{'_next_url'};
+        return undef;
+    }
+    $self->{'_http_method'} = 'GET' unless $self->{'_http_method'};
+#    $rqst->{'_base_url'} = $self->{'_base_url'};
+
+    $self->{'_next_url'} = $self->generateQuery();
 
     print STDERR $self->{_next_url} . "\n" if $self->ScraperTrace('U');
 }
@@ -822,11 +856,11 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
     		{
     			print STDERR  "approximate_result_count: '$1'\n" if ($self->ScraperTrace('d'));
     			$self->approximate_result_count ($1);
-                next SCAFFOLD;
     		}
             else {
                 print STDERR "Can't find COUNT: '$$scaffold[1]'\n" if ($self->ScraperTrace('d'));
             }
+            next SCAFFOLD;
     	}
 
         elsif ( 'NEXT' eq $tag )

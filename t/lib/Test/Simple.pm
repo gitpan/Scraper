@@ -20,6 +20,7 @@ sub import {
 }
 
 
+__END__
 =head1 NAME_TEST
 
 Test::Simple - Basic utilities for writing tests.

@@ -2,7 +2,7 @@ package WWW::Search::Scraper::Request;
 
 use strict;
 use vars qw($VERSION @ISA);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/);
 
 my %AlreadyDeclared;
 my $VirtualCount;
@@ -20,10 +20,10 @@ sub new {
     my $self;
 
     my ($options, $scraperFieldsFrame);
-    my ($SubClass, $nativeQuery, $isCanonical, $SubClassNormal);
+    my ($SubClass, $nativeQuery, $isCanonical, $SubClassNormal, $declaredMethodNames);
     
     # This gives us a subClass name via "Scraper::Request::new('subClassName')"; rather than "new Scraper::Request()", that is.
-    if ( $class ne 'WWW::Search::Scraper::Request' ) {
+    if ( $class ne 'WWW::Search::Scraper::Request' ) { 
         $SubClass = $class;
         $isCanonical = $SubClass;
         $SubClassNormal = "$SubClass\_";
@@ -35,15 +35,18 @@ sub new {
             if ( 'HASH' eq $rf ) {
                 $options = $whatzit;
             }
+            elsif ( 'ARRAY' eq $rf ) {
+                $declaredMethodNames = $whatzit unless $declaredMethodNames; # not sure why the "unless" is necessary . . .
+            }
             elsif ( $rf =~ m/^WWW::Search::Scraper::([^:]*)$/ ) {
                 my $scraperRequest = $whatzit->scraperRequest();
-                if ( !$whatzit->_wantsNativeRequest() and $scraperRequest->{'defaultRequestClass'} ) {
+                if ( 0 and !$whatzit->_wantsNativeRequest() and $scraperRequest->{'defaultRequestClass'} ) {
                     $SubClass = $scraperRequest->{'defaultRequestClass'};
-                    eval "use WWW::Search::Scraper::Request::$SubClass;\$self = new WWW::Search::Scraper::Request::$SubClass;";
+                    eval "use WWW::Search::Scraper::Request::$SubClass;\$self = new WWW::Search::Scraper::Request::$SubClassNormal;";
                     die $@ if $@;
                     $isCanonical = $SubClass;
-                    $SubClassNormal = "$SubClass\_";
-                    $SubClass .= '::_defaultl_';
+                    $SubClassNormal = "$SubClass";
+                    $SubClass .= '::_default_';
                 } else {
                     $scraperFieldsFrame = $scraperRequest->{'nativeDefaults'};
                 }
@@ -74,7 +77,7 @@ sub new {
         $scraperFieldsFrame = { '_native_query' => 1 };
         map { $scraperFieldsFrame->{$_} = 1 } keys %$options;
     }
-
+    map { $scraperFieldsFrame->{$_} = 1 } @$declaredMethodNames;
     my (%subFields,$countSubFields);
     unless ( $AlreadyDeclared{$SubClass} ) {
 #        $subFields{'url'} = 1 if $SubClass eq '::Sherlock'; # Help Sherlock along.
@@ -120,7 +123,8 @@ use Class::Struct;
 
 package WWW::Search::Scraper::Request::$SubClassNormal;
 use WWW::Search::Scraper::Request;
-use base qw( WWW::Search::Scraper::Request$SubClass WWW::Search::Scraper::Request );
+use vars qw(\@ISA);
+\@ISA = qw( WWW::Search::Scraper::Request$SubClass WWW::Search::Scraper::Request );
         
 1;
 EOT

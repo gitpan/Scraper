@@ -83,7 +83,8 @@ sub testParameters {
     
     return {
                  'SKIP' => ''
-                ,'testNativeQuery' => 'Java'
+                .'TODO' => 'Changed their format(?). How can I keep up with these, that is the question.'
+                ,'testNativeQuery' => 'Service'
                 ,'expectedOnePage' => 24
                 ,'expectedMultiPage' => 26
                 ,'expectedBogusPage' => 0

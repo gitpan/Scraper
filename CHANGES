@@ -1,6 +1,9 @@
 
 Revision history for WWW::Search::Scraper (::*).
 
+v2.22 - Changes to Request/Response module that might help RedHat 7.0 implmentations.
+        eg/ZipPlus4Fixer.pl - ZipPlus4 fixer - try it!
+	Simple (regressive) implementation of the WSDL interface.
 v2.21 - Improved POD - see ScraperPOD.pm - READ THIS DOCUMENT! WE'VE CHANGED THE DEFAULT
 		REQUEST MODE FOR MOST SUPPLIED SCRAPER ENGINES FROM 'native' TO 'canonical'!
 		SEE "What if I *want* native mode?"

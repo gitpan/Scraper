@@ -23,7 +23,24 @@ use vars qw($VERSION @ISA);
 use WWW::Search::Scraper::Response;
 $VERSION = sprintf("%d.%02d", q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/);
 
-sub resultTitles {
+sub new {
+    my $self = WWW::Search::Scraper::Request::new(
+         'Job'
+        ,{
+             'relevance' => ''
+            ,'title' => ''
+            ,'description' => ''
+            ,'companyProfileURL' => ''
+            ,'company' => ''
+            ,'location' => ''
+            ,'postDate' => ''
+            ,'url' => ''
+         }
+        ,@_);
+    return $self;
+}
+
+sub FieldTitles {
     return {
                 'relevance'  => 'Relevance'
                ,'title'      => 'Title'
@@ -35,28 +52,6 @@ sub resultTitles {
                ,'url'        => 'URL'
            };
 }
-
-sub results {
-    my $self = shift;
-    return {
-                'relevance'  => $self->relevance()
-               ,'title'      => $self->title()
-               ,'description' => $self->description()
-               ,'companyProfileURL'    => $self->companyProfileURL()
-               ,'company'    => $self->company()
-               ,'location'   => $self->location()
-               ,'postDate'   => $self->postDate()
-               ,'url'        => $self->url()
-           } 
-}
-
-sub relevance { return $_[0]->_elem('relevance'); }
-sub title { return $_[0]->_elem('title'); }
-sub description { return $_[0]->_elem('description'); }
-sub company { return $_[0]->_elem('company'); }
-sub companyProfileURL { return $_[0]->_elem('companyProfileURL'); }
-sub location { return $_[0]->_elem('location'); }
-sub postDate { return $_[0]->_elem('postDate'); }
 
 1;
 

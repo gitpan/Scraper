@@ -7,8 +7,6 @@ $VERSION = sprintf("%d.%02d", q$Revision: 1.0 $ =~ /(\d+)\.(\d+)/);
 use WWW::Search::Scraper::Request;
 @ISA = qw(WWW::Search::Scraper::Request);
 
-#use base qw( WWW::Search::Scraper::Request );
-
 sub new {
     shift;
     my $self = WWW::Search::Scraper::Request::new('Job',

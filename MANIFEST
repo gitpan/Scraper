@@ -45,6 +45,8 @@ eg/Scraper.pl
 eg/setupLocations.pl
 eg/Boilerplate.pl
 eg/ZIPplus4.pl
+eg/ZipPlus4Fixer.pl
+eg/WSDL.pl
 t/lib/Test/Builder.pm
 t/lib/Test/More.pm
 t/lib/Test/Simple.pm

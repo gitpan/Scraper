@@ -66,8 +66,8 @@ ScraperPOD - A Framework for scraping results from search engines.
  #
  for ( $searchEngine = ('carsforsale' '1001cars') ) {
      $scraper = new WWW::Search::Scraper($searchEngine, 'Request' => $request);
-     $response = $scraper->next_response() ) {
-     print $response->sellerPhoneNumber();
+     for ( $response = $scraper->next_response() ) {
+         print $response->sellerPhoneNumber();
  }
 
 =back
@@ -571,6 +571,40 @@ TRACE will print the entire text that is currently in context of the Scraper par
 =item HTML
 
 HTML is simply a command that you will place first in your script. Don't ask why, just do it.
+
+=item WSDL
+
+An interface to WSDL was introduced in Scraper version 2.22. 
+At first this may seem a regressive use of WSDL, 
+since WSDL (Web Service Definition Language) is designed to do the type of thing with web-services that Scraper is supposed to do with HTML services
+(so why use Scraper for web-services?) But hang with me on this. There is are benefits to this in the future.
+
+WSDL helps you execute methods on the remote service. 
+This is very handy by inself, but Scraper will reduce this to a simple request/response model (so why use Scraper to reduce your accessiblity?).
+The value here is in how Scraper can "normalize" the interface. 
+That is, via Scraper's Request/Response model, the same Request can be made to multiple servers,
+and the Responses can be tranformed into a "canonical" form, regardless of how the individual service's interface works.
+A single Scraper Request is translated to the target WSDL interface,
+and Responses are translated to a canonical form; you send the same request to multiple servers (even to WSDL servers),
+and you get the same type of response from multiple servers (even from WSDL servers).
+
+Version 2.22 of this interface is very primitive; more of a proof of concept than anything else.
+You can use this interface via the following form:
+
+    use WWW::Search::Scraper::WSDL(qw(1.00));
+    $serviceName = 'http://www.xmethods.net/sd/StockQuoteService.wsdl';
+    $scraper = new WWW::Search::Scraper::WSDL( $serviceName );
+    print $scraper->{'_service'}->getQuote('MSFT');
+
+The 'getQuote()' is a method defined by $serviceName (they do all the work!).
+This is an incredibly simple way to access web services.
+It's even simpler to do if you use SOAP::Lite to do it, of course, but one of the benefits of using Scraper is that
+you can discover the names of methods and their results easily
+(via Scraper's Request/Response model). That is more difficult to do using SOAP::Lite. 
+If you're automating the gathering of data among various web services, this can be valuable.
+
+Again, the v2.22 implementation of this is very primitive, and recommended for enthuiasts only.
+See eg/WSDL.pl for an example.
 
 =back 4
 

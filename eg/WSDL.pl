@@ -3,12 +3,12 @@
 
 =head1 NAME
 
-Scraper.pl - Scrape data from a search engine.
+WSDL.pl - Scrape data from a WSDL engine.
 
 
 =head1 SYNOPSIS
 
-    perl Scraper.pl
+    perl WSDL.pl serviceName queryString debugOptions
 
 =head1 DESCRIPTION
 
@@ -28,23 +28,29 @@ modify it under the same terms as Perl itself.
 
 use strict;
 use lib './lib';
-use WWW::Search::Scraper(qw(1.48));
-use WWW::Search::Scraper::Request;
+use SOAP::Lite;
+use WWW::Search::Scraper::WSDL(qw(1.00));
 use vars qw($VERSION);
 use diagnostics;
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.0 $ =~ /(\d+)\.(\d+)/);
 
     select STDERR; $| = 1; select STDOUT; $| = 1; 
 
-    my ($engine, $query, $debug, $options) = @ARGV;
-    $engine = 'eBay'  unless $engine;
-    $query =~ s/(['"])(.*)\1$/$2/;
+    my ($url, $query, $debug, $options) = @ARGV;
+    $url =~ s/(['"])(.*)\1$/$2/ if $url;
+    $url = 'http://www.xmethods.net/sd/StockQuoteService.wsdl' unless $url;
+    $query =~ s/(['"])(.*)\1$/$2/ if $query;
+    $query = 'MSFT' unless $query;
     $debug = 'U'      unless $debug;
 
-    my $scraper = new WWW::Search::Scraper( $engine );
+    my $scraper = new WWW::Search::Scraper::WSDL( $url );
+
+    print $scraper->{'_service'}->getQuote($query);
+
     my $limit = 21;
 
+__END__
     # Most Scraper sub-classes will define their own testParameters . . .
     # Calling testParameters() also sets up testing conditions for the module.
     # See Dogpile.pm for the most mature example of how to set your testParameters.

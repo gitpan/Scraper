@@ -4,7 +4,7 @@ package WWW::Search::Scraper::Response::Sherlock;
 
 =head1 NAME
 
-WWW::Search::Scraper::Response::Sherlock.pm - Results subclass for Sherlock plugins.
+WWW::Search::Scraper::Response::Sherlock - Results subclass for Sherlock plugins.
 
 =head1 SYNOPSIS
 

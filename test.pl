@@ -4,7 +4,7 @@
 use ExtUtils::testlib;
 use lib 't/lib','../blib/lib','./blib/lib';
 use Test::More;
-$VERSION = sprintf("%d.%02d", q$Revision: 1.15 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.16 $ =~ /(\d+)\.(\d+)/);
 my @TestTheseOnly;# = qw(Sherlock); # this is active only when WWW::Search::Scraper::isGlennWood;
 
 ######################### We start with some black magic to print on failure.
@@ -27,6 +27,8 @@ use FileHandle;
 
 # Report current versions of modules we depend on.
     traceBreak(); ##_##_##_##_##_##_##_##_##_##_##_##_##_##_##_##
+    print $traceFile "Operating system: $^O\n";
+    print $traceFile "Perl version: $]\n";
     my $msg = <<EOT;
 VERSIONS OF MODULES ON WHICH SCRAPER DEPENDS
 EOT
@@ -177,6 +179,7 @@ sub TestThisEngine {
     my ($sQuery, $options, $onePageCount, $multiPageCount, $bogusPageCount) = $oSearch->setupStandardAndExceptionalOptions($sEngine);
     $sQuery = "Bogus" . $$ . "NoSuchWord" . time;
     my $request = new WWW::Search::Scraper::Request($oSearch, $sQuery, $options);
+    $oSearch->setScraperTrace($ENV{'SCRAPER_DEBUG_MODE'});
     $oSearch->SetRequest($request);
 
     my @aoResults = $oSearch->results();
@@ -218,7 +221,8 @@ sub TestThisEngine {
         TRACE(0, " + got $iResults results for '$sQuery'\n");
         if ( $maximum_to_retrieve > $iResults )
         {
-            my $message = $oSearch->response()->message();
+            my $message = $oSearch->response()->status_line();
+            my $bytes = length $oSearch->response()->content();
             TRACE(1, <<EOT);
  --- got $iResults results for $sEngine '$sQuery', but expected $maximum_to_retrieve
  --- base URL: $oSearch->{'_base_url'}
@@ -226,6 +230,9 @@ sub TestThisEngine {
  --- last URL: $oSearch->{'_last_url'}
  --- next URL: $oSearch->{'_next_url'}
  --- response message: $message
+ --- content size (bytes): $bytes
+ --- ERRNO: $!
+ --- Extended OS error: $^E
 EOT
             return 0;
         }
@@ -259,7 +266,8 @@ EOT
         TRACE(0, " + got $iResults multi-page results for '$sQuery'\n");
         if ( $maximum_to_retrieve > $iResults )
         {
-            my $message = $oSearch->response()->message();
+            my $message = $oSearch->response()->status_line();
+            my $bytes = length $oSearch->response()->content();
             TRACE(1, <<EOT);
  --- got $iResults results for multi-page $sEngine '$sQuery', but expected $maximum_to_retrieve.
  --- base URL: $oSearch->{'_base_url'}
@@ -267,6 +275,9 @@ EOT
  --- last URL: $oSearch->{'_last_url'}
  --- next URL: $oSearch->{'_next_url'}
  --- response message: $message
+ --- content size (bytes): $bytes
+ --- ERRNO: $!
+ --- Extended OS error: $^E
 EOT
          #$success = 0; # A fail of the multi-page query is not a fail of the installation, right? reallY?
         }
