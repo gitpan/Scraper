@@ -1,6 +1,5 @@
 use WWW::Search::Scraper;
 
-
     my $scraper = new WWW::Search::Scraper( 'eBay', {'search_debug' => 0} );
     
     $scraper->native_query('turntable', {'search_debug'=>0});

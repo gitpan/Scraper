@@ -10,4 +10,6 @@ Happy Hunting!
 AUTHOR: Glenn Wood, C<glenwood@alumni.caltech.edu>
 
 #---------------------------------------------------------------------#
-( $VERSION ) = sprintf("%d.%02d", q$Revision: 1.30 $ =~ /(\d+)\.(\d+)/)
+( $VERSION ) = sprintf("%d.%02d", q$Revision: 1.33 $ =~ /(\d+)\.(\d+)/)
+
+v1.33 - Added www.apartments.com, and eg/Sherlock.pl

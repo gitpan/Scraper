@@ -492,7 +492,7 @@ require Exporter;
 @EXPORT_OK = qw();
 @ISA = qw(WWW::Search Exporter);
 use vars qw($VERSION);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.32 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.36 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search( qw(strip_tags) );
@@ -504,7 +504,7 @@ use strict;
 sub new {
     my ($class, $subclass) = @_;
     my $self = new WWW::Search("Scraper::$subclass");
-#    bless $self;
+    $self->{'scraperQF'} = 0; # Explicitly declare 'scraperQF' as the deprecated mode.
     return $self;
 }
 
@@ -519,8 +519,78 @@ sub generic_option
 
 sub native_setup_search
 {
-    my $subJob = 'Perl';
+    my $self = shift;
+    
+    my @qType = @{$self->{'_options'}{'scraperQuery'}};
+    return $self->native_setup_search_NULL(@_) unless @qType;
+
+    for ( $qType[0] ) {
+        m/SHERLOCK/ && do { $self->native_setup_search_SHERLOCK(@_); last };
+        m/FORM/     && do { $self->native_setup_search_FORM(@_); last };
+        m/QUERY/    && do { $self->native_setup_search_QUERY(@_); last };
+        die "Invalid mode in WWW::Search::Scraper - '$_'\n";
+    }
+}
+
+
+
+sub native_setup_search_SHERLOCK
+{
+    die "Unimplemented mode in WWW::Search::Scraper - 'SHERLOCK'\n";
+}
+
+
+sub native_setup_search_FORM
+{
+    die "Unimplemented mode in WWW::Search::Scraper - 'FORM'\n";
+}
+
+
+sub native_setup_search_QUERY
+{
     my($self, $native_query, $native_options_ref) = @_;
+    my @qType = @{$self->{'_options'}{'scraperQuery'}};
+    
+    $self->user_agent('user');
+    $self->{_next_to_retrieve} = 0;
+	$self->{'_base_url'} = $qType[1];
+    my %inputsHash = %{$qType[2]};
+    my %optionHash = %{$qType[3]};
+    
+    my($options_ref) = $self->{_options};
+    if (defined($native_options_ref)) {
+    	# Copy in new options.
+    	foreach (keys %$native_options_ref) {
+    	    $options_ref->{$_} = $native_options_ref->{$_};
+    	};
+    };
+    $self->{_debug} = $options_ref->{'search_debug'};
+    $self->{_debug} = 2 if ($options_ref->{'search_parse_debug'});
+    $self->{_debug} = 0 if (!defined($self->{_debug}));
+    
+    # Process the options.
+    $self->cookie_jar(HTTP::Cookies->new()) if $optionHash{'cookie'};
+    
+    # Process the inputs.
+    # (Now in sorted order for consistency regarless of hash ordering.)
+    my $options = "$inputsHash{'scraperQuery'}=$native_query";
+    foreach (sort keys %$options_ref) {
+    	# printf STDERR "option: $_ is " . $options_ref->{$_} . "\n";
+    	next if (generic_option($_));
+        $options .= "&$_=$options_ref->{$_}";
+    };
+    
+    $self->{'_next_url'} = $self->{'_base_url'}.$options;
+    print STDERR $self->{_base_url} . "\n" if ($self->{_debug});
+}
+
+
+# This one handles the deprecated Scraper::native_setup_search()
+sub native_setup_search_NULL
+{
+    my($self, $native_query, $native_options_ref) = @_;
+    
+    my $subJob = 'Perl';
     $self->user_agent('user');
     $self->{_next_to_retrieve} = 0;
     if (!defined($self->{_options})) {
@@ -575,9 +645,9 @@ sub native_retrieve_some
          print STDERR "$obj::native_retrieve_some: fetching " . $self->{_next_url} . "\n";
      }
     my $method = $self->{'_http_method'};
-    $method = 'GET';# unless $method;
+    $method = 'GET' unless $method;
     my $response = $self->http_request($method, $self->{_next_url});
-    $self->{_next_url} = undef;
+    $self->{'_last_url'} = $self->{'_next_url'}; $self->{'_next_url'} = undef;
     $self->{response} = $response;
     return undef unless $response->is_success;
 
@@ -607,7 +677,7 @@ sub scraper { my ($self, $scaffold_array, $content, $hit, $debug) = @_;
 SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
         my $tag = $$scaffold[0];
 
-#       print "TAG: $tag\n";
+       print "TAG: $tag\n" if $debug > 1;
 
         # 'HIT*' is special since it has pre- and post- processing (adding the hits to the hit-list).
         # All other tokens simply process data as it moves along, then they're done,
@@ -671,12 +741,12 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
             $self->approximate_result_count(0);
     		if ( $$content =~ m/$$scaffold[1]/si )
     		{
-    			print STDERR  "approximate_result_count: '$1'\n";# if $debug;
+    			print STDERR  "approximate_result_count: '$1'\n" if $debug;
     			$self->approximate_result_count ($1);
                 next SCAFFOLD;
     		}
             else {
-                print STDERR "Can't find COUNT: '$$scaffold[1]'\n";# if $debug;
+                print STDERR "Can't find COUNT: '$$scaffold[1]'\n" if $debug;
             }
     	}
 
@@ -723,7 +793,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
             $next_scaffold = $$scaffold[1];
         }
 
-    	elsif ( $tag =~ m/^(TABLE|TR|DL|FORM)$/ )
+    	elsif ( $tag =~ m/^(TABLE|TR|DL|FORM|DIV)$/ )
     	{
             my $tagLength = length $tag + 2;
             my $elmName = $$scaffold[1];
@@ -783,7 +853,10 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
             if ( $$content =~ s-<A\s+HREF="([^"]+)"[^>]*>(.*?)</A>--si )
             {
                 print "<A> binding: $$scaffold[2]: '$2', $$scaffold[1]: '$1'\n" if $debug;
-                $hit->_elem($$scaffold[2], $2);
+                my $datParser = $$scaffold[3];
+                $datParser = \&WWW::Search::Scraper::trimTags unless $datParser;
+                $hit->_elem($$scaffold[2], &$datParser($self, $hit, $2));
+
                 my $lbl = $$scaffold[1];
                my ($url) = new URI::URL($1, $self->{_base_url});
                $url = $url->abs;
@@ -806,7 +879,11 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
             if ( $$content =~ s-<A\s+HREF=([^>]+)>(.*?)</A>--si )
             {
                 print "<A> binding: $$scaffold[2]: '$2', $$scaffold[1]: '$1'\n" if $debug;
-                $hit->_elem($$scaffold[2], $2);
+                
+                my $datParser = $$scaffold[3];
+                $datParser = \&WWW::Search::Scraper::trimTags unless $datParser;
+                $hit->_elem($$scaffold[2], &$datParser($self, $hit, $2));
+
                 my $lbl = $$scaffold[1];
                my ($url) = new URI::URL($1, $self->{_base_url});
                $url = $url->abs;
@@ -859,7 +936,9 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
             next SCAFFOLD;
         } elsif ( $tag eq 'TRACE' )
         {
-            print "TRACE:\n'$$content'\n";
+            my $x = $$content;
+            $x =~ s/\r//gs;
+            print "TRACE:\n'$x'\n";
             $total_hits_found += $$scaffold[1];
         } elsif ( $tag eq 'CALLBACK' ) {
             &{$$scaffold[1]}($self, $hit, $content, $debug);
@@ -874,6 +953,10 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
 }
 
 
+
+sub touchUp {
+    my ($self, $hit, $dat, $datParser) = @_;
+}
 
 
 # Returns the marked up text from the referenced string, as designated by the given tag.

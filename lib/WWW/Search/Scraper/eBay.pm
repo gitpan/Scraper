@@ -63,9 +63,7 @@ All rights reserved.
 This program is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself.
 
-
 =cut
-
 
 #####################################################################
 
@@ -73,7 +71,7 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(1.24 generic_option addURL trimTags));
@@ -174,8 +172,7 @@ sub native_setup_search
 
     $self->{'search_method'} = $form->method();
     my $url = $req->uri()->uri_unescape();
-print "NEXT_URL: '$url'\n";
-#    $url .= '?' . $req->content() if $req->content(); # THIS WAS HANDLING A SPECIAL PROBLEM WITH BAJOBS (HTTP 302).
+
     $self->{_base_url} = 
 	$self->{_next_url} = $url;
     print STDERR $self->{_base_url} . "\n" if ($self->{_debug});
