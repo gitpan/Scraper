@@ -28,11 +28,13 @@ lib/WWW/Scraper/Opcode/A.pm
 lib/WWW/Scraper/Opcode/BODY.pm
 lib/WWW/Scraper/Opcode/BR.pm
 lib/WWW/Scraper/Opcode/DISCOVERNEXT.pm
+lib/WWW/Scraper/Opcode/FONT.pm
 lib/WWW/Scraper/Opcode/FORM.pm
 lib/WWW/Scraper/Opcode/GRUB.pm
 lib/WWW/Scraper/Opcode/INPUT.pm
 lib/WWW/Scraper/Opcode/MACRO.pm
 lib/WWW/Scraper/Opcode/MACROX.pm
+lib/WWW/Scraper/Opcode/NEXT.pm
 lib/WWW/Scraper/Opcode/OPTION.pm
 lib/WWW/Scraper/Opcode/REGEX.pm
 lib/WWW/Scraper/Opcode/REWRITE.pm

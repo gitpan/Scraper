@@ -1,6 +1,8 @@
 
 Revision history for WWW::Search::Scraper (::*).
 
+v3.04 - Added Opcodes NEXT, FONT, etc.
+v3.03 - Upgrades to Beaucoup, CraigsList, DogPile, and Google.
 v3.01 - OPCODES ! ! You can invent and use your own scraping operations in the Scraper frames themselves!
 	Fixed native_query() so you can change the query and get new results (without re-instantiating
 	the scraper). Thanks to Alan Derhaag!

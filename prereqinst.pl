@@ -3,7 +3,7 @@
 #
 # DO NOT EDIT, created automatically by mkprereqinst.pl
 
-# on Mon Jun  9 00:52:48 2003
+# on Mon Jun  9 08:06:55 2003
 #
 
 use Getopt::Long;
