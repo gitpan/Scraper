@@ -1,46 +1,49 @@
 
 package WWW::Search::Scraper::Dice;
-
-
-
-require HTML::TokeParser;
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/);
 
-use Carp ();
-use WWW::Search::Scraper(qw(1.42 generic_option trimTags addURL));
+use WWW::Search::Scraper(qw(1.48 generic_option trimTags addURL));
+use WWW::Search::Scraper::FieldTranslation;
 
-sub native_setup_search
-  {
-  my($self, $native_query, $native_options_ref) = @_;
-  $native_query = WWW::Search::unescape_query($native_query); # Thanks, but no thanks, Search.pm!
+my $scraperQuery = 
+   { 
+      'type' => 'POST'       # Type of query generation is 'POST'
+      # This is the basic URL on which to build the query.
+     ,'url' => 'http://jobsearch.dice.com/jobsearch/jobsearch.cgi?'
+      # This is the Scraper attributes => native input fields mapping
+      ,'nativeQuery' => 'query'
+      ,'nativeDefaults' =>
+           {
+               'Search.x' => 1,'Search.y' => 1,
+               'banner' => '0',
+               'brief' => 'true',
+               'method' => 'bool',
+               'taxterm' => '',
+               'state' => 'ALL',         # or two character abbreviation(s)
+               'acode' => '',            # multiple acode INPUT fields
+               'daysback' => 30,         # (1, 2, 7, 10, 14, 21, 30)
+               'num_per_page' => 50,     # (10, 20, 30, 40, 50) 
+               'num_to_retrieve' => 2000 # (100, 200, 300, 400, 500, 600, 2000)
+           }
+     ,'fieldTranslations' =>
+             {
+                 '*' =>
+                     {    'skills'    => 'query'
+                         ,'locations' => new WWW::Search::Scraper::FieldTranslation('Dice', 'Job', 'locations')
+                         ,'*'             => '*'
+                     }
+             }
+      # Some more options for the Scraper operation.
+     ,'cookies' => 0
+   };
 
-  $self->user_agent('non-robot');
-
-  $self->{_first_call} = 1;
-
-  if (!defined($self->{_options})) {
-      $self->{_options} = {
-	  'search_url' => 'http://jobsearch.dice.com/jobsearch/jobsearch.cgi',
-	  'banner' => '0',
-	  'brief' => '1',
-	  'method' => 'bool',
-	  'query' => $native_query,
-	  'taxterm' => '',
-	  'state' => 'ALL',         # or two character abbreviation(s)
-	  'acode' => '',            # multiple acode INPUT fields
-	  'daysback' => 30,         # (1, 2, 7, 10, 14, 21, 30)
-	  'num_per_page' => 50,     # (10, 20, 30, 40, 50) 
-	  'num_to_retrieve' => 2000 # (100, 200, 300, 400, 500, 600, 2000)
-      };
-  }
-
-  $self->{'_options'}{'scrapeFrame'} = 
+my $scraperFrame =
       [ 'HTML', 
          [  
-            [ 'NEXT', 1, '<img src="/images/rightarrow.gif" border=0>' ] , # meaning how to find the NEXT button.
+            [ 'NEXT', 1, 'Show next \d+ jobs' ] , # meaning how to find the NEXT button.
             [ 'COUNT', 'Jobs [-0123456789]+ of (\d+) matching your query' ] , # the total count can be found here.
             [ 'HIT*' ,                          # meaning the content of this array element represents hits!
                [  
@@ -56,36 +59,14 @@ sub native_setup_search
          ] 
       ];
 
-  my $options_ref = $self->{_options};
-  if (defined($native_options_ref)) 
-    {
-    # Copy in new options.
-    foreach (keys %$native_options_ref) 
-      {
-      $options_ref->{$_} = $native_options_ref->{$_};
-      } # foreach
-    } # if
-  # Process the options.
-  my($options) = '';
-  foreach (sort keys %$options_ref) 
-    {
-    # printf STDERR "option: $_ is " . $options_ref->{$_} . "\n";
-    next if (generic_option($_));
-    $options_ref->{$_} = WWW::Search::escape_query($options_ref->{$_});
-    # convert things like 'state' => 'NY+NJ' into 'state' => 'NY&state=NJ'
-    $options_ref->{$_} =~ s/\+/\&$_=/g unless($_ eq 'query');
-    $options .= "$_=" . $options_ref->{$_} . '&';
-    }
-  $self->{_to_post} = $options;
-  # Finally figure out the url.
-  $self->{_next_url} = $self->{_options}{'search_url'};
 
-  $self->{_debug} = $options_ref->{'search_debug'};
-} # native_setup_search
-
+# Access methods for the structural declarations of this Scraper engine.
+sub scraperQuery { $scraperQuery }
+sub scraperFrame { $scraperFrame }
+sub scraperDetail{ undef }
 
 # private
-sub native_retrieve_some
+sub native_retrieve_someX
   {
   my ($self) = @_;
   my $debug = $self->{'_debug'};
@@ -215,38 +196,6 @@ sub touchupLocation {
 }
 
 
-sub getMoreInfo {
-    my $self = shift;
-    my $url = shift;
-    my ($company,$title,$date,$location) = ("some company","somebody",
-					    "/mm/dd/yy","USA");
-    my($response) = $self->http_request('GET',$url);
-    if ($response->is_success) {
-	my $p = new HTML::TokeParser(\$response->content());
-	my $tag = $p->get_tag("img");
-	$company = $tag->[1]{'alt'};
-	# sometimes there is no company image 
-        # at the beginning of HTML page...
-	$p = new HTML::TokeParser(\$response->content());
-	while(1) {
-	    my $tag = $p->get_tag("td");
-	    my $str = $p->get_trimmed_text("/td");
-	    if($str =~ m/Title:/) {
-		$tag = $p->get_tag("td");
-		$title = $p->get_trimmed_text("/td");
-	    } elsif($str =~ m/Date Posted:/) {
-		$tag = $p->get_tag("td");
-		$date = $p->get_trimmed_text("/td");
-	    } elsif($str =~ m/Location:/) {
-		$tag = $p->get_tag("td");
-		$location = $p->get_trimmed_text("/td");
-		last;
-	    }
-	}
-    }
-    return ($company,$title,$date,$location);
-}
-
 sub newHit {
     my $self = new WWW::Search::Scraper::Response::Job::Dice;
     return $self;
@@ -299,7 +248,7 @@ WWW::Search::Scraper::Dice - class for searching www.Dice.com
  while (my $res = $oSearch->next_result()) {
      if(isHitGood($res->url)) {
  	 my ($company,$title,$date,$location) = 
-	     $oSearch->getMoreInfo($res->url);
+	     ($res->company, $res->title, $res->date, $res->location);
  	 print "$company $title $date $location " . $res->url . "\n";
      } 
  }

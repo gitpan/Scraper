@@ -1,94 +1,40 @@
 
 package WWW::Search::Scraper::apartments;
 
-=pod
-
-=head1 NAME
-
-WWW::Search::Scraper::apartments - class for searching www.apartments.com
-
-
-=head1 SYNOPSIS
-
-    require WWW::Search::Scraper;
-    $search = new WWW::Search::Scraper('apartments');
-
-
-=head1 DESCRIPTION
-
-This class is an apartments specialization of WWW::Search.
-It handles making and interpreting apartments searches
-F<http://www.apartments.com>.
-
-
-=head1 OPTIONS
-
-To do.
-
-=head1 OPTIONS
-
-To do
-
-=head1 AUTHOR
-
-C<WWW::Search::apartments> is written and maintained
-by Glenn Wood, <glenwood@alumni.caltech.edu>.
-
-The best place to obtain C<WWW::Search::apartments>
-is from Glenn's releases on CPAN. Because www.apartments.com
-sometimes changes its format in between his releases, 
-sometimes more up-to-date versions can be found at
-F<http://alumni.caltech.edu/~glenwood/SOFTWARE/index.html>.
-
-=head1 COPYRIGHT
-
-Copyright (c) 2001 Glenn Wood
-All rights reserved.
-
-This program is free software; you can redistribute it and/or
-modify it under the same terms as Perl itself.
-
-=cut
-
-
-#####################################################################
-
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/);
 use WWW::Search::Scraper::Response;
 
-use WWW::Search::Scraper(qw(1.34));
+use WWW::Search::Scraper(qw(1.48));
 
-use strict;
-
-# SAMPLE
+# SAMPLE 
 # http://www.apartments.com/search/oasis.dll?mfcisapicommand=quicksearch&QSearchType=1&city=New%20York&state=NY&numbeds=0&minrnt=0&maxrnt=9999
-#
-sub native_setup_search
-{
-    my $self = shift;
-    
-    $self->{'_options'}{'scraperQuery'} =
-    [ 'QUERY'       # Type of query generation is 'QUERY'
+my $scraperQuery = 
+   { 
+      'type' => 'QUERY'       # Type of query generation is 'QUERY'
       # This is the basic URL on which to build the query.
-     ,'http://www.apartments.com/search/oasis.dll?mfcisapicommand=quicksearch&QSearchType=1&'
+     ,'url' => 'http://www.apartments.com/search/oasis.dll?mfcisapicommand=quicksearch&QSearchType=1&'
       # This is the Scraper attributes => native input fields mapping
-     ,{'nativeQuery' => 'city'
-         ,'nativeDefaults' =>
+     ,'nativeQuery' => 'city'
+     ,'nativeDefaults' =>
                          {    'numbeds' => 0
                              ,'minrnt'  => 0
-                             ,'maxrtt'  => '9999'
+                             ,'maxrnt'  => '9999'
+                             ,'state'   => ''
                          }
-      }
+     ,'fieldTranslations' =>
+             {
+                 '*' =>
+                     {    '*'             => '*'
+                     }
+             }
       # Some more options for the Scraper operation.
-     ,{'cookies' => 0
-      }
-    ];
+     ,'cookies' => 0
+   };
 
-    # scraperFrame describes the format of the result page.
-    $self->{'_options'}{'scrapeFrame'} = 
+my $scraperFrame =
 [ 'HTML', 
   [ 
       [ 'COUNT', '<strong>Matches: (\d+)</strong>' ]
@@ -145,10 +91,11 @@ sub native_setup_search
   ]
 ];
 
-    # WWW::Search::Scraper understands all that and will setup the search.
-    return $self->SUPER::native_setup_search(@_);
-}
 
+# Access methods for the structural declarations of this Scraper engine.
+sub scraperQuery { $scraperQuery }
+sub scraperFrame { $_[0]->SUPER::scraperFrame($scraperFrame); }
+sub scraperDetail{ undef }
 
 
 # www.apartment.com sets its NEXT button in a submit, with various labels.
@@ -168,3 +115,54 @@ sub getNextPage {
 }
 
 1;
+
+=pod
+
+=head1 NAME
+
+WWW::Search::Scraper::apartments - class for searching www.apartments.com
+
+
+=head1 SYNOPSIS
+
+    require WWW::Search::Scraper;
+    $search = new WWW::Search::Scraper('apartments');
+
+
+=head1 DESCRIPTION
+
+This class is an apartments specialization of WWW::Search.
+It handles making and interpreting apartments searches
+F<http://www.apartments.com>.
+
+
+=head1 OPTIONS
+
+To do.
+
+=head1 OPTIONS
+
+To do
+
+=head1 AUTHOR
+
+C<WWW::Search::apartments> is written and maintained
+by Glenn Wood, <glenwood@alumni.caltech.edu>.
+
+The best place to obtain C<WWW::Search::apartments>
+is from Glenn's releases on CPAN. Because www.apartments.com
+sometimes changes its format in between his releases, 
+sometimes more up-to-date versions can be found at
+F<http://alumni.caltech.edu/~glenwood/SOFTWARE/index.html>.
+
+=head1 COPYRIGHT
+
+Copyright (c) 2001 Glenn Wood
+All rights reserved.
+
+This program is free software; you can redistribute it and/or
+modify it under the same terms as Perl itself.
+
+=cut
+
+

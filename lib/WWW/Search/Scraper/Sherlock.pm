@@ -132,10 +132,10 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
-use WWW::Search::Scraper(qw(1.31 addURL trimTags));
+use WWW::Search::Scraper(qw(2.12 addURL trimTags));
 
 use HTML::Form;
 use HTTP::Cookies;
@@ -173,6 +173,19 @@ sub native_setup_search
     my($self, $native_query, $native_options_ref) = @_;
     $self->user_agent('user');
     $self->{_next_to_retrieve} = 0;
+
+    $self->{'scraperQuery'} = 
+        { 
+              'type' => 'SHERLOCK'    # This is a WWW::Search module - notify native_setup_search_NULL() of that.
+              # This is the basic URL on which to build the query.
+             ,'url' => 'http://'
+              # names the native input field to recieve the query string.
+             ,'nativeQuery' => 'query'
+              # specify defaults, by native field names
+             ,'nativeDefaults' => { }
+             ,'fieldTranslations' => undef # This gives us a null %inputsHash, so WWW::Search::Scraper will ignore that functionality (hopefully)
+             , 'cookies' => 0 # The WWW::Search module must maintain its own cookies.
+        };
 
     $self->{'sherlockPluginRes'} = $self->http_request('GET', $self->{'sherlockPlugin'});
 
@@ -288,7 +301,7 @@ sub native_setup_search
     }
     $self->{'_options'}{'scrapeFrame'} = [ 'HTML', [ @allResultList ] ];
     # whew!
-    use Data::Dumper; print Dumper($self->{'_options'}{'scrapeFrame'}) if $native_options_ref->{'search_debug'};
+    #use Data::Dumper; print Dumper($self->{'_options'}{'scrapeFrame'}); if $self->ScraperTrace('X');
 
     # Ok, we'll add anything other inputs the user wants to throw at the search engine, too.
     my($options_ref) = $self->{_options};
@@ -313,9 +326,11 @@ sub native_setup_search
     $self->{'_next_url'} = $self->{'_options'}{'search_url'} .'?'. $options . 
                                 $self->{'sherlockNativeQuery'} . '=' .$native_query;
 
-    print STDERR $self->{_base_url} . "\n" if ($self->{_debug});
+    print STDERR $self->{_base_url} . "\n" if $self->ScraperTrace('U');
 }
 
+
+sub scraperQuery { return $_[0]->{'scraperQuery'}; }
 
 ##########################################################################
 # Handles "attribute" specifications of the form:

@@ -5,53 +5,42 @@ package WWW::Search::Scraper::Brainpower;
 use strict;
 use vars qw(@ISA $VERSION);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/);
 
-use WWW::Search::Scraper(qw(1.43 trimLFs trimLFLFs));
+use WWW::Search::Scraper(qw(1.48 trimLFs trimLFLFs));
 use WWW::Search::Scraper::FieldTranslation(1.00);
+use WWW::Search::Scraper::Request::Job(1.00);
 
-
-# SAMPLE
-# http://www.flipdog.com/js/jobsearch-results.html?loc=CA-San+Jose+Area&cat=Computing%2FMIS-Software+Development&srch=Perl&job=1
-#
-sub native_setup_search
-{
-    my $self = shift;
-    my ($native_query, $native_options_ref) = @_;
-    
-    $self->{'_options'}{'scraperQuery'} =
-    [ 'QUERY'       # Queries should be 'QUERY', not 'POST', otherwise 2nd, 3rd, etc pages are "Object Moved".
+my $scraperQuery = 
+   { 
+      'type' => 'POST'       # Type of query generation is 'POST'
       # This is the basic URL on which to build the query.
-     ,'http://www.brainpower.com/IndListProject.asp?'
-      # This names the native input field to recieve the query string.
-     ,{  'nativeQuery' => 'skills'
-        ,'nativeDefaults' =>
-                        {    'navItem' => 'searchprojects'  # This is a hidden field, presumably declares "search"
-                            ,'submit1' => 1                 # This is the actual submit button.
-                            ,'title'   => 'ALL'             # All job designations.
-                            #,'title' => 'AP'               # Application Programmer.
-                            ,'searchType' => 1              # searchType = ANY words.
-                            ,'state'      => 80             # All US States
-                            #,'state' => 5                  # California (North)
-                            ,'rate' => ''
-                        }
-        ,'fieldTranslations' =>
-                { '*' => 
-                        {    'skills'    => 'skills'
-                            ,'payrate'   => \&translatePayrate
-                            ,'locations' => new WWW::Search::Scraper::FieldTranslation('Brainpower', 'Job', 'locations')
-                            ,'native_query' => 'skills'
-                            ,'*'         => '*'
-                        }
-                }
-      }
+      ,'url' => 'http://www.brainpower.com/IndListProject.asp?'
+      # This is the Scraper attributes => native input fields mapping
+      ,'nativeQuery' => 'skills'
+      ,'nativeDefaults' =>
+                      {    'navItem' => 'searchprojects'  # This is a hidden field, presumably declares "search"
+                          ,'submit1' => 1                 # This is the actual submit button.
+                          ,'title'   => 'ALL'             # All job designations.
+                          #,'title' => 'AP'               # Application Programmer.
+                          ,'searchType' => 1              # searchType = ANY words.
+                          ,'state'      => 80             # All US States
+                          #,'state' => 5                  # California (North)
+                          ,'rate' => ''
+                      }
+      ,'fieldTranslations' =>
+              { '*' => 
+                      {    'skills'    => 'skills'
+                          ,'payrate'   => \&translatePayrate
+                          ,'locations' => new WWW::Search::Scraper::FieldTranslation('Brainpower', 'Job', 'locations')
+                          ,'*'         => '*'
+                      }
+              }
       # Some more options for the Scraper operation.
-     ,{'cookies' => 1
-      }
-    ];
+     ,'cookies' => 0
+   };
 
-    # scraperFrame describes the format of the result page.
-    $self->{'_options'}{'scrapeFrame'} = 
+my $scraperFrame =
 [ 'HTML', 
     [ 
         [ 'COUNT', 'Your search resulted in <b>([0-9,]+)</b> jobs.' ]
@@ -63,20 +52,21 @@ sub native_setup_search
                    [ 'TABLE', 
                       [
                           ['TR', '#1' ],
-                         ,[ 'HIT*', 'Job',
+                         ,[ 'HIT*', 'Job::Brainpower',
                              [ 
                                  [ 'TR', 
                                      [
-                                         [ 'TD', [ [ 'A', 'url', undef ] ] ]
-                                        ,[ 'TD' ] # There's a TD in a COMMENT, here ! ! ! all are "Any Designation".
-                                        ,[ 'TD', 'title' ]
-                                        ,[ 'TD', 'status' ]
+                                         [ 'TD', [ [ 'A', 'url', 'jobID' ] ] ]
+                                        ,[ 'TD' ] # There's a TD in a <!--COMMENT-->, here ! ! ! all are "Any Designation". E.G., <!--<TD><H6>&nbsp;&nbsp;&nbsp;&nbsp;TITLE</H6></TD>-->
+                                        ,[ 'TD', 'skills' ]
+                                        ,[ 'TD', 'payrate' ]
                                         ,[ 'TD', 'location' ]
                                      ]
                                  ]
                                 ,[ 'TR' ]
                              ]
-                            ,[ 'BOGUS', -1 ]
+                            ,[ 'BOGUS', 1 ]  #Bogus result at the beginning . . .
+                            ,[ 'BOGUS', -1 ] # and at the end!
                           ]
                       ]
                    ]
@@ -87,8 +77,9 @@ sub native_setup_search
     ]
 ];            
 
-    # scrapeDetail describes the format of the detail page.
-    $self->{'_options'}{'scrapeDetail'} = 
+
+    # scraperDetail describes the format of the detail page.
+my $scraperDetail = 
         [ 'HTML', 
             [ 
                 [ 'BODY', '<!-- Begin Nested Right Table Cell -->', undef,
@@ -98,18 +89,20 @@ sub native_setup_search
                               [ 'TABLE', 
                               [
                                   [ 'TR', '#3' ]
-                                 ,[ 'HIT', 'Job',
+                                 ,[ 'HIT', 
                                      [ 
-                                         [ 'TR', [[ 'TD' ],[ 'TD', 'title'    ]] ]
+                                         [ 'TR', [[ 'TD' ],[ 'TD', 'title'    ]] ] # this is a more descriptive title than from the results page.
                                         ,[ 'TR', [[ 'TD' ],[ 'TD', 'role'     ]] ]
-                                        ,[ 'TR', [[ 'TD' ],[ 'TD', 'skillSet' ]] ]
+                                        ,[ 'TR', [[ 'TD' ],[ 'TD', 'skillSet' ]] ] # this replaces the lost results page 'title'.
                                         ,[ 'TR', [[ 'TD' ],[ 'TD', 'type'     ]] ]
-                                        ,[ 'TR', [[ 'TD' ],[ 'TD', 'payrate'  ]] ]
-                                        ,[ 'TR', [[ 'TD' ],[ 'TD', 'length'   ]] ]
                                         ,[ 'TR', [[ 'TD' ],[ 'TD', 'city'     ]] ]
                                         ,[ 'TR', [[ 'TD' ],[ 'TD', 'state'    ]] ]
                                         ,[ 'TR', [[ 'TD' ],[ 'TD', 'postDate' ]] ]
+                                        ,[ 'TR' ]
                                         ,[ 'TR', [[ 'TD' ],[ 'TD', 'description' ]] ]
+                                        ,[ 'TR', [[ 'TD' ],[ 'TD', 'FX' ]] ]
+                                        ,[ 'TR', [[ 'TD' ],[ 'TD', 'FY' ]] ]
+                                        ,[ 'TR', [[ 'TD' ],[ 'TD', 'FZ' ]] ]
                                      ]
                                   ]
                               ]
@@ -120,12 +113,14 @@ sub native_setup_search
                 ]
             ]
         ];            
-    
-    # WWW::Search::Scraper understands all that and will setup the search.
-    return $self->SUPER::native_setup_search(@_);
-}
 
 
+
+
+# Access methods for the structural declarations of this Scraper engine.
+sub scraperQuery { $scraperQuery }
+sub scraperFrame { $scraperFrame }
+sub scraperDetail{ $scraperDetail }
 
 ##############################################################
 # The text in this <TD> element are four lines representing
@@ -192,10 +187,6 @@ sub postSelect {
     # Do the base postSelect, sans locations.
     return 0 unless $rqst->postSelect($scraper, $rslt, ['locations']);
     
-    # Go scrape the data from the details page.
-    my $detail = $rslt->content;
-    $scraper->scraper($scraper->{'_options'}{'scrapeDetail'}[1], \$detail, $rslt, 0);
-    
     # Brainpower's too dumb to put the location in the results, we have to look at details!
     return $scraper->SUPER::postSelect($rqst, $rslt);
 }
@@ -204,32 +195,80 @@ sub postSelect {
 { package WWW::Search::Scraper::Response::Job::Brainpower;
 use vars qw(@ISA);
 @ISA = qw(WWW::Search::Scraper::Response::Job);
+use WWW::Search::Scraper::Response::Job;
 
 sub resultTitles {
     my $self = shift;
     my $resultT = {}; #$self->SUPER::resultTitles();
+    
+    # These fields are from the results page.
     $$resultT{'url'}      = 'url';
-    $$resultT{'title'}    = 'Title';
-    $$resultT{'status'}   = 'Status';
+    $$resultT{'skills'}    = 'Skills';
+    $$resultT{'jobID'}   = 'Job ID';
     $$resultT{'location'} = 'Location';
+    
+    return $resultT if $self->{'_scraperSkipDetailPage'};
+    
+    # The following fields come from the detail page.
+    $$resultT{'role'}     = 'Role';
+    $$resultT{'skillSet'} = 'Skill Set';
+    $$resultT{'type'}     = 'Type';
+    $$resultT{'payrate'}  = 'Payrate';
     $$resultT{'city'}     = 'City';
+    $$resultT{'state'}    = 'State';
+    $$resultT{'postDate'} = 'Post Date';
+    $$resultT{'description'} = 'Description';
+
     return $resultT;
 }
 
 sub results {
     my $self = shift;
     my $results = {}; #$self->SUPER::results();
+    
+    # These fields are from the results page.
     $$results{'url'} = $self->url();
-    $$results{'title'} = $self->title();
-    $$results{'status'} = $self->status();
+    $$results{'jobID'} = $self->jobID();
+    $$results{'skills'} = $self->skills();
     $$results{'location'} = $self->location();
     $$results{'city'} = $self->city();
+    return $results if $self->{'_scraperSkipDetailPage'};
+    
+    # The following fields come from the detail page.
+    for ( qw(role skillSet type payrate state postDate description) ) {
+        $$results{$_} = $self->$_();
+    }
     return $results;
 }
 
-sub city     { return $_[0]->_elem('city'); }
-sub status   { return $_[0]->_elem('status'); }
+sub jobID     { return $_[0]->_elem('jobID'); }
+sub skills     { return $_[0]->_elem('skills'); }
 sub location { my $x = $_[0]->SUPER::location(); $x =~ s/\s+$//g; return $x;}
+
+# 'title' is bi-modal, since detail page may give a better title that the results page.
+sub title { $_[0]->ScrapeDetailPage('title'); return $_[0]->_elem('title'); }
+
+# The following fields come from the detail page.
+sub role        { return $_[0]->ScrapeDetailPage('role') }
+sub skillSet    { return $_[0]->ScrapeDetailPage('skillSet') }
+sub type        { return $_[0]->ScrapeDetailPage('type') }
+sub payrate     { return $_[0]->ScrapeDetailPage('payrate') }
+sub length      { return $_[0]->ScrapeDetailPage('length') }
+sub city        { return $_[0]->ScrapeDetailPage('city') }
+sub state       { return $_[0]->ScrapeDetailPage('state') }
+sub postDate    { return $_[0]->ScrapeDetailPage('postDate') }
+sub description { my $rslt = $_[0]->ScrapeDetailPage('description');
+# Hey, if some of those bubble-heads at the KBDs want to put in a few hundred spaces, then !%^&!* them!
+    $rslt =~ s/\s\s\s\s\s\s\s/\s/g;
+# The same goes for massive doses of <br>s. What is it with these people?
+    $rslt =~ s/\n\n/\n/g;
+    return $rslt;
+ }
+
+sub FX { return $_[0]->ScrapeDetailPage('FX') }
+sub FY { return $_[0]->ScrapeDetailPage('FY') }
+sub FZ { return $_[0]->ScrapeDetailPage('FZ') }
+
 }
 
 

@@ -6,11 +6,11 @@ package WWW::Search::Scraper::FlipDog;
 use strict;
 use vars qw(@ISA $VERSION);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/);
 
-use WWW::Search::Scraper(qw(1.41 trimLFs trimLFLFs));
+use WWW::Search::Scraper(qw(1.48 trimLFs trimLFLFs));
 
-sub results
+sub resultsX
   {
   my $self = shift;
   print STDERR " + results(",$self->{'native_query'},")\n" if $self->{debug};
@@ -27,40 +27,31 @@ sub results
     }
   } # results
 
-
-
 # SAMPLE
 # http://www.flipdog.com/js/jobsearch-results.html?loc=CA-San+Jose+Area&cat=Computing%2FMIS-Software+Development&srch=Perl&job=1
-#
-sub native_setup_search
-{
-    my $self = shift;
-    my ($native_query, $native_options_ref) = @_;
-    
-    $self->{'_options'}{'scraperQuery'} =
-    [ 'QUERY'       # Type of query generation is 'QUERY'
-      # This is the basic URL on which to build the query.
-     ,'http://www.flipdog.com/js/jobsearch-results.html?'
-      # This names the native input field to recieve the query string.
-     ,{   'nativeQuery' => 'srch'
-         ,'nativeDefaults' =>
-                         {    'loc' => 'CA-San Jose Area'
-                             ,'cat' => 'Computing/MIS-Software Development'
-                             ,'job' => '1'
-                         }
-      }
+my $scraperQuery = 
+   { 
+      'type' => 'QUERY'       # Type of query generation is 'QUERY'
+     # This is the basic URL on which to build the query.
+     ,'url' => 'http://www.flipdog.com/js/jobsearch-results.html?'
+     # This is the Scraper attributes => native input fields mapping
+     ,'nativeQuery' => 'srch'
+     ,'nativeDefaults' =>
+                      {    'loc' => 'CA-San Jose Area'
+                          ,'cat' => 'Computing/MIS-Software Development'
+                          ,'job' => '1'
+                      }
+     ,'fieldTranslations' =>
+             {
+                 '*' =>
+                     {    '*'             => '*'
+                     }
+             }
       # Some more options for the Scraper operation.
-     ,{'cookies' => 0
-      }
-    ];
+     ,'cookies' => 0
+   };
 
-    # Initialize other optional fields, for completeness and edification.
-    $self->{'_options'}{'loc'} = 'CA-San Jose Area';
-    $self->{'_options'}{'cat'} = 'Computing/MIS-Software Development';
-    $self->{'_options'}{'job'} = '1'; # this is the initial index into the job list.
-
-    # scraperFrame describes the format of the result page.
-    $self->{'_options'}{'scrapeFrame'} = 
+my $scraperFrame =
 [ 'HTML', 
     [ 
         [ 'COUNT', 'var jobTotal = (\d+)' ]
@@ -94,9 +85,11 @@ sub native_setup_search
     ]
 ];            
 
-    # WWW::Search::Scraper understands all that and will setup the search.
-    return $self->SUPER::native_setup_search(@_);
-}
+
+# Access methods for the structural declarations of this Scraper engine.
+sub scraperQuery { $scraperQuery }
+sub scraperFrame { $_[0]->SUPER::scraperFrame($scraperFrame); }
+sub scraperDetail{ undef }
 
 
 
@@ -148,6 +141,11 @@ sub getNextPage {
     return $url;
 }
 
+sub newHit {
+    my $self = new WWW::Search::Scraper::Response::Job::FlipDog;
+    return $self;
+}
+    
 
 { package WWW::Search::Scraper::Response::Job::FlipDog;
 use vars qw(@ISA);

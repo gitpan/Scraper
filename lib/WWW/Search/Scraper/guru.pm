@@ -67,29 +67,16 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
-use WWW::Search::Scraper(qw(1.33 generic_option addURL trimTags));
+use WWW::Search::Scraper(qw(1.48 generic_option addURL trimTags));
 
 use HTML::Form;
 use HTTP::Cookies;
 
 use strict;
-
-
-sub native_setup_search
-{
-    my($self, $native_query, $native_options_ref) = @_;
-    $self->user_agent('user');
-    $self->{_next_to_retrieve} = 0;
-    if (!defined($self->{_options})) {
-	$self->{_options} = {
-	    'scraperForm_url' => ['http://www.guru.com/guru.jhtml', '#2', 'dartKeyWordStr', undef]
-        };
-    };
-
-    $self->{'_options'}{'scrapeFrame'} = 
+my $scraperFrame = 
         [ 'HTML', 
           [ 
             [ 'COUNT', '(\d+)</font></b>\s+matches']
@@ -123,6 +110,24 @@ sub native_setup_search
           ]
         ];
     
+
+# Access methods for the structural declarations of this Scraper engine.
+#sub scraperQuery { $scraperQuery }
+sub scraperFrame { $scraperFrame }
+sub scraperDetail{ undef }
+
+
+sub native_setup_search
+{
+    my($self, $native_query, $native_options_ref) = @_;
+    $self->user_agent('user');
+    $self->{_next_to_retrieve} = 0;
+    if (!defined($self->{_options})) {
+	$self->{_options} = {
+	    'scraperForm_url' => ['http://www.guru.com/guru.jhtml', '#2', 'dartKeyWordStr', undef]
+        };
+    };
+
     $self->cookie_jar(HTTP::Cookies->new());
     
     my $response = $self->http_request('GET', $self->{_options}{'scraperForm_url'}[0]);
@@ -181,7 +186,7 @@ sub native_setup_search
     my $submit_button = $form->find_input($self->{_options}{'scraperForm_url'}[3], 'submit');
     $submit_button = $form->find_input($self->{_options}{'scraperForm_url'}[3], 'image') unless $submit_button;
     my $req = $submit_button->click($form); #
-    $self->{_options}{'scraperRequest'} = $req;
+#    $self->{_options}{'scraperRequest'} = $req;
 
     $self->{'search_method'} = $form->method();
     my $url = $req->uri()->uri_unescape();

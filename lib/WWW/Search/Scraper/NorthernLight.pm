@@ -9,42 +9,33 @@ use vars qw($VERSION @ISA);
 $VERSION = sprintf("%d.%02d", q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
-use WWW::Search::Scraper(qw(1.44 generic_option addURL trimTags));
+use WWW::Search::Scraper(qw(1.48 generic_option addURL trimTags));
 use WWW::Search::Scraper::FieldTranslation;
 
-use LWP::UserAgent;
-use HTML::Form;
-use HTTP::Cookies;
-
-sub native_setup_search
-{
-    my($self, $native_query, $native_options_ref) = @_;
-    $self->{'_options'}{'scraperQuery'} =
-    [ 'FORM'       # 
-      # This is the basic URL on which to get the form to build the query.
-     ,['http://www.northernlight.com/power.html', 'powSearch', 'search']
-      # This names the native input field to recieve the query string.
-     ,{  'nativeDefaults' =>
-                        {
-                        }
-        ,'fieldTranslations' =>
-                {
-                    '*' =>
-                        {    'skills'    => 'qr'
+my $scraperQuery = 
+   { 
+      'type' => 'FORM'       # Type of query generation is 'QUERY'
+     ,'formNameOrNumber' => 'powSearch'
+     ,'submitButton' => 'search'
+      # This is the basic URL on which to build the query.
+     ,'url' => 'http://www.northernlight.com/power.html'
+      # This is the Scraper attributes => native input fields mapping
+      ,'nativeQuery' => 'qr'
+      ,'nativeDefaults' => {}
+      ,'fieldTranslations' =>
+              {
+                  '*' =>
+                      {    'skills'    => 'qr'
 #                            ,'payrate'   => undef
 #                            ,'locations' => new WWW::Search::Scraper::FieldTranslation('NorthernLight', 'Job', 'locations')
-                            ,'native_query' => 'qr'
-                            ,'*'         => '*'
-                        }
-                }
-      }
+                          ,'*'         => '*'
+                      }
+              }
       # Some more options for the Scraper operation.
-     ,{'cookies' => 0
-      }
-    ];
-    $self->{'_http_method'} = 'GET';
+     ,'cookies' => 0
+   };
 
-    $self->{'_options'}{'scrapeFrame'} = 
+my $scraperFrame =
         [ 'HTML', 
            [ 
                [ 'COUNT', '<b>[0-9,]+ items?</b>']
@@ -77,10 +68,12 @@ sub native_setup_search
            ]
         ];
 
-    # WWW::Search::Scraper understands all that and will setup the search.
-    return $self->SUPER::native_setup_search(@_);
 
-} # native_setup_search
+
+# Access methods for the structural declarations of this Scraper engine.
+sub scraperQuery { $scraperQuery }
+sub scraperFrame { $_[0]->SUPER::scraperFrame($scraperFrame); }
+sub scraperDetail{ undef }
 
 1;
 

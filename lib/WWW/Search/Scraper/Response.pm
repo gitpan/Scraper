@@ -32,7 +32,7 @@ modify it under the same terms as Perl itself.
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::SearchResult);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
 require WWW::SearchResult;
 
 sub new { 
@@ -40,9 +40,11 @@ sub new {
     my $self = new WWW::SearchResult;
     bless $self, $class;
 
-    for ( keys %{$self->resultTitles()} ) {
-        $self->{$_} = '';
-    }
+#    for ( keys %{$self->resultTitles()} ) {
+#        $self->{$_} = '';
+#    }
+    $self->{'_scraperEngine'} = shift;
+
     return $self;
 }
 
@@ -104,6 +106,27 @@ sub toHTML {
     return $result;
 }
 
+# Fetch and scrape the detail page if necessary.
+# Return the requested field, if given.
+sub ScrapeDetailPage {
+    my $self = shift;
+    
+    return undef if $self->{'_scraperSkipDetailPage'};
+    my $detail = $self->{'_scraperDetail'};
+    unless ( $detail ) {
+        my $scraper = $self->{'_scraperEngine'};
+        return undef if $scraper->{'_scraperNoDetailPage'};
+        $detail = $scraper->http_request('GET', $self->url())->content();
+        $self->{'_scraperDetail'} = $detail;
+        $scraper->scraperHTML(${$scraper->scraperDetail()}[1], \$detail, $self, 0);
+    }
 
+    if ( $_[0] ) {
+        return $self->_elem($_[0]);
+    } else {
+        return undef;
+    }
+
+}
 1;
 

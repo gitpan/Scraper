@@ -4,58 +4,34 @@ package WWW::Search::Scraper::eBay;
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.13 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.15 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Search::Scraper(qw(1.24 generic_option addURL trimTags));
 
 use HTML::Form;
 
-my $defaultScraperForm_url = ['http://pages.ebay.com/search/items/search.html', 0, 'query', undef];
+my $scraperQuery = 
+   { 
+      'type' => 'FORM'
+     ,'formNameOrNumber' => undef
+     ,'submitButton' => undef
 
-sub import
-{
-    my $package = shift;
+     # This is the basic URL on which to build the query.
+     ,'url' => 'http://pages.ebay.com/search/items/search.html'
+     # This is the Scraper attributes => native input fields mapping
+     ,'nativeQuery' => 'query'
+     ,'nativeDefaults' => {}
+     ,'fieldTranslations' =>
+             {
+                 '*' =>
+                     {    '*'             => '*'
+                     }
+             }
+      # Some more options for the Scraper operation.
+     ,'cookies' => 0
+   };
 
-    my @exports = grep { "HASH" ne ref($_) } @_;
-    my @options = grep { "HASH" eq ref($_) } @_;
-
-    foreach (@options)
-    {
-        if ( $_->{'scraperBaseURL'} ) {
-            $$defaultScraperForm_url[0] = $_->{'scraperBaseURL'};
-        }
-    }
-
-    @_ = ($package, @exports);
-    goto &Exporter::import;
-}
-
-
-sub native_setup_search
-{
-    my ($self, $native_query, $native_options_ref) = @_;
-    my $debug = $self->{'_debug'};
-
-    $self->user_agent('user');
-    $self->{_next_to_retrieve} = 0;
-    if (!defined($self->{_options})) {
-	$self->{_options} = {
-    	    'scraperForm_url' => $defaultScraperForm_url
-        };
-    };
-    
-    print "GetForm: '".$self->{_options}{'scraperForm_url'}[0]."'\n" if $debug;
-    my $response = $self->http_request('GET', $self->{_options}{'scraperForm_url'}[0]);
-    unless ( $response->is_success ) {
-        print STDERR $response->error_as_HTML() if $debug;
-        return undef;
-    };
-    my @forms = HTML::Form->parse($response->content(), $response->base());
-    
-    my $form = $forms[$self->{_options}{'scraperForm_url'}[1]];
-    $self->{'_http_method'} = $form->method();
-
-    $self->{'_options'}{'scrapeFrame'} = 
+my $scraperFrame =
         [ 'HTML', 
             [ 
                [ 'COUNT', '([,0-9]+)</b> items found  ?for']
@@ -89,44 +65,34 @@ sub native_setup_search
                ]
             ]
         ];
- 
-    my($options_ref) = $self->{_options};
-    if (defined($native_options_ref)) {
-    	# Copy in new options.
-    	foreach (keys %$native_options_ref) {
-    	    $options_ref->{$_} = $native_options_ref->{$_};
-    	};
-    };
-    # Process the options.
-    # (Now in sorted order for consistency regarless of hash ordering.)
-    my($options) = '';
-    foreach (sort keys %$options_ref) {
-    	# printf STDERR "option: $_ is " . $options_ref->{$_} . "\n";
-    	next if (generic_option($_));
-    	$options .= $_ . '=' . $options_ref->{$_} . '&';
-    };
-    $self->{_debug} = $options_ref->{'search_debug'};
-    $self->{_debug} = 2 if ($options_ref->{'search_parse_debug'});
-    $self->{_debug} = 0 if (!defined($self->{_debug}));
-    
-    # Finally figure out the url.
-    unless ( $form ) {
-        print STDERR "Can't find a <FORM> in ".$response->content()."\n" if $debug;
-        return undef;
+
+
+
+# Access methods for the structural declarations of this Scraper engine.
+sub scraperQuery { $scraperQuery }
+sub scraperFrame { $_[0]->SUPER::scraperFrame($scraperFrame); }
+sub scraperDetail{ undef }
+
+
+
+my $defaultScraperForm_url = ['http://pages.ebay.com/search/items/search.html', 0, 'query', undef];
+sub import
+{
+    my $package = shift;
+
+    my @exports = grep { "HASH" ne ref($_) } @_;
+    my @options = grep { "HASH" eq ref($_) } @_;
+
+    foreach (@options)
+    {
+        if ( $_->{'scraperBaseURL'} ) {
+            $scraperQuery->{'url'} = $_->{'scraperBaseURL'};  # new form
+            $$defaultScraperForm_url[0] = $_->{'scraperBaseURL'}; # old form
+        }
     }
-    my $query = $form->find_input($self->{_options}{'scraperForm_url'}[2]);
-    $query->value($native_query);
 
-    my $submit_button = $form->find_input($self->{_options}{'scraperForm_url'}[3], 'submit');
-    my $req = $submit_button->click($form); #
-    $self->{_options}{'scraperRequest'} = $req;
-
-    $self->{'search_method'} = $form->method();
-    my $url = $req->uri()->uri_unescape();
-
-    $self->{_base_url} = 
-	$self->{_next_url} = $url;
-    print  STDERR "BASE_URL: '" . $self->{_base_url} . "'\n" if $debug;
+    @_ = ($package, @exports);
+    goto &Exporter::import;
 }
 
 
@@ -157,6 +123,7 @@ sub findNextForm {
 }
 
 1;
+
 __END__
 
 =pod

@@ -119,37 +119,36 @@ modify it under the same terms as Perl itself.
 #####################################################################
 
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/);
 
-use WWW::Search::Scraper(qw(1.42));
+use WWW::Search::Scraper(qw(1.48 trimTags));
 
 use strict;
 
 # SAMPLE
 # "http://" + marketurl + ".techies.com/Common/Includes/Main/Search_Session_include_m.jsp?Search=" + escape(searchString)
 #
-sub native_setup_search
-{
-    my $self = shift;
-    my ($native_query, $native_options_ref) = @_;
-    
-    $self->{'_options'}{'scraperQuery'} =
-    [ 'QUERY'       # Type of query generation is 'QUERY'
-      # This is the basic URL on which to build the query.
-     ,\&makeURL
-      # This is the Scraper attributes => native input fields mapping
-     ,{   'nativeQuery' => 'Search'
-         ,'nativeDefaults' => {}
-      }
+my $scraperQuery = 
+   { 
+      'type' => 'QUERY'       # Type of query generation is 'QUERY'
+     # This is the basic URL on which to build the query.
+     ,'url' => \&makeURL
+     # This is the Scraper attributes => native input fields mapping
+     ,'nativeQuery' => 'Search'
+     ,'nativeDefaults' => {
+                            'Location' => undef
+                          }
+     ,'fieldTranslations' =>
+             {
+                 '*' =>
+                     {    '*'             => '*'
+                     }
+             }
       # Some more options for the Scraper operation.
-     ,{'cookies' => 1
-      }
-    ];
+     ,'cookies' => 1
+   };
 
-    $self->cookie_jar(HTTP::Cookies->new()); # AND TECHIES STILL ASKS FOR COOKIES! gdw 2001.06.05
-    
-    # scraperFrame describes the format of the result page.
-    $self->{'_options'}{'scrapeFrame'} = 
+my $scraperFrame =
 [ 'HTML', 
   [ 
       [ 'COUNT', '<strong>Matches: (\d+)</strong>' ]
@@ -178,18 +177,26 @@ sub native_setup_search
    ]
 ];
 
-    # WWW::Search::Scraper understands all that and will setup the search.
-    return $self->SUPER::native_setup_search(@_);
+
+# Access methods for the structural declarations of this Scraper engine.
+sub scraperQuery  { $scraperQuery }
+sub scraperRequest{ return $_[0]->request() }
+sub scraperFrame  { $_[0]->SUPER::scraperFrame($scraperFrame); }
+sub scraperDetail { undef }
+
+sub techiesLocation {
+    $_[0]->scraperQuery()->{'nativeDefaults'}{'Location'} = $_[1];
 }
 
 
 sub makeURL {
     my ($self, $native_query, $native_options_ref) = @_;
-    unless ( defined $native_options_ref->{'Location'} ) {
-        print STDERR "www.techies.com requires that you set a value for 'Location'.\nSee http://www.techies.com, or ".ref($self).".pm\n";
+    my $location = $self->scraperQuery()->{'nativeDefaults'}{'Location'};
+    unless ( defined $location ) {
+        print STDERR "www.techies.com requires that you set a native value for 'Location'.\nSee http://www.techies.com, and set with method Scraper::techies::techiesLocation().\n";
         return undef;
     }
-    my $url = "http://$native_options_ref->{'Location'}.techies.com/Common/Includes/Main/Search_Session_include_m.jsp?";
+    my $url = "http://$location.techies.com/Common/Includes/Main/Search_Session_include_m.jsp?";
     undef $native_options_ref->{'Location'}; # This is already in the URL, don't let Scraper.pm add it again.
     $self->{'_http_method'} = 'POST';
     return $url;

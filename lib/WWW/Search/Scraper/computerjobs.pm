@@ -1,6 +1,82 @@
 
 package WWW::Search::Scraper::computerjobs;
 
+use strict;
+use vars qw($VERSION @ISA);
+@ISA = qw(WWW::Search::Scraper);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/);
+use WWW::Search::Scraper(qw(1.48 trimLFs));
+
+my $scraperQuery = 
+   { 
+      'type' => 'QUERY'       # Type of query generation is 'QUERY'
+      # This is the basic URL on which to build the query.
+     ,'url' => 'http://www.search.computerjobs.com/job_results.asp?'
+      # This is the Scraper attributes => native input fields mapping
+     ,'nativeQuery' => 's_kw'
+     ,'nativeDefaults' => {}
+     ,'fieldTranslations' =>
+             {
+                 '*' =>
+                     {    '*'             => '*'
+                     }
+             }
+      # Some more options for the Scraper operation.
+     ,'cookies' => 1
+   };
+
+my $scraperFrame =
+[ 'HTML', 
+  [ 
+      [ 'COUNT', '([,0-9]+)\s+Search results ' ]
+     ,[ 'NEXT', 1, '/ci/page_next_page.gif' ]
+     # I think there might be something in this 'BODY' segment, but I haven't seen any, yet.
+     ,[ 'BODY', '<!--- featured jobs --->', '<!-- end featured jobs -->' ]
+     ,[ 'BODY', 'Page \d+ of', undef,
+         [
+            [ 'HIT*' ,
+              [
+                [ 'TABLE', '#0',
+                  [
+                    [ 'TR', 
+                      [
+                        [ 'TD' ] 
+                       ,[ 'TD', 'title', \&trimLFs ]
+                       ,[ 'TD' ] 
+                      ]
+                    ]
+                  ]
+                ]
+               ,[ 'TABLE', '#0', 
+                  [ 
+                    [ 'TR', 
+                      [ 
+                         [ 'TD', 'description', \&parseDescriptionAndAllThat ]
+                      ] 
+                    ]
+                  ]
+                ]
+              ]
+            ]
+           ,[ 'BOGUS', -2 ]
+         ]
+      ] 
+   ]
+];
+
+# Access methods for the structural declarations of this Scraper engine.
+sub scraperQuery { $scraperQuery }
+sub scraperFrame { $_[0]->SUPER::scraperFrame($scraperFrame); }
+sub scraperDetail{ undef }
+
+
+# Here we might someday do some more elaborate parsing, since the
+# 'description' text contains the company, location and salary (sometimes).
+sub parseDescriptionAndAllThat {
+    my ($self, $hit, $dat) = @_;
+    return $self->trimLFLFs($hit, $dat);
+}
+
 =pod
 
 =head1 NAME
@@ -94,85 +170,5 @@ This program is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself.
 
 =cut
-
-
-#####################################################################
-
-use strict;
-use vars qw($VERSION @ISA);
-@ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/);
-use WWW::Search::Scraper(qw(1.41 trimLFs));
-
-use strict;
-
-sub native_setup_search
-{
-    my $self = shift;
-    my ($native_query, $native_options_ref) = @_;
-    
-    $self->{'_options'}{'scraperQuery'} =
-    [ 'QUERY'       # Type of query generation is 'QUERY'
-      # This is the basic URL on which to build the query.
-     ,'http://www.search.computerjobs.com/job_results.asp?'
-      # This is the Scraper attributes => native input fields mapping
-     ,{   'nativeQuery' => 's_kw'
-         ,'nativeDefaults' => {}
-      }
-      # Some more options for the Scraper operation.
-     ,{'cookies' => 1
-      }
-    ];
-
-    # scraperFrame describes the format of the result page.
-    $self->{'_options'}{'scrapeFrame'} = 
-[ 'HTML', 
-  [ 
-      [ 'COUNT', '([,0-9]+)\s+Search results ' ]
-     ,[ 'NEXT', 1, '/ci/page_next_page.gif' ]
-     # I think there might be something in this 'BODY' segment, but I haven't seen any, yet.
-     ,[ 'BODY', '<!--- featured jobs --->', '<!-- end featured jobs -->' ]
-     ,[ 'BODY', 'Page \d+ of', undef,
-         [
-            [ 'HIT*' ,
-              [
-                [ 'TABLE', '#0',
-                  [
-                    [ 'TR', 
-                      [
-                        [ 'TD' ] 
-                       ,[ 'TD', 'title', \&trimLFs ]
-                       ,[ 'TD' ] 
-                      ]
-                    ]
-                  ]
-                ]
-               ,[ 'TABLE', '#0', 
-                  [ 
-                    [ 'TR', 
-                      [ 
-                         [ 'TD', 'description', \&parseDescriptionAndAllThat ]
-                      ] 
-                    ]
-                  ]
-                ]
-              ]
-            ]
-           ,[ 'BOGUS', -2 ]
-         ]
-      ] 
-   ]
-];
-
-    # WWW::Search::Scraper understands all that and will setup the search.
-    return $self->SUPER::native_setup_search(@_);
-}
-
-# Here we might someday do some more elaborate parsing, since the
-# 'description' text contains the company, location and salary (sometimes).
-sub parseDescriptionAndAllThat {
-    my ($self, $hit, $dat) = @_;
-    return $self->trimLFLFs($hit, $dat);
-}
 
 1;

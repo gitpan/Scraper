@@ -1,52 +1,44 @@
 use strict;
 package WWW::Search::Scraper::Request;
 
+{ package WWW::Search::Scraper::Request::_struct_;
+use Class::Struct;
+    struct ( 
+                 '_state'   => '$'
+                ,'_fields'  => '$'
+                ,'_engines' => '%'
+                ,'_native_query' => '$'     # native_query for legacy (WWW::Search) style requests.
+                ,'_native_options' => '$'   # native_options for legacy (WWW::Search) style requests.
+                ,'_postSelect' => '%'
+                ,'Scraper_debug'  => '$'
+           );
+}
+use base qw(WWW::Search::Scraper::Request::_struct_);
+
+sub FieldTitles {
+    return {  };
+}
 
 sub new {
+    my $self = new WWW::Search::Scraper::Request::_struct_;
+    bless $self, shift;
+    $self->_init(@_);
+}
+
+sub _init {
     my ($self, $query, $options_ref) = @_;
-    $self = bless {}, $self;
-    
-    $self->{'_state'}   = 0;  # Current state of request object -
-                              #     0 - query has not yet been set.
-                              #     1 - query is set, not yet "prepared" to "fields"
-                              #     2 - fields have been set.
-    $self->{'_query'}   = {}; # The basic, canonical, query (SQL WHERE clause-ish)
-    $self->{'_fields'}  = {}; # That query broken up into field (SQL column) relations
-                              # leading "op" character - '=' equal, '#' not equal.
-    $self->{'_engines'} = {}; # Special messages to each type of Scraper module.
-    
-    if ( $query ) {
-        $self->query($query); # This should be translated from generic query to native query.
-        $self->{'_state'} = 1;
-    }
-    if (defined($options_ref)) {
-    	# Copy in new options.
-    	foreach (keys %$options_ref) {
-    	    $self->field($_, $options_ref->{$_}) if defined $options_ref->{$_};
-    	};
-    };
+
+    $self->_native_query($query);
+    $self->_native_options($options_ref) if ref $options_ref eq 'HASH';
+
     return $self;
 }
 
 
-# A generalize get/set method for object attributes.
-sub _attr {
-    my ($self, $attr, $value) = @_;
-    my $rtn = $self->{$attr};
-    $self->{$attr} = $value if defined $value;
-    if ( wantarray ) {
-        return $rtn if 'ARRAY' eq ref $rtn;
-        return [$rtn];
-    }
-    return $rtn;
-}
-sub query          { $_[0]->_attr('_query', $_[1]) }
-sub debug          { $_[0]->_attr('_debug', $_[1]) }
-
 # A generalize get/set method for "field" attributes.
 sub field {
     my ($self, $field, $value) = @_;
-    my $rtn = $self->{'_fields'}->{$field};
+    my $rtn = $self->_fields($field);
     $self->{'_fields'}->{$field} = $value if defined $value;
 #print "$field:'$self->{'_fields'}->{$field}'\n" if defined $value;    
     return $rtn;
@@ -56,12 +48,68 @@ sub fields { $_[0]->{'_fields'} }
 
 
 
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### 
+# Prepare the query and options of the Scraper module, based on the given request.
 # Parse the SQL WHERE-ish clause in '_query' into '_fields' array.
+#
+# We don't do this process in v1.00; we rely on the user to have set the fields array.
 sub prepare {
-    my ($self) = @_;
+    my ($self, $scraper) = @_;
 
-    # We don't do this process in v1.00; we rely on the user to have set the fields array.
-    $self->{'_state'} = 2;
+    # Move the field values from $self into $scraper, translating
+    # field names to option names according to $scraper->fieldTranslations.
+    # fieldTranlations{'*'} eq '*' - clone the name
+    # fieldTranlations{'*'} ne '*' - drop that field.
+    my $fieldTitles = $self->FieldTitles;
+    my $options_ref = $scraper->{'native_options'};
+    $options_ref = {} unless ( $options_ref );
+
+    # This gets our defaults into these values, if the Scraper engine is not fully defined.
+    my $scraperQuery = $scraper->scraperQuery();
+    $scraper->queryDefaults($scraperQuery->{'nativeDefaults'}) unless $scraper->queryDefaults();
+    $scraper->fieldTranslations($scraperQuery->{'fieldTranslations'}) unless $scraper->fieldTranslations();
+    
+    # Set nativeQuery field value first; it may be overwritten by FieldTranslations later, which is what we'd want.
+    $options_ref->{$scraperQuery->{'nativeQuery'}} = $self->_native_query() if $scraperQuery->{'nativeQuery'};
+    
+    $scraper->cookie_jar(HTTP::Cookies->new()) if $scraperQuery->{'cookies'}; 
+
+    my $fieldTranslationsTable = $scraper->fieldTranslations();
+    my $fieldTranslations = $fieldTranslationsTable->{'*'}; # We'll do this until context sensitive work is done - gdw.2001.08.18
+    my $fieldTranslation;
+
+    # Translate all the fields whose titles are listed by this Request object.
+    for ( keys %$fieldTitles ) {
+        # Find what option we'll be translating to, or default (by cloning).
+        $fieldTranslation = $$fieldTranslations{$_};
+        next if defined $fieldTranslation and $fieldTranslation eq '';
+        unless ( $fieldTranslation ) {
+            if ($$fieldTranslations{'*'} eq '*' ) {
+                $fieldTranslation = $_;
+            } else {
+                next;
+            }
+        }
+        # 'fieldTranslation' may be a string naming the option, or 
+        # a subroutine tranforming the field into a (nam,val) pair,
+        # or a FieldTranslation object.
+        if ( 'CODE' eq ref $fieldTranslation ) {
+            my ($nam, $val, $postSelect) = &$fieldTranslation($scraper, $self, $self->$_());
+            next unless ( $nam );
+            $options_ref->{$nam} = $val;
+            # Stuff the postSelect criteria for checking later.
+            $self->_postSelect($nam, $postSelect) if defined $postSelect;
+        } elsif ( ref $fieldTranslation ) { # We assume any other ref is an object of some sort.
+            my $nam = $fieldTranslation->translate($scraper, $self, $self->$_());
+            for ( keys %$nam ) {
+                $options_ref->{$_} = $$nam{$_};
+            }
+        }
+        else {
+            $options_ref->{$fieldTranslation} = $self->$_();
+        }
+    }
+    $scraper->{'native_options'} = $options_ref;
 }
 
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### 

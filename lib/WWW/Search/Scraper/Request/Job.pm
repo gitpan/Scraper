@@ -3,29 +3,38 @@ package WWW::Search::Scraper::Request::Job;
 use strict;
 
 use vars qw($VERSION @ISA);
-@ISA = qw( WWW::Search::Scraper::Request );
+$VERSION = sprintf("%d.%02d", q$Revision: 1.0 $ =~ /(\d+)\.(\d+)/);
+
 use WWW::Search::Scraper::Request;
+{ package WWW::Search::Scraper::Request::Job::_struct_;
+use Class::Struct;
+    struct ( 
+                 '_state'   => '$'
+                ,'_fields'  => '$'
+                ,'_engines' => '%'
+                ,'_native_query' => '$'
+                ,'_native_options' => '$'   # reference to hash of native_options.
+                ,'Scraper_debug'  => '$'
+                # Now for the Job specific members.
+                ,'skills'    => '$'
+                ,'locations' => '$'
+                ,'payrate'   => '$'
+           );
+}
+use base qw( WWW::Search::Scraper::Request WWW::Search::Scraper::Request::Job::_struct_);
 
-sub skills    { shift->field('skills', @_); }
-sub locations { shift->field('locations', @_); }
-sub payrate   { shift->field('payrate', @_); }
-
-
-### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### 
-# For Scraper modules to lazy to do their own postSelect(), we can do a Request::Job version of it.
-sub postSelect {
-    my ($rqst, $scraper, $rslt, $alreadyDone) = @_;
-    
-return 1; # WE'LL WORK OVER THIS LATER. gdw.2001.07.14
-# With all that's happening in Scraper.pm and FieldTranslation.pm, I wonder if there will be a later? gdw.2001.07.05
-    
-    # postSelect by locations - make sure the city and state appear in the $rslt->locations.
-    # ? ? ? 
-
-    # Default is true, unless one of the previous check intercept it!
-    return 1;
+sub FieldTitles {
+    return { 'skills'        => 'Skills'
+            ,'locations'     => 'Locations'
+            ,'payrate'       => 'Payrate'
+           };
 }
 
+sub new {
+    my $self = new WWW::Search::Scraper::Request::Job::_struct_;
+    bless $self, shift;
+    $self->_init(@_);
+}
 
 1;
 

@@ -2,7 +2,7 @@
 # `make test'. After `make install' it should work as `perl test.pl'
 
 use ExtUtils::testlib;
-$VERSION = sprintf("%d.%02d", q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/);
 
 ######################### We start with some black magic to print on failure.
 
@@ -24,13 +24,13 @@ while (<TMP>) {
         next if $1 eq 'FieldTranslation';# This one's not an engine.
 #       next if $1 eq 'Sherlock';    # We're not smart enough to test Sherlock, yet!
         next if $1 eq 'apartments';  # went flippo - I'll fix this later.
-        next if $1 eq 'techies';     # This one doesn't work, anyway.
-        next if $1 eq 'FlipDog';     # went flippo - I'll fix this later.
+        next if $1 eq 'BAJobs';     # BAJobs is sick this month - I'll fix later.
+#        next if $1 eq 'techies';     # This one doesn't work, anyway.
+#        next if $1 eq 'FlipDog';     # went flippo - I'll fix this later.
         next if $1 eq 'guru';        # This one doesn't work today, gdw.2001.08.22
         next if $1 eq 'HotJobs';     # HotJobs changed a lot - I'll fix this later.
-        next if $1 eq 'JustTechJobs'; # went flippo - I'll fix this later.
+        next if $1 eq 'JustTechJobs'; # went flippo - I'll fix this later; also, not ready for v2.01 ({'whichTech'}).
         next if $1 eq 'theWorksUSA'; # This one still has a problem (looping).
-next if $1 eq 'BAJobs';     # hmmm. . .  grrr . . . hmmm . . .
         push @modules, $1;
     }
 }
@@ -46,7 +46,7 @@ use FileHandle;
     select ($traceFile); $| = 1; select STDOUT;
 
 use strict;
-use WWW::Search::Scraper;
+use WWW::Search::Scraper(qw(1.48));
 use WWW::Search::Scraper::Request;
     my $loaded = 1;
     $iTest++;
@@ -63,7 +63,7 @@ use WWW::Search::Test;
 for my $sEngine ( @modules ) {
     my $debug = 0;
     
-#    next unless $sEngine eq 'FlipDog';
+next unless $sEngine eq 'techies';
 
     $iTest++;
     $traceFile->print("Test #$iTest: $sEngine\n");
@@ -86,6 +86,7 @@ for my $sEngine ( @modules ) {
         my @aoResults = $oSearch->results();
         $iResults = scalar(@aoResults);
         print STDOUT ( 0 < $iResults ) ? 'not ' : '';
+        print STDERR " --- got $iResults 'bogus' results, expected 0\n" if $iResults > 0;
     }
     print STDOUT "ok $iTest\n";
 
@@ -96,14 +97,15 @@ for my $sEngine ( @modules ) {
 
 # Set up standard, and exceptional, options.
 my %specialOptions = (
-                         'apartments' => { 'state' => 'CA', 'search_debug' => $debug }
+                         'apartments' => { 'state' => 'NY', 'search_debug' => $debug }
                         ,'JustTechJobs' => { 'whichTech' => 'Perl' }                                         
-                        ,'Dice' => {'method'=>'bool', 'acode'=>'650', 'daysback'=>'30', 'search_debug' => $debug}
+#                        ,'Dice' => {'method'=>'bool', 'acode'=>'650', 'daysback'=>'30', 'search_debug' => $debug}
                      );
+$oSearch->techiesLocation('bayarea') if $sEngine eq 'techies'; # www.techies.com is special.
 $oSearch->sherlockPlugin('http://sherlock.mozdev.org/yahoo.src') if $sEngine eq 'Sherlock'; # Sherlock is extra special.
 
 my %specialQuery = (
-                         'apartments' => 'Los Angeles'
+                         'apartments' => 'New York'
                         ,'eBay'     => 'turntable'
                         ,'Dice'     => 'Perl NOT Java'
                         ,'Google'   => 'turntable'
@@ -118,8 +120,8 @@ my %specialQuery = (
     $sQuery = $specialQuery{$sEngine} if defined $specialQuery{$sEngine};
     my $options = $specialOptions{$sEngine};
     $options = {} unless $options;
-    my $request = new WWW::Search::Scraper::Request($sQuery);
-    $request->debug($$options{'search_debug'}?$$options{'search_debug'}:$debug);
+    my $request = new WWW::Search::Scraper::Request($sQuery, $options);
+    $request->Scraper_debug($$options{'search_debug'}?$$options{'search_debug'}:$debug);
     
     $oSearch->native_query($sQuery); # This let's us test pre-v2.00 modules from here, too.
     $oSearch->request($request);
@@ -155,7 +157,7 @@ my %specialQuery = (
     $maximum_to_retrieve = 41; # 2 or 3 pages
     $oSearch->maximum_to_retrieve($maximum_to_retrieve); # 2 or 3 pages
     my $request = new WWW::Search::Scraper::Request($sQuery);
-    $request->debug($$options{'search_debug'}?$$options{'search_debug'}:$debug);
+    $request->Scraper_debug($$options{'search_debug'}?$$options{'search_debug'}:$debug);
     $oSearch->native_query($sQuery); # This let's us test pre-v2.00 modules from here, too.
     $oSearch->request($request);
     $iResults = 0;
@@ -170,7 +172,7 @@ my %specialQuery = (
       {
         # We make an exception for these jobsites, since
         #  they often turn up few Perl jobs, anyway.
-         unless ( $sEngine =~ m/Brainpower|computerjobs|guru|HotJobs|Monster|NorthernLight|Sherlock/ ) {
+         unless ( $sEngine =~ m/Brainpower|computerjobs|CraigsList|FlipDog|guru|HotJobs|Monster|NorthernLight|Sherlock/ ) {
             print STDERR " --- got $iResults results for multi-page $sEngine ($sQuery), but expected $maximum_to_retrieve..\n";
             print STDOUT 'not ';
         }

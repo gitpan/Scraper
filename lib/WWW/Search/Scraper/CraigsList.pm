@@ -6,10 +6,10 @@ package WWW::Search::Scraper::CraigsList;
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-use WWW::Search::Scraper(qw(1.41 generic_option addURL trimTags));
+use WWW::Search::Scraper(qw(1.48 generic_option addURL trimTags));
 use WWW::Search::Scraper::FieldTranslation;
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/);
 
 # Craigs List differs from other search engines in a few ways.
 # One of them is the results page is not tablulated, or data lined.
@@ -22,39 +22,34 @@ $VERSION = sprintf("%d.%02d", q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/);
 #
 #
 # private
-sub native_setup_search
-{
-   my $self = shift;
-    
-   $self->{'_options'}{'scraperQuery'} =
-    [ 'POST'       # Type of query generation is 'QUERY', http_method = 'POST'
-      # This is the basic URL on which to build the query.
-     ,'http://www.craigslist.org/cgi-bin/search.cgi?'
-      # This is the Scraper attributes => native input fields mapping
-     ,{   'nativeQuery' => 'query'
-         ,'nativeDefaults' =>
-                         {    'areaID'     => '1'
-                             ,'subAreaID'  => '0'
-                             ,'group'      => 'J'
-                             ,'catAbb'     => ''
-                             ,'areaAbbrev' => ''
-                         }
-         ,'fieldTranslations' =>
-                { '*' => 
-                     {    '*'         => '*'
-                         ,'skills'    => 'query'
-#                          ,'payrate'   => \&translatePayrate
-                         ,'locations' => new WWW::Search::Scraper::FieldTranslation('CraigsList', 'Job', 'locations')
-                         ,'native_query' => 'query'
-                     }
-                 }
-      }
-      # Some more options for the Scraper operation.
-     ,{'cookies' => 0
-      }
-    ];
 
-    $self->{'_options'}{'scrapeFrame'} = 
+my $scraperQuery = 
+   { 
+      'type' => 'POST'       # Type of query generation is 'POST'
+      # This is the basic URL on which to build the query.
+     ,'url' => 'http://www.craigslist.org/cgi-bin/search.cgi?'
+      # This is the Scraper attributes => native input fields mapping
+      ,'nativeQuery' => 'query'
+      ,'nativeDefaults' =>
+                      {    'areaID'     => '1'
+                          ,'subAreaID'  => '0'
+                          ,'group'      => 'J'
+                          ,'catAbb'     => ''
+                          ,'areaAbbrev' => ''
+                      }
+      ,'fieldTranslations' =>
+             { '*' => 
+                  {    '*'         => '*'
+                      ,'skills'    => 'query'
+#                          ,'payrate'   => \&translatePayrate
+                      ,'locations' => new WWW::Search::Scraper::FieldTranslation('CraigsList', 'Job', 'locations')
+                  }
+              }
+      # Some more options for the Scraper operation.
+     ,'cookies' => 0
+   };
+
+my $scraperFrame =
        [ 'HTML', 
          [ [ 'BODY', '</FORM>', '' ,
            [ [ 'COUNT', 'found (\d+) entries'] ,
@@ -66,10 +61,12 @@ sub native_setup_search
          ] ]
        ] ];
 
- 
-    # WWW::Search::Scraper understands all that and will setup the search.
-    return $self->SUPER::native_setup_search(@_);
-}
+
+
+# Access methods for the structural declarations of this Scraper engine.
+sub scraperQuery { $scraperQuery }
+sub scraperFrame { $_[0]->SUPER::scraperFrame($scraperFrame); }
+sub scraperDetail{ undef }
 
 1;
 __END__

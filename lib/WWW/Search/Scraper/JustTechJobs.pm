@@ -46,10 +46,10 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
-use WWW::Search::Scraper(qw(generic_option addURL trimTags));
+use WWW::Search::Scraper(qw(1.48 generic_option addURL trimTags));
 
 use strict;
 
@@ -664,59 +664,42 @@ This converts to an array tree that looks like this:
     };
 
 
-
-## private
-sub native_setup_search
-{
-    my $self = shift;
-    my ($native_query, $native_options_ref) = @_;
-    $self->user_agent('user');
-    $self->{_next_to_retrieve} = 0;
-    
-    my $siteKey;
-    
-    $siteKey = $native_options_ref->{'whichTech'} if ( defined $native_options_ref->{'whichTech'} );
-    $siteKey = $self->{'_scraperRequest'}->{'_fields'}->{'whichTech'} if ( defined $self->{'_scraperRequest'}->{'_fields'}->{'whichTech'} );
-    $siteKey = $JustTechJobsDirectories{uc $siteKey};
-
-    $self->{'_options'}{'scraperQuery'} =
-    [ 'QUERY'       # Type of query generation is 'QUERY'
-        # Even though JustTechJobs' search form uses POST, that doesn't seem to work for us.
-        # Doing it that way returns garbage plus "Illegal function call prea1<br><br><BR>".
+#'http://www.justperljobs.com/jperj.nsf/SearchResults?OpenForm&POST=&VISA=&CONT=&ENTL=&STRT=&COMP=&LOCA=&KEYW=Perl&LOGF=AND&NEXT=1'
+#'http://www.JustPerlJobs.com/jperj.nsf/SearchResults?OpenForm&COMP=&CONT=&ENTL=&LOCA=&LOGF=AND&NEXT=1&POST=&SKIL=01&STRT=&VISA=&query=Perl'
+my $scraperQuery = 
+   { 
+      'type' => 'QUERY'       # Type of query generation is 'QUERY'
       # This is the basic URL on which to build the query.
-     ,$$siteKey[0].'/'.$$siteKey[1].'.nsf/SearchResults?OpenForm&'
-      # This names the native input field to recieve the query string.
-     ,{   'nativeQuery' => 'KEYW'
-         ,'nativeDefaults' => {
-                            'SKIL' => '01',
-                            'POST' => '',
-                            'VISA' => '',
-                            'CONT' => '',
-                            'ENTL' => '',
-                            'STRT' => '',
-                            'COMP' => '',
-                            'LOCA' => '',
-                            'LOGF' => 'AND',
-                            'NEXT' => '1',
-                            'whichTech' => 'Perl'
-                        }
-         ,'fieldTranslations' =>
-                { '*' => 
-                        {    'skills'    => 'KEYW'
-                            ,'payrate'   => ''
-                            ,'locations' => \&translateLocations
-                            ,'whichTech' => ''
-                            ,'native_query' => 'query'
-                            ,'*'       => '*'
-                        }
-                 }
-      }
-      # Some more options for the Scraper operation.
-     ,{'cookies' => 0
-      }
-    ];
+     ,'url' => 'http://www.apartments.com/search/oasis.dll?mfcisapicommand=quicksearch&QSearchType=1&'
+      # This is the Scraper attributes => native input fields mapping
+     ,'nativeQuery' => 'KEYW'
+     ,'nativeDefaults' => {
+                          'SKIL' => '01',
+                          'POST' => '',
+                          'VISA' => '',
+                          'CONT' => '',
+                          'ENTL' => '',
+                          'STRT' => '',
+                          'COMP' => '',
+                          'LOCA' => '',
+                          'LOGF' => 'AND',
+                          'NEXT' => '1',
+                          'whichTech' => 'Perl'
+                      }
+     ,'fieldTranslations' =>
+              { '*' => 
+                      {    'skills'    => 'KEYW'
+                          ,'payrate'   => ''
+                          ,'locations' => \&translateLocations
+                          ,'whichTech' => ''
+                          ,'*'       => '*'
+                      }
+              }
+           # Some more options for the Scraper operation.
+     ,'cookies' => 0
+   };
 
-    $self->{'_options'}{'scrapeFrame'} = 
+my $scraperFrame =
     [ 'HTML', 
       [ [ 'BODY', '<BODY', '</BODY>' , # Make the parsing easier for scrapeTable() by stripping off the adminstrative clutter.
           [ [ 'COUNT', '\d+ - \d+ of (\d+) matches' ] ,
@@ -746,8 +729,40 @@ sub native_setup_search
       ]
    ];
 
-    # WWW::Search::Scraper understands all that and will setup the search.
-    return $self->SUPER::native_setup_search(@_);
+# Access methods for the structural declarations of this Scraper engine.
+sub scraperQuery { 
+    my ($self, $native_query, $native_options) = @_;    
+
+    $native_options->{'whichTech'} = 'Perl' unless $native_options->{'whichTech'};
+    my $siteKey = $JustTechJobsDirectories{uc $native_options->{'whichTech'}};
+    $scraperQuery->{'url'} = $$siteKey[0].'/'.$$siteKey[1].'.nsf/SearchResults?OpenForm&';
+    return $scraperQuery;
+}
+
+sub scraperFrame { $_[0]->SUPER::scraperFrame($scraperFrame); }
+sub scraperDetail{ undef }
+
+
+sub import
+{
+    my $package = shift;
+
+    my @exports = grep { "HASH" ne ref($_) } @_;
+    my @options = grep { "HASH" eq ref($_) } @_;
+
+    foreach (@options)
+    {
+        if ( $_->{'scraperBaseURL'} ) {
+            $scraperQuery->{'url'} = $_->{'scraperBaseURL'};  # new form
+        }
+        if ( $_->{'whichTech'} ) {
+            my $siteKey = $JustTechJobsDirectories{uc $_->{'whichTech'}};
+            $scraperQuery->{'url'} = $$siteKey[0].'/'.$$siteKey[1].'.nsf/SearchResults?OpenForm&'
+        }
+    }
+
+    @_ = ($package, @exports);
+    goto &Exporter::import;
 }
 
 

@@ -6,52 +6,37 @@ package WWW::Search::Scraper::Monster;
 use strict;
 use vars qw(@ISA $VERSION);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/);
 
-use WWW::Search::Scraper(qw(1.43 generic_option findNextForm trimLFs));
+use WWW::Search::Scraper(qw(1.48 generic_option findNextForm trimLFs));
 use WWW::Search::Scraper::Response::Job;
 use WWW::Search::Scraper::FieldTranslation(1.00);
 
-# ###############################################################################
-sub native_setup_search
-{
-    my $self = shift;
-    my ($native_query, $native_options_ref) = @_;
-    $self->{agent_e_mail} = 'glenwood@alumni.caltech.edu';
-    
-    $self->user_agent('non-robot');
-    $self->{'timeout'} = 60;
-    
-#    $self->{'_scraperRequest'} = new WWW::Search::Scraper::Request::Monster;
-
-    $self->{'_options'}{'scraperQuery'} =
-    [ 'QUERY'       # Type of query generation is 'QUERY'
+my $scraperQuery = 
+   { 
+      'type' => 'QUERY'       # Type of query generation is 'QUERY'
       # This is the basic URL on which to build the query.
-     ,'http://jobsearch.monster.com/jobsearch.asp?'
-      # This names the native input field to recieve the query string.
-     ,{   'nativeQuery' => 'q'
-         ,'nativeDefaults' =>
-                         {    'brd' => '1'
-                             ,'cy'  => 'US'
-                             ,'fn'  => '6'
-                         }
-         ,'fieldTranslations' =>
-                { '*' => 
-                     {    'skills'    => 'q'
-                         ,'payrate'   => \&translatePayrate
-                         ,'locations' => new WWW::Search::Scraper::FieldTranslation('Monster', 'Job', 'locations')
-                         ,'native_query' => 'q'
-                         ,'*'         => '*'
-                     }
-                }
-      }
+     ,'url' => 'http://jobsearch.monster.com/jobsearch.asp?'
+      # This is the Scraper attributes => native input fields mapping
+     ,'nativeQuery' => 'q'
+     ,'nativeDefaults' =>
+                      {    'brd' => '1'
+                          ,'cy'  => 'US'
+                          ,'fn'  => '6'
+                      }
+     ,'fieldTranslations' =>
+             { '*' => 
+                  {    'skills'    => 'q'
+                      ,'payrate'   => \&translatePayrate
+                      ,'locations' => new WWW::Search::Scraper::FieldTranslation('Monster', 'Job', 'locations')
+                      ,'*'         => '*'
+                  }
+             }
       # Some more options for the Scraper operation.
-     ,{'cookies' => 0
-      }
-    ];
+     ,'cookies' => 0
+   };
 
-    # scraperFrame describes the format of the result page.
-    $self->{'_options'}{'scrapeFrame'} = 
+my $scraperFrame =
 [ 'HTML', 
     [ 
                    #<B>Jobs <B>1</B> to <B>6</B> of <B>6</B></B>
@@ -83,11 +68,11 @@ sub native_setup_search
         ]
     ]
 ];            
-    
-    
-    # WWW::Search::Scraper understands all that and will setup the search.
-    return $self->SUPER::native_setup_search(@_);
-} # native_setup_search
+
+# Access methods for the structural declarations of this Scraper engine.
+sub scraperQuery { $scraperQuery; }
+sub scraperFrame { $_[0]->SUPER::scraperFrame($scraperFrame); }
+sub scraperDetail{ undef }
 
 
 { package WWW::Search::Scraper::Request::Monster;
