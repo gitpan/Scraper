@@ -5,7 +5,7 @@ package WWW::Search::Scraper::techies;
 
 =head1 NAME
 
-WWW::Search::Scraper::techies - class for searching www.techies.com
+WWW::Search::Scraper::techies - Scrapes www.techies.com
 
 
 =head1 SYNOPSIS
@@ -119,7 +119,7 @@ modify it under the same terms as Perl itself.
 #####################################################################
 
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Search::Scraper(qw(1.48 trimTags));
 
@@ -186,10 +186,9 @@ sub testParameters {
         $self->techiesLocation('bayarea'); # Set location for test.pl
     }
 
-    # 'POST' style scraperFrames can't be tested cause of a bug in WWW::Search(2.2[56]) !
     my $isNotTestable = WWW::Search::Scraper::isGlennWood()?0:0;
     return {
-                 'isNotTestable' => $isNotTestable
+                 'SKIP' => $isNotTestable
                 ,'testNativeQuery' => 'Java'
                 ,'expectedOnePage' => 9
                 ,'expectedMultiPage' => 11

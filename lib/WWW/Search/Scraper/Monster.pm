@@ -6,7 +6,7 @@ package WWW::Search::Scraper::Monster;
 use strict;
 use vars qw(@ISA $VERSION);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.13 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.14 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Search::Scraper(qw(1.48 generic_option findNextForm trimLFs));
 use WWW::Search::Scraper::Response::Job;
@@ -71,7 +71,7 @@ my $scraperFrame =
 sub testParameters {
     # We can't test Dogpile, or any other TidyXML sub-class, until we know Tidy.exe is accessible.
     return {
-                 'isNotTestable' => ''
+                 'SKIP' => ''
                 ,'testNativeQuery' => 'Administrative Assistant'
                 ,'expectedOnePage' => 5
                 ,'expectedMultiPage' => 5
@@ -129,7 +129,7 @@ __END__
 
 =head1 NAME
 
-WWW::Search::Monster - class for searching Monster
+WWW::Search::Scraper::Monster - Scrapes Monster.com
 
 =head1 SYNOPSIS
 

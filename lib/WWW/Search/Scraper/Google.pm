@@ -1,5 +1,5 @@
 
-package WWW::Search::Scraper::ZIPplus4;
+package WWW::Search::Scraper::Google;
 
 
 #####################################################################
@@ -8,7 +8,7 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.19 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.20 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(2.12 generic_option addURL trimTags));
@@ -23,7 +23,7 @@ my $scraperQuery =
             ,'submitButton' => 'btnG'
             
             # This is the basic URL on which to get the form to build the query.
-            ,'url' => 'http://www.usps.com/' #ncsc/lookups/'
+            ,'url' => 'http://www.Google.com'
 
            # specify defaults, by native field names
            ,'nativeQuery' => 'q'
@@ -44,7 +44,7 @@ my $scraperQuery =
 my $scraperFrame =
        [ 'HTML', 
           [ 
-                  [ 'NEXT', 1, '[^>]>Next<' ], # ZIPplus4 keeps changing their formatting, so watch out!
+                  [ 'NEXT', 1, '[^>]>Next<' ], # Google keeps changing their formatting, so watch out!
                   [ 'COUNT', '[,0-9]+</b> of about <b>([,0-9]+)</b>'] ,
                   [ 'TABLE', '#4' ],
                   [ 'HIT*' ,
@@ -77,7 +77,7 @@ sub testParameters {
     }
     
     return {
-                 'isNotTestable' => '' 
+                 'SKIP' => '' 
                 ,'testNativeQuery' => 'search scraper'
                 ,'expectedOnePage' => 9
                 ,'expectedMultiPage' => 41
@@ -116,33 +116,33 @@ __END__
 
 =head1 NAME
 
-WWW::Search::Scraper::ZIPplus4 - class for searching www.ZIPplus4.com
+WWW::Search::Scraper::Google - Scrapes www.Google.com
 
 
 =head1 SYNOPSIS
 
     require WWW::Search::Scraper;
-    $search = new WWW::Search::Scraper('ZIPplus4');
+    $search = new WWW::Search::Scraper('Google');
 
 
 =head1 DESCRIPTION
 
-This class is an ZIPplus4 specialization of WWW::Search.
-It handles making and interpreting ZIPplus4 searches
-F<http://www.ZIPplus4.com>.
+This class is an Google specialization of WWW::Search.
+It handles making and interpreting Google searches
+F<http://www.Google.com>.
 
 =head1 INTERESTING
 
-Go to http://www.ZIPplus4.com and search for "search scraper"; as in 
+Go to http://www.Google.com and search for "search scraper"; as in 
 
-http://www.ZIPplus4.com/search?q=search+scraper&sourceid=opera&num=0&ie=utf-8&oe=utf-8
+http://www.Google.com/search?q=search+scraper&sourceid=opera&num=0&ie=utf-8&oe=utf-8
 
 Interesting FIRST hit !
 
 =head1 AUTHOR and CURRENT VERSION
 
 
-C<WWW::Search::Scraper::ZIPplus4> is written and maintained
+C<WWW::Search::Scraper::Google> is written and maintained
 by Glenn Wood, http://search.cpan.org/search?mode=author&query=GLENNWOOD.
 
 =head1 COPYRIGHT

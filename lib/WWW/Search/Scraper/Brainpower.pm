@@ -5,7 +5,7 @@ package WWW::Search::Scraper::Brainpower;
 use strict;
 use vars qw(@ISA $VERSION);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Search::Scraper(qw(2.18 trimTags trimLFs removeScriptsInHTML cleanupHeadBody));
 use WWW::Search::Scraper::FieldTranslation(1.00);
@@ -124,7 +124,8 @@ sub testParameters {
     }
     
     return {
-                 'isNotTestable' => &WWW::Search::Scraper::TidyXML::isNotTestable() 
+                 'SKIP' => &WWW::Search::Scraper::TidyXML::isNotTestable('Brainpower') #'Man, this one takes a long time!' #  
+                ,'TODO' => ''
                 ,'testNativeQuery' => 'Perl'
                 ,'expectedOnePage' => 9
                 ,'expectedMultiPage' => 16
@@ -277,7 +278,7 @@ __END__
 
 =head1 NAME
 
-WWW::Search::Scraper::Brainpower -  Brainpower.com(skills,locations,payrate) => (title,role,skillSet,type,city,state,postDate,description,FX,FY,FZ)
+WWW::Search::Scraper::Brainpower -  Scrapes Brainpower.com
 
 
 =head1 SYNOPSIS

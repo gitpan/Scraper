@@ -2,7 +2,7 @@ package WWW::Search::Scraper::JustTechJobs;
 
 =head1 NAME
 
-WWW::Search::Scraper::JustTechJobs - class for searching Just*Jobs
+WWW::Search::Scraper::JustTechJobs - Scrapes Just*Jobs.com
 
 =head1 SYNOPSIS
 
@@ -46,7 +46,7 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.12 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.13 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(1.48 generic_option addURL trimTags));
@@ -735,7 +735,7 @@ sub testParameters {
         $self->whichTech('Perl');
     }
     return {
-                 'isNotTestable' => 'JustChangedTheirFormat, and I haven\'t caught up with them yet.'
+                 'SKIP' => 'JustTechJobs JustChangedTheirFormat, and I haven\'t caught up with them yet.'
                 ,'testNativeOptions' => { 'whichTech' => 'Perl' }                                         
            };
 }

@@ -4,7 +4,7 @@ package WWW::Search::Scraper::computerjobs;
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/);
 use WWW::Search::Scraper(qw(1.48 trimLFs testParameters));
 
 my $scraperQuery = 
@@ -72,7 +72,7 @@ sub testParameters {
     }
     
     return { 
-             'isNotTestable' => 'has known problem with timeout'
+             'SKIP' => 'computerjobs.pm has known problem with timeout'
             ,'testNativeQuery' => 'Perl'
             ,'expectedOnePage' => 9
             ,'expectedMultiPage' => 11
@@ -97,7 +97,7 @@ sub parseDescriptionAndAllThat {
 
 =head1 NAME
 
-WWW::Search::Scraper::computerjobs - class for searching www.computerjobs.com
+WWW::Search::Scraper::computerjobs - Scrapes www.computerjobs.com
 
 
 =head1 SYNOPSIS

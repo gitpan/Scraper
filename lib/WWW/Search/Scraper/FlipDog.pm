@@ -6,7 +6,7 @@ package WWW::Search::Scraper::FlipDog;
 use strict;
 use vars qw(@ISA $VERSION);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Search::Scraper(qw(1.48 trimLFs trimLFLFs removeScriptsInHTML trimTags trimXPathHref));
 
@@ -92,7 +92,7 @@ sub testParameters {
     }
     
     return {
-                 'isNotTestable' => ''
+                 'SKIP' => ''
                 ,'testNativeQuery' => 'Java'
                 ,'expectedOnePage' => 5
                 ,'expectedMultiPage' => 21
@@ -186,7 +186,7 @@ __END__
 
 =head1 NAME
 
-WWW::Search::Scraper::FlipDog - class for searching www.FlipDog.com
+WWW::Search::Scraper::FlipDog - Scrapes www.FlipDog.com
 
 
 =head1 SYNOPSIS

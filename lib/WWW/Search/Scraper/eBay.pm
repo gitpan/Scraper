@@ -4,7 +4,7 @@ package WWW::Search::Scraper::eBay;
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.17 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.18 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Search::Scraper(qw(1.24 generic_option addURL trimTags));
 
@@ -70,7 +70,7 @@ my $scraperFrame =
 
 sub testParameters {
     return {
-                 'isNotTestable' => '' 
+                 'SKIP' => '' 
                 ,'testNativeQuery' => 'turntable'
                 ,'expectedOnePage' => 9
                 ,'expectedMultiPage' => 50
@@ -141,7 +141,7 @@ __END__
 
 =head1 NAME
 
-WWW::Search::Scraper::eBay - class for searching www.eBay.com
+WWW::Search::Scraper::eBay - Scrapes www.eBay.com
 
 
 =head1 SYNOPSIS

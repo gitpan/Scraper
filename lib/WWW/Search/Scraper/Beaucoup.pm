@@ -6,7 +6,7 @@ package WWW::Search::Scraper::Beaucoup;
 use strict;
 use vars qw(@ISA $VERSION);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Search::Scraper(qw(1.48 trimLFs trimLFLFs));
 
@@ -73,7 +73,7 @@ sub testParameters {
     }
     
     return {
-                 'isNotTestable' => &WWW::Search::Scraper::TidyXML::isNotTestable() 
+                 'SKIP' => &WWW::Search::Scraper::TidyXML::isNotTestable() 
                 ,'testNativeQuery' => 'search scraper'
                 ,'expectedOnePage' => 5
                 ,'expectedMultiPage' => 11
@@ -93,7 +93,7 @@ __END__
 
 =head1 NAME
 
-WWW::Search::Scraper::Beaucoup - Beaucoup Super Search
+WWW::Search::Scraper::Beaucoup - Scrapes Beaucoup's Super Search
 
 
 =head1 SYNOPSIS

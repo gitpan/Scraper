@@ -1,6 +1,7 @@
 
 Revision history for WWW::Search::Scraper (::*).
 
+v2.19 - Improved make test - uses Test::More for better result logging.
 v2.18 - Added BayAreaHelpWanted.com, and ZIPplus4 (ZIP+4 Code Look-up).
 	Added auto-sub-classing of responses via Response.pm and each scraper "frame".
 	Added lazy-access to field values resident on the detail page (via auto-sub-classing).

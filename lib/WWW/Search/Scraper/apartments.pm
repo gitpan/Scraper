@@ -4,7 +4,7 @@ package WWW::Search::Scraper::apartments;
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/);
 use WWW::Search::Scraper::Response;
 
 use WWW::Search::Scraper(qw(1.48));
@@ -95,7 +95,7 @@ my $scraperFrame =
 sub testParameters {
     #  went flippo - I'll fix this later..
     return {
-                 'isNotTestable' => 'apartments.pm still has known bugs in it.'
+                 'SKIP' => 'apartments.pm still has known bugs in it.'
                 ,'testNativeQuery' => 'New York'
                 ,'testNativeOptions' => { 'state' => 'NY' }
            };
@@ -129,7 +129,7 @@ sub getNextPage {
 
 =head1 NAME
 
-WWW::Search::Scraper::apartments - class for searching www.apartments.com
+WWW::Search::Scraper::apartments - Scrapes www.apartments.com
 
 
 =head1 SYNOPSIS

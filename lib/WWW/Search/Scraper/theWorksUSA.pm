@@ -5,7 +5,7 @@ package WWW::Search::Scraper::theWorksUSA;
 
 =head1 NAME
 
-WWW::Search::Scraper::guru - class for searching theWorksUSA
+WWW::Search::Scraper::theWorksUSA - Scrapes theWorksUSA
 
 
 =head1 SYNOPSIS
@@ -49,7 +49,7 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Search::Scraper(qw(1.48 generic_option addURL trimTags));
 use strict;
@@ -100,7 +100,7 @@ my $scraperFrame =
 
 
 sub testParameters {
-    return { 'isNotTestable' => 'This one still has a known problem (looping).' };
+    return { 'SKIP' => 'theWorksUSA still has a known problem (looping).' };
 }
 
 

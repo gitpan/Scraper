@@ -8,7 +8,7 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.1 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(2.12 generic_option addURL trimTags removeScriptsInHTML));
@@ -51,13 +51,13 @@ my $scraperFrame =
                     [
                       [ 'HIT*' ,
                         [
-                          [ 'XPath', '/table/tr[hit()]',
+                          [ 'XPath', 'table/tr[hit()]',
                             [
-                             [ 'XPath', '/tr', #/td[2]/table/tr/td[2]/table/tr/td',
+                             [ 'XPath', 'tr', #/td[2]/table/tr/td[2]/table/tr/td',
                               [
                                 [ 'A', 'url', 'description' ],
-                                [ 'XPath', '/tr/td[2]/font', 'title' ],
-                                [ 'XPath', '/tr/td[3]/i/font', 'urls' ]
+                                [ 'XPath', 'tr/td[2]/font', 'title' ],
+                                [ 'XPath', 'tr/td[3]/i/font', 'urls' ]
                               ]
                              ]
                             ]
@@ -79,7 +79,7 @@ sub testParameters {
     }
     
     return { 
-             'isNotTestable' => 'test is not ready yet; gdw.2001.02.19'
+             'SKIP' => 'Lycos test is not ready yet; gdw.2001.02.19'
             ,'testNativeQuery' => 'search scraper'
             ,'expectedOnePage' => 9
             ,'expectedMultiPage' => 11
@@ -99,7 +99,7 @@ __END__
 
 =head1 NAME
 
-WWW::Search::Scraper::Lycos - class for searching www.Lycos.com
+WWW::Search::Scraper::Lycos - Scrapes www.Lycos.com
 
 
 =head1 SYNOPSIS

@@ -10,13 +10,13 @@ require Exporter;
 use vars qw($VERSION $MAINTAINER @ISA @EXPORT @EXPORT_OK);
 @EXPORT = qw(testParameters);
 
-$VERSION = '2.18';
+$VERSION = '2.19';
 
-my $CVS_VERSION = sprintf("%d.%02d", q$Revision: 1.60 $ =~ /(\d+)\.(\d+)/);
+my $CVS_VERSION = sprintf("%d.%02d", q$Revision: 1.62 $ =~ /(\d+)\.(\d+)/);
 $MAINTAINER = 'Glenn Wood http://search.cpan.org/search?mode=author&query=GLENNWOOD';
 
 use Carp ();
-use WWW::Search( 2.28, qw(strip_tags) );
+use WWW::Search( 2.27, qw(strip_tags) );
 use WWW::Search::Scraper::Request;
 use WWW::Search::Scraper::Response;
 use WWW::Search::Scraper::TidyXML;
@@ -94,7 +94,7 @@ sub testParameters {
     
     my $isNotTestable = WWW::Search::Scraper::isGlennWood()?0:'No testParameters provided.';
     return { 
-             'isNotTestable' => $isNotTestable
+             'SKIP' => $isNotTestable
             ,'testNativeQuery' => 'search scraper'
             ,'expectedOnePage' => 9
             ,'expectedMultiPage' => 11
@@ -618,7 +618,7 @@ eval <<EOT
         return \$self->canonical(\@_);
     }
 EOT
-if ( ($LWP::VERSION ge '5.60') and ($LWP::VERSION le '5.63') );
+if ( ($LWP::VERSION ge '5.60') );
 #################### < / E X C E P T I O N S > #####################
 
 

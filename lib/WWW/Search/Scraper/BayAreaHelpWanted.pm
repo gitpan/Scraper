@@ -81,7 +81,7 @@ sub testParameters {
     }
     
     return {
-                 'isNotTestable' => ''
+                 'SKIP' => ''
                 ,'testNativeQuery' => 'Java'
                 ,'expectedOnePage' => 24
                 ,'expectedMultiPage' => 26
@@ -101,7 +101,7 @@ __END__
 
 =head1 NAME
 
-WWW::Search::Scraper::BayAreaHelpWanted - class for searching www.BayAreaHelpWanted.com
+WWW::Search::Scraper::BayAreaHelpWanted - Scrapes www.BayAreaHelpWanted.com
 
 
 =head1 SYNOPSIS

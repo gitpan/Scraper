@@ -6,7 +6,7 @@ package WWW::Search::Scraper::BAJobs;
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.17 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.18 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(1.48 generic_option addURL trimTags));
@@ -116,9 +116,10 @@ sub testParameters {
     }
     
     # 'POST' style scraperFrames can't be tested cause of a bug in WWW::Search(2.2[56]) !
-    my $isNotTestable = WWW::Search::Scraper::isGlennWood()?0:0;
+    my $isNotTestable = WWW::Search::Scraper::isGlennWood()?'':'';
     return { 
-             'isNotTestable' => $isNotTestable
+             'SKIP' => $isNotTestable
+            ,'TODO' => 'Uses POST: certain versions of WWW::Search (2.25 to name one) fail with POSTs.'
             ,'testNativeQuery' => 'Sales'
             ,'expectedOnePage' => 9
             ,'expectedMultiPage' => 51
@@ -140,7 +141,7 @@ sub scraperDetail{ undef }
 
 =head1 NAME
 
-WWW::Search::Scraper::BAJobs - BAJobs.com(skills,locations,payrate) => (corporateBackground, postingDate, title, company, location)
+WWW::Search::Scraper::BAJobs - Scrapes BAJobs.com
 
 =head1 SYNOPSIS
 

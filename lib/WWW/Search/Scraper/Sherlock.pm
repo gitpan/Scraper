@@ -4,7 +4,7 @@ package WWW::Search::Scraper::Sherlock;
 
 =head1 NAME
 
-B<WWW::Search::Scraper::Sherlock> - class for accessing search engines via Sherlock plugins.
+WWW::Search::Scraper::Sherlock - Scrapes search engines via Sherlock plugins.
 
 
 =head1 SYNOPSIS
@@ -132,7 +132,7 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(2.12 addURL trimTags));
@@ -343,7 +343,7 @@ sub testParameters {
     }
     
     return {
-                 'isNotTestable' => ''
+                 'SKIP' => ''
                 ,'testNativeQuery' => 'Greeting Cards'
                 ,'expectedOnePage' => 9
                 ,'expectedMultiPage' => 11

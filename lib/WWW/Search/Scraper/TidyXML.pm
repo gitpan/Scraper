@@ -10,7 +10,7 @@
 
 
 package WWW::Search::Scraper::TidyXML;
-$VERSION = sprintf("%d.%02d", q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/);
 
 use strict;
 
@@ -187,7 +187,7 @@ __END__
 
 =head1 NAME
 
-WWW::Search::Scraper::TidyXML - base class for structuring and scraping ill-formed HTML
+WWW::Search::Scraper::TidyXML - TidyXML and XPath support for Scraper.
 
 =head1 SYNOPSIS
 

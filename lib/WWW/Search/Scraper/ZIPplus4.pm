@@ -8,7 +8,7 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(2.12 generic_option addURL trimTags));
@@ -75,7 +75,8 @@ sub testParameters {
     }
     
     return {
-                 'isNotTestable' => 'test parameters have not yet been fixed' 
+                 'SKIP' => 'ZIPplus4 test parameters have not yet been fixed' 
+                ,'TODO' => 'Uses POST: certain versions of WWW::Search (2.25 to name one) fail with POSTs.'
                 ,'testNativeQuery' => '94043'
                 ,'testNativeOptions' => {
                                              'Delivery Address' => '1600 Pennsylvannia Ave'
@@ -102,7 +103,7 @@ __END__
 
 =head1 NAME
 
-WWW::Search::Scraper::ZIPplus4 - class for searching www.ZIPplus4.com
+WWW::Search::Scraper::ZIPplus4 - Get ZIP+4 code, given street address, from www.usps.com
 
 
 =head1 SYNOPSIS

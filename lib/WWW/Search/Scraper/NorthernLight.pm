@@ -75,6 +75,23 @@ sub scraperQuery { $scraperQuery }
 sub scraperFrame { $_[0]->SUPER::scraperFrame($scraperFrame); }
 sub scraperDetail{ undef }
 
+sub testParameters {
+    my ($self) = @_;
+
+    if ( ref $self ) {
+        $self->{'isTesting'} = 1;
+    }
+    
+    return { 
+             'SKIP' => ''
+            ,'TODO' => 'NorthernLights works, sometimes . . .'
+            ,'testNativeQuery' => 'search scraper'
+            ,'expectedOnePage' => 9
+            ,'expectedMultiPage' => 11
+            ,'expectedBogusPage' => 0
+           };
+}
+
 1;
 
 
@@ -82,7 +99,7 @@ sub scraperDetail{ undef }
 
 =head1 NAME
 
-WWW::Search::Scraper::NorthernLight - class for searching NorthernLight
+WWW::Search::Scraper::NorthernLight - Scrapes NorthernLight.com
 
 
 =head1 SYNOPSIS

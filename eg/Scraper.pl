@@ -51,8 +51,8 @@ $VERSION = sprintf("%d.%02d", q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/);
         $options = $testParameters->{'testNativeOptions'};
         $options = {} unless $options;
         $limit = $testParameters->{'expectedMultiPage'};
-        if ( $testParameters->{'isNotTestable'} ) {
-            die "Can't test $engine: $testParameters->{'isNotTestable'}\n";
+        if ( $testParameters->{'SKIP'} ) {
+            die "Can't test $engine: $testParameters->{'SKIP'}\n";
         }
     }
 

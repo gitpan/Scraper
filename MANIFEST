@@ -42,4 +42,7 @@ eg/Sherlock.pl
 eg/Scraper.pl
 eg/setupLocations.pl
 eg/ZIPplus4.pl
+t/lib/Test/Builder.pm
+t/lib/Test/More.pm
+t/lib/Test/Simple.pm
 test.pl
