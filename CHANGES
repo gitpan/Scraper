@@ -1,6 +1,8 @@
 
 Revision history for WWW::Search::Scraper (::*).
 
+v2.26 - Adapted CraigsList.pm to their new format.
+	Improvements to Response sub-classing makes it more broadly useful.
 v2.25 - Fixed to make compatible with new versions of TidyHTML 
 		(those whose "vers 1st August 2002; built on Aug  8 2002").
 	Adapted ZIPplus4 to USPS's new format - requires changes in your clients.

@@ -33,6 +33,7 @@ lib/WWW/Search/Scraper/Response.pm
 lib/WWW/Search/Scraper/Request.pm
 lib/WWW/Search/Scraper/Request/Job.pm
 lib/WWW/Search/Scraper/Response/Auction.pm
+lib/WWW/Search/Scraper/Response/generic.pm
 lib/WWW/Search/Scraper/Response/Job.pm
 lib/WWW/Search/Scraper/Response/Sherlock.pm
 lib/WWW/Search/Scraper/TidyXML.pm

@@ -8,23 +8,22 @@ package WWW::Search::Scraper;
 use strict;
 require Exporter;
 use vars qw($VERSION $MAINTAINER @ISA @EXPORT @EXPORT_OK);
-@EXPORT = qw(testParameters);
 
-$VERSION = '2.25';
+$VERSION = '2.26';
 
-my $CVS_VERSION = sprintf("%d.%02d", q$Revision: 1.65 $ =~ /(\d+)\.(\d+)/);
+my $CVS_VERSION = sprintf("%d.%02d", q$Revision: 1.66 $ =~ /(\d+)\.(\d+)/);
 $MAINTAINER = 'Glenn Wood http://search.cpan.org/search?mode=author&query=GLENNWOOD';
 
 use Carp ();
 use URI::URL; # some Unix boxes simply won't load this one via WWW:Search, so . . .
 
-use WWW::Search( 2.27, qw(strip_tags) );
+use WWW::Search( 2.27 );
 use WWW::Search::Scraper::Request;
 use WWW::Search::Scraper::Response;
+use WWW::Search::Scraper::Response::generic;
 use WWW::Search::Scraper::TidyXML;
 
-@EXPORT_OK = qw(escape_query unescape_query generic_option 
-                strip_tags trimTags trimLFs trimLFLFs
+@EXPORT_OK = qw( generic_option testParameters trimTags trimLFs trimLFLFs
                 @ENGINES_WORKING addURL trimXPathAttr trimXPathHref
                 findNextForm findNextFormInXML removeScriptsInHTML cleanupHeadBody);
 
@@ -40,11 +39,14 @@ use Class::Struct;
                  ,'searchEngineHome'  => '$'
                  ,'searchEngineLogo'  => '$'
                  ,'errorMessage'      => '$'
+                 ,'_artifactFolder'    => '$' # Folder into which certain Scraper artifacts will be gathered.
+                 ,'_responseClass'     => '$'
                  ,'_wantsNativeRequest' => '$'
                  ,'_wwwSearchBackend' => '$'
                  ,'_forInterator'     => '$'
                  ,'_retryGetCount'    => '$'
                  ,'_tidyXmlObject'    => '$'
+                 ,'pageNumber'        => '$' # Page number of the current 'response' object.
               }
            );
 }
@@ -80,9 +82,7 @@ sub new {
 
     # These eliminate some useless "warnings" from WWW::Search(lines 544-549) during make test, and elsewhere.
     $self->{cache} = [];
-    $self->{_debug} ||= 0;
 
-    
     # Finally, call the sub-scraper's init() method.
     return $self->init($subclass, $searchName);
 }
@@ -118,6 +118,16 @@ sub testParameters {
             ,'expectedBogusPage' => 0
            };
 }
+
+sub artifactFolder {
+    my ($self, $fldr) = @_;
+    if ( $fldr ) {
+        mkdir $fldr unless -d $fldr;
+        $self->_artifactFolder($fldr);
+    }
+    return $self->_artifactFolder();
+}
+
 
 sub generic_option 
 {
@@ -178,7 +188,7 @@ sub SetRequest {
         $rqst->prepare($self);
         
         # Move the debug option from the request to the Scraper module.
-        $self->{'_debug'} = $rqst->_Scraper_debug();
+        $self->{'_debug'} = $rqst->_Scraper_debug() if defined $rqst->_Scraper_debug();
 
         $self->{'_scraperRequest'} = $rqst;
         
@@ -192,6 +202,10 @@ sub SetRequest {
 }
 
 sub GetRequest { return $_[0]->{'_scraperRequest'} }
+
+sub SetResponseClass { $_[0]->_responseClass($_[1]) }
+sub GetResponseClass { $_[0]->_responseClass() }
+
 
 sub native_setup_search
 {
@@ -310,7 +324,7 @@ sub native_setup_search_FORM
         my $opts = $optsHash{$key};
 #        if ( 'ARRAY' eq ref $opts ) {
 #            for ( @$opts) {
-#                $options .= "$key=".WWW::Search::escape_query($_)."&";
+#                $options .= "$key=".cgi_escape($_)."&";
 #            }
 #        } else {
             my $field = $form->find_input($key);
@@ -480,8 +494,17 @@ sub native_setup_search_WWW_Search {
    return $oSearch->native_setup_search($oSearch->{'native_query'}, $oSearch->{'native_options'});
 }
 
+sub cgi_escape
+{
+    my $text = join(' ', @_);
+    $text = '' unless defined $text;
+    $text =~ s/([^ A-Za-z0-9])/$URI::Escape::escapes{$1}/g; #"
+    $text =~ s/ /+/g;
+    return $text;
+}
+
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### 
-# The options have been prepared into the Scraper Request object by prepare().
+# The options have been prepared into the Scraper Request object by Scraper::Request::prepare().
 # generateQuery() creates the HTTP query based on _scraperNativeQuery.
 sub generateQuery {
     my ($self) = @_;
@@ -502,10 +525,10 @@ sub generateQuery {
         my $opts = $vals->{$key};
         if ( 'ARRAY' eq ref $opts ) {
             for ( @$opts) {
-                $options .= "$key=".WWW::Search::escape_query($_)."&";
+                $options .= "$key=".cgi_escape($_)."&";
             }
         } else {
-            $options .= "$key=".WWW::Search::escape_query($opts)."&";
+            $options .= "$key=".cgi_escape($opts)."&";
         }
     };
     chop $options;
@@ -533,7 +556,7 @@ AGAIN:
     };
     
     # get some
-     if ( $debug ) {
+    if ( $debug ) {
          my $obj = ref $self;
          print STDERR "$obj::native_retrieve_some: fetching " . $self->{_next_url} . "\n"  if ($self->ScraperTrace('U'));
      }
@@ -578,6 +601,7 @@ AGAIN:
        $self->response($response);
        
        if ( $response->is_success ) {
+           $self->pageNumber($self->pageNumber()+1);
           last;
        }
        else {
@@ -722,7 +746,7 @@ sub scrape { my ($self, $content, $debug, $scraperFrame, $hit) = @_;
 
 # private
 sub scraperHTML { my ($self, $scaffold_array, $content, $hit, $debug) = @_;
-    my $TidyXML = new WWW::Search::Scraper::TidyXML();
+    my $TidyXML = new WWW::Search::Scraper::TidyXML($self, {'artifactFolder' => $self->artifactFolder()});
     $self->_tidyXmlObject($TidyXML);
     $TidyXML->m_asString($content);
     return $self->scraper($$scaffold_array[1], $TidyXML, $hit, $debug);
@@ -737,7 +761,7 @@ sub scraperTidyXML { my ($self, $scaffold_array, $content, $hit, $debug) = @_;
         $i += 1;
         $content = &$datParser($self, $hit, $content);
     }
-    my $TidyXML = new WWW::Search::Scraper::TidyXML($content);
+    my $TidyXML = new WWW::Search::Scraper::TidyXML($self, $content, {'artifactFolder' => $self->artifactFolder()});
     $self->_tidyXmlObject($TidyXML);
     return $self->scraper($$scaffold_array[$i], $TidyXML, $hit, $debug);
 }
@@ -771,6 +795,31 @@ sub scraperRecurse { my ($self, $sub_string, $next_scaffold, $TidyXML, $hit, $de
 }
    
 # private
+sub scraperRecurseAndChop { my ($self, $sub_string, $next_scaffold, $TidyXML, $hit, $debug) = @_;
+
+    my $myTidyXML = $TidyXML;
+    my ($saveContext, $saveFoundContext, $saveString);
+    if ( $myTidyXML ) {
+        ($saveContext,$saveFoundContext,$saveString) = ($TidyXML->m_context(),$TidyXML->m_found_context(),$myTidyXML->m_asString());
+        $myTidyXML->m_context($TidyXML->m_found_context);
+        if ( $$sub_string ) {
+            $myTidyXML->m_asString($sub_string);
+        }
+    } else {
+        $myTidyXML = new WWW::Search::Scraper::TidyXML;
+        $myTidyXML->m_asString($sub_string);
+    }
+    
+    my $total_hits_found = $self->scraper($next_scaffold, $myTidyXML, $hit, $debug);
+
+    $myTidyXML->m_context($saveContext);
+    $myTidyXML->m_found_context($saveFoundContext);
+    $myTidyXML->m_asString($saveString);
+
+    return $total_hits_found;
+}
+   
+# private
 sub scraper { my ($self, $scaffold_array, $TidyXML, $hit, $debug) = @_;
 
 	# Here are some variables that we use frequently done here.
@@ -783,7 +832,7 @@ sub scraper { my ($self, $scaffold_array, $TidyXML, $hit, $debug) = @_;
     my (@ary,@dts); # 'F' and 'REGEX' are co-functional, so we need these shared variables here.
 
 SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
-        my $tag = $$scaffold[0];
+TRYAGAIN: my $tag = $$scaffold[0];
         #print "TAG: $tag\n";
 
         # 'HIT*' is special since it has pre- and post- processing (adding the hits to the hit-list).
@@ -794,7 +843,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
             my $resultType = $$scaffold[1];
             if ( 'ARRAY' eq ref $resultType ) {
                 $next_scaffold = $resultType;
-                $resultType = '';
+                $resultType =  $self->GetResponseClass();
             }
             $next_scaffold = $$scaffold[2];
             $next_scaffold = $$scaffold[1] unless defined $next_scaffold;
@@ -805,11 +854,10 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
             my $resultType = $$scaffold[1];
             if ( 'ARRAY' eq ref $resultType ) {
                 $next_scaffold = $resultType;
-                $resultType = '';
+                $resultType =  $self->GetResponseClass();
             }
             else
             {
-                $resultType = "::$resultType";
                 $next_scaffold = $$scaffold[2];
             }
             $next_scaffold = $$scaffold[2];
@@ -825,8 +873,6 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
                     $total_hits_found += 1;
                 }
                 $hit = $self->newHit($resultType, $next_scaffold, $self->scraperDetail());
-                $hit->_searchObject($self);
-            
             } while ( $self->scraperRecurse($TidyXML->asString(), $next_scaffold, $TidyXML, $hit, $debug) );
             next SCAFFOLD;
         }
@@ -852,15 +898,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
 
                 my $binding = $$scaffold[3];
                 my $datParser = $$scaffold[4];
-                print STDERR  "raw dat: '$sub_string'\n" if ($self->ScraperTrace('d'));
-                if (  $self->ScraperTrace('d') ) { # print ref $ aways does something screwy
-                    print STDERR  "datParser: ";
-                    print STDERR  ref $datParser;
-                    print STDERR  "\n";
-                };
                 $datParser = \&WWW::Search::Scraper::trimTags unless $datParser;
-                print STDERR  "binding: '$binding', " if ($self->ScraperTrace('d'));
-                print STDERR  "parsed dat: '".&$datParser($self, $hit, $sub_string)."'\n" if ($self->ScraperTrace('d'));
                 if ( $binding eq 'url' )
                 {
                     my $url = new URI::URL(&$datParser($self, $hit, $sub_string), $self->{_base_url});
@@ -1193,7 +1231,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
                     else {
                         my $dt = $self->trimTags($hit, shift @dts);
                         print "REGEX binding '$_' => $dt\n" if ($self->ScraperTrace('d'));
-                        $hit->plug_elem($_, $dt) if defined $dt;
+                        $hit->plug_elem($_, $dt, $TidyXML) if defined $dt;
                     }
                 }
                 $total_hits_found = 1;
@@ -1286,8 +1324,21 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
             $x =~ s/\r//gs;
             print STDERR "TRACE:\n'$x'\n";
             $total_hits_found += $$scaffold[1];
-        } elsif ( $tag eq 'CALLBACK' ) {
+        }
+        elsif ( $tag eq 'CALLBACK' ) {
             &{$$scaffold[1]}($self, $hit, $TidyXML->asString(), $debug);
+#        }
+#        elsif ( $tag eq 'TRYUNTIL' ) 
+#        {
+#            my (undef, $limit, $find, $next_scaffold) = @$scaffold;
+#            $sub_string = ${$TidyXML->asString()};
+#            for (my $i=0; $i < $limit; $i++) {
+#                $self->scraperRecurse(\$sub_string, $frame, $TidyXML, $hit, $debug);
+#                if ( defined $hit->$find && $hit->$find ne '' ) {
+#                    $total_hits_found = 1;
+#                    next SCAFFOLD;
+#                }
+#            }
         } else {
             die "Unrecognized ScraperFrame option: '$tag'";
         }
@@ -1305,14 +1356,19 @@ sub newHit {
     if ( 'CODE' eq ref $resultType ) {
         $hit = &$resultType();
     } else {
-#                eval "use WWW::Search::Scraper::Response$resultType";
-#                if ( $@ ) {
-#                    die "Can't load your Response module '$resultType': $@";
-#                };
-        $hit = new WWW::Search::Scraper::Response($self->{'scraperName'}, $scraperFrame, $scraperDetailFrame);
-        die "Can't instantiate your Response module '$resultType': $!" unless $hit;
-        $hit->_ScraperEngine($self);
+        $resultType = 'generic' unless $resultType;
+        eval "use WWW::Search::Scraper::Response::$resultType; \$hit = new WWW::Search::Scraper::Response::$resultType(\$scraperFrame, \$scraperDetailFrame);";
+        if ( $@ ) {
+            print "Can't use Response subclass '$resultType': $@\n";
+            return undef;
+        }
     }
+    unless ( $hit ) {
+        die "Can't instantiate your Response module '$resultType': $!";
+    }
+    $hit->_ScraperEngine($self);
+    $hit->_searchObject($self);
+    
     return $hit;
 }
 sub touchUp {
@@ -1328,6 +1384,52 @@ sub touchUp {
 # (if wantarray, will return result and first tag, with brackets removed)
 #
 sub getMarkedText {
+    my ($self, $tag, $content) = @_;
+    
+    my $eidx = 0;
+    my $sidx = -1;
+    my $depth = 0;
+
+#    while ( $$content =~ m-<(/)?$tag[^>]*?>-gsi ) {
+    while ( $$content =~ m-<(/)?$tag(\s[^>]*?)?>-gsi ) {
+        if ( $1 ) { # then we encountered an end-tag
+            $depth -= 1;
+            if ( $depth < 0 ) {
+                # . . . then somehow we've stumbled into the midst of a table whose end-tag
+                #   has just been encountered - let's be generous and start over.
+                $eidx = 0;
+                $sidx = -1;
+                $depth = 0;
+            }
+            elsif ( $depth == 0 ) { # we've counted as many end-tags as start-tags; we're done!
+                $eidx = pos $$content;
+                last;
+            }
+        } else # we encountered a start-tag
+        {
+            $depth += 1;
+            $sidx = length $` unless $sidx >= 0; 
+        }
+    }
+    
+
+    return undef if $sidx < 0;
+    my $rslt = substr $$content, $sidx, $eidx - $sidx, '';
+    $$content =~ m/./;
+#    $rslt =~ m-^<($tag[^>]*?)>(.*?)</$tag\s*[^>]*?>$-si;
+    $rslt =~ m-^<($tag(\s[^>]*?)?)>(.*?)</$tag\s*[^>]*?>$-si;
+    return ($3, $1) if wantarray;
+    return $3;
+}
+
+# Returns the marked up text from the referenced string, as designated by the given tag.
+# This algorithm extracts the contents of the first <$tag> element it encounters,
+#   taking into consideration that it may contain <$tag> elements within it.
+# It removes the marked text from the original string, strips off the markup tags,
+#   and returns that result.
+# (if wantarray, will return result and first tag, with brackets removed)
+#
+sub getMarkedTextXX {
     my ($self, $tag, $content) = @_;
     
     my $eidx = 0;
@@ -1360,7 +1462,7 @@ sub getMarkedText {
     my $rslt = substr $$content, $sidx, $eidx - $sidx, '';
     $$content =~ m/./;
 #    $rslt =~ m-^<($tag[^>]*?)>(.*?)</$tag\s*[^>]*?>$-si;
-    $rslt =~ m-^<($tag(\s[^>]*?)?)>(.*?)</$tag\s*[^>]*?>$-si;
+    $rslt =~ m-^<($tag(\s[^>]*?)?)>(.*?)</$tag[\s>][^>]*?>$-si;
     return ($3, $1) if wantarray;
     return $3;
 }
@@ -1382,15 +1484,30 @@ sub addURL {
    return trimTags($self, $hit, $dat);
 }
 
-# trimTags
-#
-# Strip tag clutter from $dat, in the context of $hit.
+# trimTags($hit, $dat) - Strip tag clutter from $dat, in the context of $hit.
+# trimTags($hit, $dat) - Strip double-LFs, then trim the tag clutter from $_;
+# Note: "ref-not-ref" interface on $dat -
+#   $dat may be a string, or a reference to a string.
+#   if string, trimLFLFs() returns string, if ref, trimLFLFs() uses and returns ref.
 sub trimTags {
     my ($self, $hit, $dat) = @_;
-   # This simply rearranges the parameter list from the datParser form.
-    $dat =~ s/<br>/\n/gi;
-    $dat =~ s/\r//gsi;
-    return strip_tags($dat);
+    my $dt;
+    my $isRef=0;
+    if ( ref($dat) ) {
+        $isRef = 1;
+    } else {
+        $dt = $dat;
+        $dat = \$dt;
+    }
+    $$dat =~ s{<br>}{\n}gi;
+    $$dat =~ s{\r}{}gsi;
+    $$dat =~ s{</?[^>]+>}{}gsi;
+    $$dat =~ s/&nbsp;/ /gs;
+    $$dat =~ s{&lt;}{>}g;
+    $$dat =~ s{&gt;}{>}g;
+    $$dat =~ s{&quot;}{\042}gs;
+    
+    return $isRef?$dat:$$dat;
 }
 
 sub trimLFs { # Strip LFs, then tag clutter from $_;
@@ -1401,14 +1518,27 @@ sub trimLFs { # Strip LFs, then tag clutter from $_;
     return $dat;
 }
 
-sub trimLFLFs { # Strip double-LFs, then tag clutter from $_;
+
+# trimLFLFs($hit, $dat) - Strip double-LFs, then trim the tag clutter from $_;
+# Note: "ref-not-ref" interface on $dat -
+#   $dat may be a string, or a reference to a string.
+#   if string, trimLFLFs() returns string, if ref, trimLFLFs() uses and returns ref.
+sub trimLFLFs {
     my ($self, $hit, $dat) = @_;
+    my $dt;
+    my $isRef=0;
+    if ( ref($dat) ) {
+        $isRef = 1;
+    } else {
+        $dt = $dat;
+        $dat = \$dt;
+    }
     $dat = $self->trimTags($hit, $dat);
 #    while ( 
-        $dat =~ s/[\s]*\n([\s]*\n[\s]*)*/\n/gsi;
+        $$dat =~ s/[\s]*\n([\s]*\n[\s]*)*/\n/gsi;
 #         ) {}; # Do several times, rather than /g, to handle triple, quadruple, quintuple, etc.
    # This simply rearranges the parameter list from the datParser form.
-    return $dat;
+    return $isRef?$dat:$$dat;
 }
 
 # XML::XPath seems to keep a blank, the attribute name, and the '=' sign in the result.
@@ -1552,6 +1682,16 @@ sub unescape_query {
     	s/%([\dA-Fa-f]{2})/chr(hex($1))/eg;
     }
     return wantarray ? @copy : $copy[0];
+}
+
+# ContentAnalysis()
+# This method looks at general HTML content and pulls out as much relevant information as it can.
+sub ContentAnalysis {
+    my ($self) = @_;
+
+    my $dat = $self->response()->content;
+    my $rDat = $self->trimLFLFs(undef, \$dat);
+    return $rDat;
 }
 
 1;

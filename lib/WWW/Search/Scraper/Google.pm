@@ -47,7 +47,7 @@ my $scraperFrame =
                   [ 'NEXT', 1, '[^>]>Next<' ], # Google keeps changing their formatting, so watch out!
                   [ 'COUNT', '[,0-9]+</b> of about <b>([,0-9]+)</b>'] ,
                   [ 'TABLE', '#4' ],
-                  [ 'HIT*' ,
+                  [ 'HIT*',
                     [  
                        [ 'BODY', '<p>', '</font></font>',
                           [
@@ -67,6 +67,10 @@ my $scraperFrame =
                   ]
            ]
        ];
+
+
+
+
 
 
 sub testParameters {

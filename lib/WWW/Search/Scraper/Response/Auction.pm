@@ -23,6 +23,20 @@ use vars qw($VERSION @ISA);
 $VERSION = sprintf("%d.%02d", q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/);
 use WWW::Search::Scraper::Response;
 
+sub new {
+    my $self = WWW::Search::Scraper::Response::new(
+         'generic'
+        ,{
+                'relevance'  => ''
+               ,'itemNumber' => ''
+               ,'title'      => ''
+               ,'price'      => ''
+               ,'bids'       => ''
+         }
+        ,@_);
+    return $self;
+}
+
 sub resultTitles {
     return {
                 'relevance'  => 'Relevance'

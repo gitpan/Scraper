@@ -15,19 +15,21 @@ use WWW::Search::Scraper(qw(2.12 generic_option addURL trimTags removeScriptsInH
 
 use strict;
 
-# Example query - http://search.lycos.com/main/default.asp?lpv=1&loc=searchhp&query=Perl
+# Example query - (old) http://search.lycos.com/main/default.asp?lpv=1&loc=searchhp&query=Perl
+#                 (new) http://search.lycos.com/default.asp?lpv=1&loc=searchhp&tab=web&query=turntable
 my $scraperRequest = 
         { 
             # This engine is driven from it's <form> page
             'type' => 'QUERY'
             
             # This is the basic URL on which to get the form to build the query.
-            ,'url' => 'http://search.lycos.com/main/default.asp?'
+            ,'url' => 'http://search.lycos.com/default.asp?'
 
            # specify defaults, by native field names
            ,'nativeQuery' => 'query'
-           ,'nativeDefaults' => { 'lpv' => 'q'
+           ,'nativeDefaults' => { 'lpv' => '1'
                                  ,'loc' => 'searchhp'
+                                 ,'tab' => 'web'
                                 }
             
             # specify translations from canonical fields to native fields

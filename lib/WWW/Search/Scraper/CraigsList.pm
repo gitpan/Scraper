@@ -23,19 +23,40 @@ $VERSION = sprintf("%d.%02d", q$Revision: 1.14 $ =~ /(\d+)\.(\d+)/);
 #
 # private
 
+# NOTE: sometimes the response may read:
+#
+# craigslist: online community
+#            craigslist
+#            online community
+#      The requested function is offline for maintenance.
+#       Please try again a little later.
+#
+# NEW: by 2002.09.27
+# Jobs - web-dev
+# http://www.craigslist.org/cgi-bin/search?areaID=1&subAreaID=0&catAbbreviation=eng&cat=14&group=J&type_search=&query=Perl&new_cat=14
+# Jobs - software/QA/DBA/etc jobs
+# http://www.craigslist.org/cgi-bin/search?areaID=1&subAreaID=0&catAbbreviation=sof&cat=21&group=J&type_search=&query=Quality&new_cat=21    return {
+# Car stuff
+# http://www.craigslist.org/cgi-bin/search?areaID=1&subAreaID=0&catAbbreviation=car&cat=6&group=S&type_search=&query=honda+accord&new_cat=6&maxAsk=11000
+# http://www.craigslist.org/cgi-bin/search?areaID=1&subAreaID=0&catAbbreviation=car&cat=6&group=S&type_search=&query=Honda&new_cat=6&maxAsk=
 my $scraperRequest = 
    { 
       'type' => 'POST'       # Type of query generation is 'POST'
       # This is the basic URL on which to build the query.
-     ,'url' => 'http://www.craigslist.org/cgi-bin/search.cgi?'
+     ,'url' => 'http://www.craigslist.org/cgi-bin/search?'
       # This is the Scraper attributes => native input fields mapping
       ,'nativeQuery' => 'query'
       ,'nativeDefaults' =>
-                      {    'areaID'     => '1'
-                          ,'subAreaID'  => '0'
-                          ,'group'      => 'J'
-                          ,'catAbb'     => ''
-                          ,'areaAbbrev' => ''
+                      {    'areaID'         => '1'
+                          ,'subAreaID'      => '0'
+                          ,'group'          => 'S'
+                          ,'cat'            => '6'
+                          ,'new_cat'        => '6'
+                          ,'catAbbreviation' => 'car'
+                          ,'group'          => 'J'
+                          ,'type_search'    => ''
+                          ,'max_ask'        => '' # catAbbreviation='car'
+                          ,'query'          => ''
                       }
 #      ,'defaultRequestClass' => 'Job'
       ,'fieldTranslations' =>
@@ -59,8 +80,10 @@ my $scraperFrame =
              [ 'COUNT', 'Found: (\d+)']
             ,[ 'HIT*' ,
                 [  
-                   [ 'REGEX', '<p>\s*(&nbsp;)?(.*?-\d+).*?<a href=([^>]+)>(.*?)</a>.*?\((.*?)\).*?<.*?>(.*?)<', 
-                      undef, 'date', 'url', 'title', 'location', 'description'
+# NEW: by 2002.09.27
+# <p>&nbsp;Sep-26&nbsp;&nbsp;&nbsp;<a href=/sfo/pen/eng/5905447.html>Plugged In Enterprises Web Producer </a> (East Palo Alto)
+                   [ 'REGEX', '<p>\s*(&nbsp;)?(.*?-\d+)[^<]*<a\s+href=([^>]+)>(.*?)</a>[^<]*', 
+                                   undef,       'date',        'url',       'title', 'location'
                    ]
                 ]
              ]
@@ -73,12 +96,23 @@ my $scraperFrame =
 sub testParameters {
     # 'POST' style scraperFrames can't be tested cause of a bug in WWW::Search(2.2[56]) !
     my $isNotTestable = WWW::Search::Scraper::isGlennWood()?0:0;
+# http://www.craigslist.org/cgi-bin/search?areaID=1&subAreaID=0&catAbbreviation=sof&cat=21&group=J&type_search=&query=Quality&new_cat=21    return {
     return {
                  'SKIP' => $isNotTestable
-                ,'testNativeQuery' => 'Quality'
+                ,'testNativeQuery' => 'Honda'
                 ,'expectedOnePage' => 50
                 ,'expectedMultiPage' => 100
                 ,'expectedBogusPage' => 0
+                ,'testNativeOptions' => { 'areaID'         => '1'
+                                          ,'subAreaID'      => '0'
+                                          ,'group'          => 'S'
+                                          ,'cat'            => '6'
+                                          ,'new_cat'        => '6'
+                                          ,'catAbbreviation' => 'car'
+                                          ,'group'          => 'J'
+                                          ,'type_search'    => ''
+                                          ,'max_ask'        => '' # catAbbreviation='car'
+                                        }
                 ,'usesPOST' => 1
            };
 }

@@ -736,7 +736,7 @@ sub testParameters {
         $self->whichTech('Perl');
     }
     return {
-                 'SKIP' => 'Gone the way of "user/password" - or something about session/cookies, anyway.'
+                 'TODO' => 'JustTechJobs.pm has gone the way of "user/password" - or something about session/cookies, anyway.'
                 ,'testNativeOptions' => { 'whichTech' => 'Perl' }                                         
            };
 }

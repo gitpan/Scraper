@@ -24,7 +24,7 @@ use WWW::Search::Scraper::Response;
 $VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
 
 sub new {
-    my $self = WWW::Search::Scraper::Request::new(
+    my $self = WWW::Search::Scraper::Response::new(
          'Job'
         ,{
              'relevance' => ''

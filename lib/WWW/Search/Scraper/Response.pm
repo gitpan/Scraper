@@ -100,7 +100,6 @@ $VERSION = sprintf("%d.%02d", q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/);
 require WWW::SearchResult;
 my %AlreadyDeclared;
 
-
 sub fieldCapture {
     my ($scaffold) = @_;
     my @fields;
@@ -208,28 +207,48 @@ SCAFFOLD: for my $scaffold ( @$scaffold ) {
 
 
 sub new { 
-    my ($class, $SubClass, $scraperSearchResultsFrame, $scraperDetailFrame) = @_;
+    my $SubClass = shift;
+    die "Scraper::Response::new() requires a subclass-name parameter." if !defined $SubClass || ref($SubClass);
 
     my $self;
-    $SubClass = "::$SubClass" if ( $SubClass );
+    my $scraperFrameCount = 0;
+    my $canonicalByResponseSubClassParameters = 0;
+    $SubClass = "::$SubClass";
 
     my (%subFields,$countSubFields);
     unless ( $AlreadyDeclared{$SubClass} ) {
         
-        $subFields{'url'} = 1 if $SubClass eq '::Sherlock'; # Help Sherlock along.
+        $subFields{'url'} = 1    if $SubClass eq '::Sherlock'; # Help Sherlock along.
         $subFields{'detail'} = 1 if $SubClass eq '::Sherlock'; # Help Sherlock along.
         
-        # value of {'fieldName'} == 1 means field is from searchResultsFrame, only
-        map { $subFields{$_} = 1 } fieldCapture($scraperSearchResultsFrame);
+        while ( my $whatzit = shift ) {
+            if ( my $rf = ref $whatzit ) {
+                if ( 'HASH' eq $rf ) {
+                   map { $subFields{$_} = $whatzit->{$_} || 1 } keys %$whatzit;
+                   $canonicalByResponseSubClassParameters = 1;
+                }
+                elsif ( 'ARRAY' eq $rf ) {
+                    $scraperFrameCount += 1;
+                    my $i = 1;
+#                    while ( 'ARRAY' ne ref $$whatzit[$i] ) { $i += 1; }
+#                    $whatzit = $$whatzit[$i];
+                    map { $subFields{$_} = (defined $subFields{$_})?3:$scraperFrameCount } fieldCapture($whatzit);
+                }
+                else {
+                    die "Invalid parameter to Scraper::Response: '$whatzit'";
+                }
+            }
+        }
 
+        # If a Response sub-class has been declared, get field names from its detail frame, too.
+#        if ( defined $SubClass && $SubClass ) {
+#            my $responseDetailFrame;
+#            eval "use WWW::Search::Scraper::Response$SubClass; \$responseDetailFrame = WWW::Search::Scraper::Response$SubClass\::scraperDetail();";
+#            die $@ if $@;
+#            $scraperDetailFrame = $responseDetailFrame if $responseDetailFrame;
+#        }
         # value of {'fieldName'} == 2 means field is from searchDetailFrame, only
         # value of {'fieldName'} == 3 means field is from searchResultsFrame and searchDetailFrame 
-        if ( $scraperDetailFrame ) {
-            my $i = 1;
-            while ( 'ARRAY' ne ref $$scraperDetailFrame[$i] ) { $i += 1; }
-            $scraperDetailFrame = ${$scraperDetailFrame}[$i];
-            map { $subFields{$_} = (defined $subFields{$_})?3:2 } fieldCapture($scraperDetailFrame);
-        }
 
         my $subFieldsStruct = join '\'=>\'@\',\'__', keys %subFields;
         die "No fields were found in the scraperFrames for WWW::Search::Scraper::Response$SubClass\n" unless keys %subFields;
@@ -260,15 +279,14 @@ use WWW::Search::Scraper::Response;
 use vars qw(\@ISA);
 \@ISA = qw( WWW::Search::Scraper::Response$SubClass\::_struct_ WWW::Search::Scraper::Response );
 
-        
 1;
 EOT
         die $@ if $@;
         $AlreadyDeclared{$SubClass} = [(keys %subFields)+11, \%subFields];
     }
     
-    eval "\$self = new WWW::Search::Scraper::Response$SubClass;";
-    die $@ if $@;
+    eval "\$self = new WWW::Search::Scraper::Response$SubClass\::_struct_";
+    bless $self, "WWW::Search::Scraper::Response$SubClass";
     
     $self->_fieldCount(${AlreadyDeclared{$SubClass}}[0]);
     $self->_fieldNames(${AlreadyDeclared{$SubClass}}[1]);
@@ -304,7 +322,7 @@ EOT
 sub $_ {
     my \$slf = shift;
     my \$val = shift;
-    \$slf->ScrapeDetailPage();
+    \$slf->ScrapeDetailPage(\$slf->url());
     if ( defined \$val ) {
         my \$ref = \$slf->__$_();
         if ( defined \$ref ) {
@@ -326,7 +344,7 @@ EOT
 sub $_ {
     my \$slf = shift;
     my \$val = shift;
-    \$slf->ScrapeDetailPage() if defined(\$slf->_skipDetailPage()) && \$slf->_skipDetailPage() != 3;
+    \$slf->ScrapeDetailPage(\$slf->url()) if defined(\$slf->_skipDetailPage()) && \$slf->_skipDetailPage() != 3;
     if ( defined \$val ) {
         my \$ref = \$slf->__$_();
         if ( defined \$ref ) {
@@ -355,10 +373,15 @@ EOT
 }
 
 sub plug_elem {
-    my ($self, $name, $value) = @_;
+    my ($self, $name, $value, $TidyXML) = @_;
     return unless defined $name;
-    $self->_elem($name, $value);
-    $self->$name(\$value);
+    $value = [$value] unless ref($value) eq 'ARRAY';
+    $self->_elem($name, $$value[0]);
+    for ( @$value ) {
+        # sometimes this crashes cause $name is undefined.
+        # I don't know how it happens, but happened with ::CNN a lot. gdw.2002.09.09
+        eval { $self->$name(\$_); }; #die $@ if $@;
+    }
 }
 sub plug_url {
     my ($self, $url) = @_;
@@ -376,7 +399,7 @@ sub GetFieldNames {
 sub GetFieldTitles {
     my ($self) = @_;
     my $answer = {'url' => 'URL'};
-    for ( keys %$self ) {
+    for ( keys %{$self->GetFieldNames} ) {
         $answer->{$_} = $_ unless $_ =~ /^_/  or $_ =~ /^WWW::Search/;
     }
     return $answer;
@@ -413,40 +436,104 @@ sub content {
     return undef;
 }
 
+# The default Response class "detail page" frame is null.
+sub scraperDetail { undef }
+
+sub toString {
+    my ($self) = @_;
+    my %resultTitles = %{$self->GetFieldTitles()};# unless %resultTitles;
+    my %results = %{$self->GetFieldValues()};
+#        for ( keys %resultTitles ) {
+    my $fieldNames = $self->GetFieldNames();
+    for ( keys %$fieldNames ) {
+        #next unless $fieldNames->{$_} == 1;
+        if ( 1 ) {
+            my @value = $self->$_();
+            print "$resultTitles{$_}: (";
+            my $comma = '';
+            for ( @value ) {
+                #next unless defined $_ and defined $$_; #hmm. . . how does this happen, in eBay.
+                print "$comma'$$_'";# if $results{$_};
+                $comma = ', ';
+            }
+            print ")\n";
+        } else {
+            my $value = $self->$_();
+#                print "$resultTitles{$_}:= '$results{$_}'\n";# if $results{$_};
+            if ( defined $value ) {
+                print "$_: '$$value'\n";# if $results{$_};
+            } else {
+                print "$_: <NULL>\n";# if $results{$_};
+            }
+        }
+    }
+}
+
+
 # Pairs in the $anchors hash are combined into <A> anchor tags.
 sub toHTML {
     my ($self, $anchors) = @_;
     
-    my $result = "<TABLE BORDER='4'  WIDTH='480'>"; #<DT>from:</DT><DD>".$self->{'searchObject'}->getName()."</DD>\n";
+    my $result = "<TABLE BORDER='4'>"; #<DT>from:</DT><DD>".$self->{'searchObject'}->getName()."</DD>\n";
     my %results = %{$self->GetFieldValues()};
     my %resultTitles = %{$self->GetFieldTitles()};
     
-    my $url = $results{'url'};
-    $url = $$url if ref($url);
-    $result .= "<TR><TD COLSPAN='3'>$resultTitles{'title'}: <A HREF='#' onclick='window.open(\"$url\",\"$resultTitles{'title'}\")'>$results{'title'}</A></TD></TR>\n";
+    my $resultCount = 0;
+    my %missingResults = ();
+    for ( keys %resultTitles ) 
+    {
+        if ( $results{$_} ) {
+            $resultCount += 1 if $_ ne 'url' and $_ ne 'Description' and $_ ne 'Title';
+        } else {
+            $missingResults{$_} = 1;
+        }
+    }
+
+    my $title = $self->title;
+    $title = $$title if ref($title);
+    my $url;
+    if ( $title eq 'Cached' or $title eq 'Similar pages' or
+         $title =~ m{^More results from } ) {
+            $url = $self->cachedURL();
+            $url = $$url if ref ($url);
+    } else {
+        $url = $results{'url'};
+        $url = $$url if ref($url);
+    }
+    $result .= "<TR><TD><B>$resultCount</B> fields";
+    if ( keys %missingResults ) {
+        my $comma = '';
+        $result .= '<BR>(';
+        for ( sort keys %missingResults ) {
+            $result .= $comma.$_;
+            $comma = ',';
+        }
+        $result .= ')';
+    }
+    $result .= "</TD><TD COLSPAN='2'>$resultTitles{'title'}: <A HREF='#' onclick='window.open(\"$url\",\"detailWindow\");detailWindow.focus()'>$title</A></TD></TR>\n";
     
     $result .= "<TR><TD COLSPAN='3'>$resultTitles{'company'}: <A HREF='$results{'companyProfileURL'}'>$results{'company'}</A></TD></TR>\n"
         if ($results{'companyProfileURL'});
 
-    for my $title ( keys %resultTitles ) {
+    for my $title ( sort keys %resultTitles ) {
         next if $title eq 'companyProfileURL' or $title eq 'company';
-        next if $title eq 'url' or $title eq 'title';
+        next if $title eq 'url' or $title eq 'title' or $title eq 'Description' or $title eq 'Title';
         next unless $results{$title};
-        my $rslt = $results{$title};
-        $rslt = [$rslt] unless ref $rslt;
-         $result .= "<TR><TD COLSPAN='1'>$resultTitles{$title}</TD><TD COLSPAN='2'>";
+        my @rslt = $self->$title;
+        shift @rslt unless $rslt[0];
+        $result .= "<TR><TD COLSPAN='1' valign='top'>$resultTitles{$title}</TD><TD COLSPAN='2'>";
         my $comma = '';
-        for ( @$rslt ) {
+        for ( @rslt ) {
            if ( $resultTitles{$title} =~ m{url}i ) {
-              $result .= "$comma<a href=\"$_\">$_</a>";
+              $result .= "$comma<a href=\"$$_\">$$_</a>";
            } else {
-              $result .= "$comma$_";
+              $result .= "$comma$$_";
            }
            $comma = "<BR>"
         }
         $result .= "</TD></TR>\n";
     }
-    return $result.'</TABLE>';
+    return $result.'</TABLE><BR>';
 }
 
 
@@ -458,16 +545,18 @@ sub SkipDetailPage {
 
 # Fetch and scrape the detail page if necessary.
 sub ScrapeDetailPage {
-    my $self = shift;
+    my ($self, $url) = @_;
 
+    return unless $url;
     return if defined($self->_skipDetailPage()) && $self->_skipDetailPage() == 1;
     
     my $detail = $self->_gotDetailPage();
     return if $detail;
 
     my $scraper = $self->_ScraperEngine();
-    my $url = $self->url();
-    $url = $$url if ref $url;
+
+    print STDERR 'DETAIL PAGE: '.$url. "\n" if ($self->_ScraperEngine->ScraperTrace('U'));
+
     eval {
         # Why does http_request() cause Scraper::Brainpower to fail "Object Not Found" on next_url?        
         # this code from WWW::Search::http_request().
@@ -488,7 +577,10 @@ sub ScrapeDetailPage {
         
     $self->_gotDetailPage($detail);
     my $debug = '';
-    $scraper->scrape($detail, $debug, $scraper->scraperDetail(), $self);
+    # Get scraper detail frame from the Response class, or the engine class if no Response frame.
+    my $scraperDetail = $self->scraperDetail?$self->scraperDetail:$scraper->scraperDetail();
+    $scraper->scrape($detail, $debug, $scraperDetail, $self);
 }
+
 1;
 

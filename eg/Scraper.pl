@@ -33,7 +33,7 @@ use WWW::Search::Scraper::Request;
 use vars qw($VERSION);
 use diagnostics;
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/);
 
     select STDERR; $| = 1; select STDOUT; $| = 1; 
 
@@ -41,9 +41,12 @@ $VERSION = sprintf("%d.%02d", q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/);
     $engine = 'eBay'  unless $engine;
     $query =~ s/(['"])(.*)\1$/$2/;
     $debug = 'U'      unless $debug;
+    $options = '' unless defined $options; # This prevents error message from diagnostics.pm
+
     print "Scraper parameters: engine:$engine, query='$query', debug=$debug, options='$options'\n";
 
     my $scraper = new WWW::Search::Scraper( $engine );
+    $scraper->artifactFolder('tmp');
     my $limit = 21;
 
     # Most Scraper sub-classes will define their own testParameters . . .
@@ -71,44 +74,43 @@ $VERSION = sprintf("%d.%02d", q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/);
 ##                         ,'CA-Costa Mesa'
 #                         ]);
 
-    my %resultTitles;
     $scraper->SetRequest($request);
 
+    if ( $debug eq 'H' ) {
+        my $fname = $query;
+        $fname =~ s{\s}{_}g;
+        open HTML, ">$engine\_$fname.html" or die "Can't open output '$engine.$fname.html': $!";
+        print HTML "<html><head></head><body><table>\n";
+    }
+
     my $resultCount = 0;
+    my $latestPageNumber = 0;
     while ( my $result = $scraper->next_response() ) {
-        # $result->_SkipDetailPage(1);
-        $resultCount += 1;
-        %resultTitles = %{$result->GetFieldTitles()};# unless %resultTitles;
-        my %results = %{$result->GetFieldValues()};
-#        for ( keys %resultTitles ) {
-        my $fieldNames = $result->GetFieldNames();
-        for ( keys %$fieldNames ) {
-            #next unless $fieldNames->{$_} == 1;
-            if ( 1 ) {
-                my @value = $result->$_();
-                print "$resultTitles{$_}: (";
-                my $comma = '';
-                for ( @value ) {
-                    #next unless defined $_ and defined $$_; #hmm. . . how does this happen, in eBay.
-                    print "$comma'$$_'";# if $results{$_};
-                    $comma = ', ';
-                }
-                print ")\n";
-            } else {
-                my $value = $result->$_();
-#                print "$resultTitles{$_}:= '$results{$_}'\n";# if $results{$_};
-                if ( defined $value ) {
-                    print "$_: '$$value'\n";# if $results{$_};
-                } else {
-                    print "$_: <NULL>\n";# if $results{$_};
-                }
-            }
+        if ( $scraper->artifactFolder() && ($scraper->pageNumber != $latestPageNumber) ) {
+            $latestPageNumber = $scraper->pageNumber();
+            open OUT, ">tmp/$engine"."_pg_$latestPageNumber.htm" || warn "Can't open 'tmp/$engine"."_pg_$latestPageNumber.htm' to write: $!";
+            print OUT $scraper->response->content;
+            close OUT;
         }
+        $resultCount += 1;
+        print "#----------------------------------------------------------------------------------------------------\n";
+        print $result->toString();
         print "\n";
+        if ( $debug eq 'H' ) {
+            my $html = $result->toHTML();
+
+            print HTML $html;
+        }
         last unless --$limit;
+    }
+    
+    if ( $debug eq 'H') {
+        print HTML "</table></body></html>\n";
+        close HTML;
     }
 
     print "Engine reported an 'approximate result count' of ".$scraper->approximate_result_count().".\n";
+    print "Content Analysis: '".${$scraper->ContentAnalysis()}."'\n" if $limit > 0;
 
     print "\n$resultCount results found".($limit?", short of the expected":', successfully completing the test').".\n";
 

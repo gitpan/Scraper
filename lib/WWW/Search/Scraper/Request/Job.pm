@@ -9,13 +9,14 @@ use WWW::Search::Scraper::Request;
 
 sub new {
     shift;
-    my $self = WWW::Search::Scraper::Request::new('Job',
-                  ,{   
-                       'skills' => ''
-                      ,'locations' => ''
-                      ,'payrate' => ''
-                   }
-                  ,@_
+    my $self = WWW::Search::Scraper::Request::new(
+                'Job',
+               ,{   
+                   'skills' => ''
+                  ,'locations' => ''
+                  ,'payrate' => ''
+               }
+              ,@_
                );
     return $self;
 

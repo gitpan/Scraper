@@ -55,7 +55,7 @@ my $scraperFrame =
          [  
             [ 'NEXT', 1, 'Show next \d+ jobs' ] , # meaning how to find the NEXT button.
             [ 'COUNT', 'Jobs [-0123456789]+ of (\d+) matching your query' ] , # the total count can be found here.
-            [ 'HIT*' ,                          # meaning the content of this array element represents hits!
+            [ 'HIT*', 'Job',                    # meaning the content of this array element represents hits!
                [  
                   [ 'DL',                       # meaning detail is in a definition list
                      [
@@ -128,35 +128,6 @@ sub touchupLocation {
       return ($dat, "WWW::Search::Dice.pm can't find location-description in '$dat'");
    }
 }
-
-
-{
-package WWW::Search::Scraper::Response::Job::Dice;
-
-use WWW::Search::Scraper::Response::Job;
-use vars qw(@ISA);
-@ISA = qw(WWW::Search::Scraper::Response::Job);
-
-sub resultTitles {
-    my $self = shift;
-    my $resultT = $self->SUPER::resultTitles();
-    $$resultT{'jobID'} = 'Job ID';
-    return $resultT;
-}
-
-sub results {
-    my $self = shift;
-    my $results = $self->SUPER::results();
-    return undef unless $results;
-    $$results{'jobID'} = $self->jobID();
-    return $results;
-}
-
-sub jobID { return $_[0]->_elem('jobID'); }
-
-
-}
-
 
 1;
 

@@ -12,6 +12,12 @@ use WWW::Search::Scraper(qw(1.48 generic_option findNextForm trimLFs));
 use WWW::Search::Scraper::Response::Job;
 use WWW::Search::Scraper::FieldTranslation(1.00);
 
+#http://jobsearch.monster.com/jobsearch.asp?cy=US&re=14&brd=1%2C1863&lid=883&lid=356&fn=6&q=Perl&sort=rv&vw=b
+# detailed
+#http://jobsearch.monster.com/jobsearch.asp?re=10&vw=d&pg=1&cy=US&brd=1%2C1863&lid=883&lid=356&fn=6&q=Perl&sort=rv
+#http://jobsearch.monster.com/jobsearch.asp?q=Sales&re=13&sort=rv&tm=60d&brd=1%2C1863&cy=US&fn=6&lid=883&lid=356&vw=d
+#http://jobsearch.monster.com/jobsearch.asp?brd=1%2C1863&cy=US&fn=6&lid=883&lid=356&q=Sales&re=10&sort=rv&tm=60&vw=d
+#http://jobsearch.monster.com/jobsearch.asp?brd=1%2C1863&cy=US&fn=6&lid=883&lid=356&q=Sales&re=13&sort=rv&tm=60&vw=d
 my $scraperRequest = 
    { 
       'type' => 'QUERY'       # Type of query generation is 'QUERY'
@@ -23,13 +29,19 @@ my $scraperRequest =
                       {    'brd' => '1'
                           ,'cy'  => 'US'
                           ,'fn'  => '6'
+                          ,'re'  => '13'
+                          ,'brd' => '1,1863'
+                          ,'lid'  => ['883',356]
+                          ,'sort'  => 'rv'      # 'rv' - by relevance
+                          ,'vw'  => 'd'         # 'd'etailed, or 'b'rief
+                          ,'tm'  => '60d'
                       }
      ,'defaultRequestClass' => 'Job'
      ,'fieldTranslations' =>
              { '*' => 
                   {    'skills'    => 'q'
-                      ,'payrate'   => \&translatePayrate
-                      ,'locations' => new WWW::Search::Scraper::FieldTranslation('Monster', 'Job', 'locations')
+#                      ,'payrate'   => \&translatePayrate
+#                      ,'locations' => new WWW::Search::Scraper::FieldTranslation('Monster', 'Job', 'locations')
                       ,'*'         => '*'
                   }
              }
@@ -85,9 +97,20 @@ sub testParameters {
     return {
                  'SKIP' => ''
                 ,'testNativeQuery' => 'Sales'
-                ,'expectedOnePage' => 50
-                ,'expectedMultiPage' => 100
+                ,'expectedOnePage' => 25
+                ,'expectedMultiPage' => 27
                 ,'expectedBogusPage' => 3
+                ,'testNativeDefaults' =>
+                                {  'brd' => '1'
+                                  ,'cy'  => 'US'
+                                  ,'fn'  => '6'
+                                  ,'re'  => '13'
+                                  ,'brd' => '1,1863'
+                                  ,'lid'  => ['883',356]
+                                  ,'sort'  => 'rv'      # 'rv' - by relevance
+                                  ,'vw'  => 'd'         # 'd'etailed, or 'b'rief
+                                  ,'tm'  => '60d'
+                                }
            };
 }
 

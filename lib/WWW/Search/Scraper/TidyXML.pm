@@ -25,6 +25,8 @@ use Class::Struct;
                 ,'m_TRACE' => '$'
                 ,'m_context' => '$'
                 ,'m_found_context' => '$'
+                ,'artifactFolder' => '$'
+                ,'parentScraper' => '$'
            );
 }
 use base qw(WWW::Search::Scraper::TidyXML::_struct_);
@@ -32,15 +34,25 @@ use base qw(WWW::Search::Scraper::TidyXML::_struct_);
 sub new {
     my $self = new WWW::Search::Scraper::TidyXML::_struct_;
     bless $self, shift;
-    my $string = shift;
     
-    if ( $string and not ref $string ) {
-        open TMP, "<$string" or die "Can't open '$string': $!\n";
-        my @tmp = <TMP>;
-        close TMP;
-        my $tmp = join '',@tmp;
-        $string = \$tmp;
+    my $scraper;
+    my $string = '';
+    for my $parm ( @_ ) {
+        if ( $parm and not ref $parm ) {
+            open TMP, "<$parm" or die "Can't open '$parm': $!\n";
+            my $tmp = join '', <TMP>; close TMP;
+            $string = \$tmp;
+        } else {
+            if ( ref($parm) eq 'HASH' ) {
+                map { $self->$_($$parm{$_}) } keys %$parm;
+            } elsif ( ref($parm) =~ m/WWW::Search::Scraper/ ) {
+                $self->parentScraper($parm);
+            } else {
+                $string = $parm;
+            }
+        }
     }
+
 
     if ( $string and not ($$string =~ m-<meta name="generator" content="HTML Tidy, see www.w3.org" />-s) ) {
         open TMP, ">temp.html" or die "Can't open 'temp.html': $!";
@@ -56,7 +68,7 @@ sub new {
                     warn "$err";
                     die "This Scraper engine requires 'Tidy' to scrub HTML before parsing.\nGet this program from 'http://tidy.sourceforge.net/docs/Overview.html#Download'\n";
                 }
-                warn "$err";
+#                warn "$err";
             }
             unlink 'temp.html';
             $string = \$rslt;
@@ -68,7 +80,7 @@ sub new {
                     warn "$err";
                     die "This Scraper engine requires 'Tidy' to scrub HTML before parsing.\nGet this program from 'http://tidy.sourceforge.net/docs/Overview.html#Download'\n";
                 }
-                warn "$err";
+#                warn "$err";
             }
             open TMP, "<temp.html" or die "Can't reopen 'temp.html': $!";
             my $xml = join '',<TMP>;
@@ -80,6 +92,14 @@ sub new {
             die "This Scraper engine requires 'Tidy' to scrub HTML before parsing.\nGet this program from 'http://tidy.sourceforge.net/docs/Overview.html#Download'\n";
         }
     }
+    
+    if ( $string && $self->artifactFolder() && (my $scraper = $self->parentScraper()) ) {
+        my $artName = $self->artifactFolder().'/'.$scraper->{'scraperName'}.'_pg_'.$scraper->pageNumber.'.xml';
+        open TMP, ">$artName" || warn "Can't open '$artName' to write: $!";
+        print TMP $$string;
+        close TMP;
+    }
+    
     $self->m_asString($string);
     $self->m_isTidyd($WWW::Search::TidyXML::DaveRaggettVersion);
     return $self;
@@ -124,7 +144,6 @@ sub asString {
         $$xml =~ s-<!DOCTYPE.*?>--s;
         eval { 
             use XML::XPath;
-            #use XML::XPath::XMLParser;
             $parsedXML = XML::XPath->new('xml' => $$xml);
             $self->m_asXML($parsedXML);
             $self->m_context('');

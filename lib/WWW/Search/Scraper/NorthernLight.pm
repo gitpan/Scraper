@@ -44,7 +44,7 @@ my $scraperFrame =
               ,[ 'NEXT', 1, 'alt="Next Page"' ]
               ,[ 'BODY', '<!--NLBannerStart-->', '<!--NLResultListEnd-->',
                   [  
-                     [ 'HIT*' , 'Job', #TEMP 'Job' is for testing, only. gdw.2001.08.18
+                     [ 'HIT*',
                         [  
                            [ 'BODY', '<!--NLResultStart-->', '<!--NLResultEnd-->',
                              [

@@ -553,6 +553,26 @@ callback subroutine must "declare" this justification when appropriate).
 See the code for C<WWW::Search::Sherlock> for an illustration of how this works. Sherlock uses this
 method for almost all its parsing. A sample Sherlock scraper frame is also listed below in the EXAMPLES.
 
+=item TRYAGAIN
+
+Sometimes, a scraper frame process may come upon a text that matches its pattern, but is not actually a "hit".
+We can tell Scraper to skip this one and try again on the following text using the TRYAGAIN command.
+It will repeat the same parsing, a limited number of times, until a given field is discovered.
+The syntax for the TRYAGAIN command is
+
+    [ 'TRYUNTIL', <limit>, <fieldName>, [ [ <sub-frame> ] ]
+
+The <sub-frame> is repeated until the field named by <fieldName> returns a non-empty value.
+The repetition is limited to <limit> times.
+
+For instance, eBay.com occasionally inserts a <TABLE> element that actually has no data in it, but because it's a <TABLE>,
+Scraper will parse it, decide since there's no data there, then this is the end. We fix that misconception with the following:
+
+    [ 'TRYUNTIL', 2, 'url', [ [ 'TABLE', [  [. . . ] ] ]
+
+If the first <TABLE> has 'url' result in it, that that is the "hit", If not, then we look at the next <TABLE>.
+If it, too, has no 'url' result, then that is the end of the page.
+
 =item RESIDUE
 
 After each of the parsing commands is executed, the text within the scope of that command is discarded.
@@ -872,7 +892,15 @@ field of the canonical Request::Job module; it is named C<Brainpower.Job.locatio
 
 See F<WWW::Search::Scraper::Request.pm> for more information on Translations.
 
-=head1 Debug Tracing
+=head1 Tools for Building a New Scraper Engine
+
+=item artifactFolder($folderName)
+
+Set a pathname (absolute or relative) via artifactFolder()
+and artifacts of the Scraper process will be written into that folder.
+You will see each HTML page Scraper downloads, and the XML version of each page if you are using TidyXML.
+
+=item Tracing
 
 Scraper has a built in tracing function, "setScraperTrace()", to help in the development and use of new Scraper engines.
 It is activated by the following Scraper method:
@@ -903,13 +931,27 @@ and a firm boot in the pants. His was also the inspiration to facilitate array-t
 
 This tool is an excellent compliment to Scraper to almost instantly discover form and CGI parameters for configuring new Scraper modules.
 It instantly revealed what I was doing wrong in the new ZIPplus4 format one day (after hours of my own clumsy attempts).
-See FormSniffer at http://www.wap2web.de/formsniffer2.aspx (Win32 only).
+See FormSniffer at http://www.klemid.de/formsniffer2.aspx (Win32 only).
 
-=item To Dave Raggett <dsr@w3.org> (original author), and to Tor-Ivar Valåmo, and his SourceForge team, for TidyHTML.
+=item To Dave Raggett <dsr@w3.org> and the many people
 
-Without this tool, I'd have wasted untold millennia trying to keep up with many search engines.
-This tool, along with XPath and XmlSpy, makes configuring Scraper modules to new results pages extremely easy.
-See TidyHTML at http://sourceforge.net/projects/tidyhtml/.
+involved in the SourceForge projects to maintain Tidy on a wide range of
+platforms and languages. Without this tool, I'd have wasted
+untold millenia trying to keep up with many search engines.
+This tool along with XPath and XmlSpy, makes configuring
+scraper modules to new results pages extremely easy.
+See http://tidy.sourceforge.net/ for links to the projects.
+The original Tidy page is at: http://www.w3.org/People/Raggett/tidy
+
+=item To Martin Thurn
+
+for the foundation and inspiration of WWW::Search, and his timely patches!
+
+=item and, of course, Larry Wall
+
+for his conception and husbanding of the Perl language to an Industry standard.
+Perl is a powerful tool for large number of applications (many of which are not widely recognized),
+and has afforded your humble CPAN author a comfortable, if not sumptuous, lifestyle over the past several years.
 
 =back
 

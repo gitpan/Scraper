@@ -268,6 +268,8 @@ EOT
         {
             my $message = $oSearch->response()->status_line();
             my $bytes = length $oSearch->response()->content();
+            my $contentAnalysis = ' --- Content Analysis: '.${$oSearch->ContentAnalysis()}."'\n";
+            $contentAnalysis =~ s/\n/\n --- /gs;
             TRACE(1, <<EOT);
  --- got $iResults results for multi-page $sEngine '$sQuery', but expected $maximum_to_retrieve.
  --- base URL: $oSearch->{'_base_url'}
@@ -278,6 +280,7 @@ EOT
  --- content size (bytes): $bytes
  --- ERRNO: $!
  --- Extended OS error: $^E
+$contentAnalysis
 EOT
          #$success = 0; # A fail of the multi-page query is not a fail of the installation, right? reallY?
         }
@@ -315,9 +318,9 @@ sub setupStandardAndExceptionalOptions {
         $options = $testParameters->{'testNativeOptions'};
         $options = {} unless $options;
         ($onePageCount,$multiPageCount,$bogusPageCount) = (9,41,0);
-        $onePageCount   = $testParameters->{'expectedOnePage'}   or $onePageCount;
-        $multiPageCount = $testParameters->{'expectedMultiPage'} or $multiPageCount;
-        $bogusPageCount = $testParameters->{'expectedBogusPage'} or $bogusPageCount;
+        $onePageCount   = $testParameters->{'expectedOnePage'}   || $onePageCount;
+        $multiPageCount = $testParameters->{'expectedMultiPage'} || $multiPageCount;
+        $bogusPageCount = $testParameters->{'expectedBogusPage'} || $bogusPageCount;
 
         return ($sQuery, $options, $onePageCount, $multiPageCount, $bogusPageCount);
     }

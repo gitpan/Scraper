@@ -8,8 +8,6 @@ $VERSION = sprintf("%d.%02d", q$Revision: 1.20 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Search::Scraper(qw(1.24 generic_option addURL trimTags trimLFs));
 
-use HTML::Form;
-
 my $scraperRequest = 
    { 
       'type' => 'FORM'
@@ -46,7 +44,8 @@ my $scraperFrame =
                            [ 'TABLE', '#0' ]
                           ,[ 'HIT*' , 'Auction',
                              [ 
-                                [ 'TABLE', '#0', 
+#try again!                                [ 'TRYUNTIL', 2, 'url', [
+                                [ 'TABLE', 
                                    [  
                                       [ 'TR',
                                          [
@@ -61,17 +60,18 @@ my $scraperFrame =
                                       ]
                                    ]
                                 ] 
+#try again!                                ] ]
                              ] 
                            ] 
                           ,[ 'TABLE', '#2' ]
                           ,[ 'HIT*' , 'Auction',
                              [ 
-                                [ 'TABLE', '#0', 
+#try again!                                [ 'TRYUNTIL', 2, 'url', [
+                                [ 'TABLE', 
                                    [  
                                       [ 'TR',
                                          [
-                                            [ 'TD' ]
-                                           ,[ 'TD', 'url', \&parseItemTitle ] #[ [ 'A', 'url', 'title' ] ] ] 
+                                            [ 'TD', 'url', \&parseItemTitle ] #[ [ 'A', 'url', 'title' ] ] ] 
                                            ,[ 'TD', 'price', \&parsePrice ]
                                            ,[ 'TD', 'bids', \&trimLFs ]
                                            ,[ 'TD', 'endsPDT', \&trimLFs ]
@@ -81,6 +81,7 @@ my $scraperFrame =
                                       ]
                                    ]
                                 ] 
+#try again!                                ] ]
                              ] 
                            ] 
                           #,[ 'BOGUS', -2 ] # eBay's last 2 hits are bogus ("return to top", etc.).
@@ -96,6 +97,7 @@ my $scraperFrame =
 sub testParameters {
     return {
                  'SKIP' => '' 
+                ,'TODO' => "Implement 'TRYUNTIL' Scraper frame option - helps for skipping 'hits' that aren't actually hits."
                 ,'testNativeQuery' => 'turntable'
                 ,'expectedOnePage' => 9
                 ,'expectedMultiPage' => 60
@@ -160,7 +162,9 @@ sub findNextForm {
 
 
 # eBay's title sometimes includes other things, such as "new" link and "billpoint" link
-sub parseItemTitle {
+#<td valign=top width=52%><font size=3><a href="http://cgi.ebay.com/ws/eBayISAPI.dll?ViewItem&item=1383008995">UNITED AUDIO TURNTABLE DUAL 1209 MODEL</a></font>
+#<BR><img height=1 width=200 border=0 alt="" src="http://pics.ebay.com/aw/pics/s.gif"></td>
+    sub parseItemTitle {
    my ($self, $hit, $dat) = @_;
    my $next_content = $dat;
    my ($sub_content, $frm);
@@ -175,7 +179,7 @@ sub parseItemTitle {
    $hit->plug_elem('isNew', $isNew);
 #   $hit->plug_elem('isBillpoint', $isBillpoint); # need to match Billpoint *after* matching title.
    my $url = $frm;
-   $url =~ s{a href="(.*)"}{$1};
+   $url =~ s{a\s+href="(.*)"}{$1};
    $url =~ m{=(\d+)$};
    $hit->plug_elem('itemNumber', $1);
    return $url;
