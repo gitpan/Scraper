@@ -42,7 +42,7 @@ Specified at L<WWW::Search>.
 =head1 AUTHOR and CURRENT VERSION
 
 C<WWW::Search::guru> is written and maintained
-by Glenn Wood, <glenwood@dnai.com>.
+by Glenn Wood, <glenwood@alumni.caltech.edu>.
 
 The best place to obtain C<WWW::Search::guru>
 is from Glenn's releases on CPAN. Because www.guru.com
@@ -67,7 +67,7 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(1.33 generic_option addURL trimTags));
@@ -201,5 +201,14 @@ sub trimLFLFs { # Strip double-LFs, then tag clutter from $_;
    # This simply rearranges the parameter list from the datParser form.
     return $self->trimTags($hit, $dat);
 }
+
+
+use WWW::Search::Scraper::Response::Job;
+sub newHit {
+    my $self = new WWW::Search::Scraper::Response::Job;
+    return $self;
+}
+
+
 
 1;

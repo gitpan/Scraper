@@ -23,37 +23,10 @@ F<http://www.Google.com>.
 This class exports no public interface; all interaction should
 be done through WWW::Search objects.
 
-
-=head1 OPTIONS
-
-None at this time (2001.05.06)
-
-=over 8
-
-=item search_url=URL
-
-Specifies who to query with the Google protocol.
-The default is at
-C<http://www.Google.com/cgi-bin/job-search>.
-
-=item search_debug, search_parse_debug, search_ref
-Specified at L<WWW::Search>.
-
-=back
-
-
 =head1 AUTHOR and CURRENT VERSION
 
 C<WWW::Search::Google> is written and maintained
-by Glenn Wood, <glenwood@dnai.com>.
-
-The best place to obtain C<WWW::Search::Google>
-is from Martin Thurn's WWW::Search releases on CPAN.
-Because Google sometimes changes its format
-in between his releases, sometimes more up-to-date versions
-can be found at
-F<http://alumni.caltech.edu/~glenwood/SOFTWARE/index.html>.
-
+by Glenn Wood, <glenwood@alumni.caltech.edu>.
 
 =head1 COPYRIGHT
 
@@ -73,7 +46,7 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(generic_option addURL trimTags));
@@ -157,6 +130,12 @@ sub native_setup_search
     $self->{_base_url} = 
 	$self->{_next_url} = $req->uri();
     print STDERR $self->{_base_url} . "\n";# if ($self->{_debug});
+}
+
+use WWW::Search::Scraper::Response::Job;
+sub newHit {
+    my $self = new WWW::Search::Scraper::Response::Job;
+    return $self;
 }
 
 1;

@@ -44,14 +44,7 @@ Specified at L<WWW::Search>.
 =head1 AUTHOR
 
 C<WWW::Search::BAJobs> is written and maintained
-by Glenn Wood, <glenwood@dnai.com>.
-
-
-The best place to obtain C<WWW::Search::BAJobs>
-is from Glenn's releases on CPAN. Because www.BAJobs.com
-sometimes changes its format in between his releases, 
-sometimes more up-to-date versions can be found at
-F<http://alumni.caltech.edu/~glenwood/SOFTWARE/index.html>.
+by Glenn Wood, <glenwood@alumni.caltech.edu>.
 
 =head1 COPYRIGHT
 
@@ -67,21 +60,18 @@ modify it under the same terms as Perl itself.
 
 #####################################################################
 
-require Exporter;
-@EXPORT = qw();
-@EXPORT_OK = qw(trimTags);
-@ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/);
+use strict;
+use vars qw($VERSION @ISA);
+@ISA = qw(WWW::Search::Scraper);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/);
+use WWW::Search::Scraper;
 
 use Carp ();
 use WWW::Search::Scraper(qw(1.24 generic_option addURL trimTags));
-require WWW::SearchResult;
 
 use LWP::UserAgent;
 use HTML::Form;
 use HTTP::Cookies;
-
-use strict;
 
 sub native_setup_search
 {
@@ -174,12 +164,11 @@ sub native_setup_search
 }
 
 
-use WWW::SearchResult::Job;
+use WWW::Search::Scraper::Response::Job;
 sub newHit {
-    my $self = new WWW::SearchResult::Job;
+    my $self = new WWW::Search::Scraper::Response::Job;
     return $self;
 }
-
 
 
 {

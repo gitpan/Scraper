@@ -32,7 +32,7 @@ To do
 =head1 AUTHOR
 
 C<WWW::Search::apartments> is written and maintained
-by Glenn Wood, <glenwood@dnai.com>.
+by Glenn Wood, <glenwood@alumni.caltech.edu>.
 
 The best place to obtain C<WWW::Search::apartments>
 is from Glenn's releases on CPAN. Because www.apartments.com
@@ -53,8 +53,11 @@ modify it under the same terms as Perl itself.
 
 #####################################################################
 
-@ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.1 $ =~ /(\d+)\.(\d+)/);
+use strict;
+use vars qw($VERSION @ISA);
+@ISA = qw(WWW::Search::Scraper::Response);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/);
+use WWW::Search::Scraper::Response;
 
 use WWW::Search::Scraper(qw(1.34));
 require WWW::SearchResult;
@@ -157,6 +160,13 @@ sub getNextPage {
     my $url = URI::URL->new($1, $self->{'_base_url'});
     $url = $url->abs;
     return $url;
+}
+
+
+use WWW::Search::Scraper::Response;
+sub newHit {
+    my $self = new WWW::SearchResult::Scraper;
+    return $self;
 }
 
 1;

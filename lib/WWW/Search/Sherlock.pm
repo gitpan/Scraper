@@ -114,13 +114,6 @@ F<http://sherlock.mozdev.org/source/browse/sherlock/www/>
 C<WWW::Search::Sherlock> is written and maintained
 by Glenn Wood, F<glenwood@alumni.caltech.com>.
 
-The best place to obtain C<WWW::Search::Sherlock>
-is from Martin Thurn's WWW::Search releases on CPAN.
-Because Sherlock sometimes changes its format in between his releases, 
-sometimes more up-to-date versions can be found at
-F<http://alumni.caltech.edu/~glenwood/SOFTWARE/index.html>.
-
-
 =head1 COPYRIGHT
 
 Copyright (c) 2001 Glenn Wood
@@ -139,7 +132,7 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(1.31 addURL trimTags));

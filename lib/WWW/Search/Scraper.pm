@@ -216,6 +216,13 @@ After each of the parsing commands is executed, the text within the scope of tha
 In the end, there may be some residue left over. It may be convenient to put this residue in some field so
 you can see if you have missed any important data in your parsing.
 
+=item BOGUS
+
+Even after carefully designing a scraper frame, the HIT* section's parsing sometimes results
+in extra hits at the beginning or end of the page. A positive value for BOGUS clips that 
+many responses from the beginning of the hit list; a negative value for BOGUS pops that 
+many resonses off the end of the list.
+
 =item TRACE
 
 TRACE will print the entire text that is currently in context of the Scraper parser, to STDERR.
@@ -493,7 +500,7 @@ use vars qw($VERSION @ISA @EXPORT @EXPORT_OK);
 @EXPORT = qw();
 @EXPORT_OK = qw();
 @ISA = qw(WWW::Search Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.40 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.41 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search( qw(strip_tags) );
@@ -504,9 +511,18 @@ require WWW::SearchResult;
 
 
 sub new {
-    my ($class, $subclass) = @_;
-    my $self = new WWW::Search("Scraper::$subclass");
+    my ($class, $subclass, $searchName) = @_;
+    
+    my $self;
+    if ( $subclass =~ m-^\.\.[\/](.*)$- ) { # Allow the form "../name" to indicate
+       $self = new WWW::Search($1);       # a WWW::Search backend. Also see "Some 
+    } else {                                #  searchers are not scrapers", below.
+        $self = new WWW::Search("Scraper::$subclass");
+    }
+
     $self->{'scraperQF'} = 0; # Explicitly declare 'scraperQF' as the deprecated mode.
+    $searchName = $subclass unless $searchName;
+    $self->{'scraperName'} = $searchName;
     return $self;
 }
 
@@ -530,6 +546,8 @@ sub native_setup_search
         m/SHERLOCK/ && do { $self->native_setup_search_SHERLOCK(@_); last };
         m/FORM/     && do { $self->native_setup_search_FORM(@_); last };
         m/QUERY/    && do { $self->native_setup_search_QUERY(@_); last };
+        m/POST/     && do { $self->{'_http_method'} = 'POST';
+                            $self->native_setup_search_QUERY(@_); last };
         die "Invalid mode in WWW::Search::Scraper - '$_'\n";
     }
 }
@@ -555,6 +573,7 @@ sub native_setup_search_QUERY
     
     $self->user_agent('user');
     $self->{_next_to_retrieve} = 0;
+    
     my $url = $qType[1];
     if ( ref $url ) {
         $self->{'_base_url'} = &$url($self, $native_query, $native_options_ref);
@@ -579,6 +598,10 @@ sub native_setup_search_QUERY
     
     # Process the options.
     $self->cookie_jar(HTTP::Cookies->new()) if $optionHash{'cookies'};
+    foreach (sort keys %optionHash) {
+        $self->{'_scraperOptions'}{$_} = $optionHash{$_};
+    };
+    
     
     # Process the inputs.
     # (Now in sorted order for consistency regarless of hash ordering.)
@@ -663,7 +686,7 @@ sub native_retrieve_some
     my $hits_found = $self->scrape($response->content(), $self->{_debug});
 
     # sleep so as to not overload the engine
-    $self->user_agent_delay if (defined($self->{_next_url}));
+    $self->user_agent_delay if ( defined($self->{_next_url}) );
     
     return $hits_found;
 }
@@ -696,7 +719,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
             my $hit;
             do 
             {
-                if ( $hit && ($hit->normalized_score(100, $self, $debug) >= 0) )
+                if ( $hit )
                 {
                     push @{$self->{cache}}, $hit;
                     $total_hits_found += 1;
@@ -761,7 +784,19 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
 
         elsif ( 'NEXT' eq $tag )
         {
-            if ( $$scaffold[1] eq 1 ) {
+            # This accommodates a pre-1.41 method for specifying 'NEXT'
+            $$scaffold[1] = $$scaffold[2] 
+                if ( $$scaffold[1] eq 1 or $$scaffold[1] eq 2 );
+
+            if ( ref $$scaffold[1] )
+            {
+                my $datParser = $$scaffold[1];
+                $self->{'_next_url'} = &$datParser($self, $hit, $$content);                
+                print STDERR  "NEXT_URL: $self->{'_next_url'}\n" if $debug;
+                next SCAFFOLD;
+            }
+            else
+            {
                 # A simple regex will not work here, since the "next" string may often
                 # appear even when there's no <A>...</A> surrounding it. The problem occurs
                 # when there is a <A>...</A> preceding it, *and* following it. Simple regex's
@@ -786,12 +821,6 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
                     }
                 }
             }
-            elsif ( $$scaffold[1] eq 2 ) {
-                my $datParser = $$scaffold[2];
-                $self->{'_next_url'} = &$datParser($self, $hit, $$content);                
-                print STDERR  "NEXT_URL: $self->{'_next_url'}\n" if $debug;
-                next SCAFFOLD;
-            }
             next SCAFFOLD;
         }
 
@@ -802,7 +831,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
             $next_scaffold = $$scaffold[1];
         }
 
-    	elsif ( $tag =~ m/^(TABLE|TR|DL|FORM|DIV)$/ )
+    	elsif ( $tag =~ m/^(TABLE|TR|DL|FORM)$/ )
     	{
             my $tagLength = length $tag + 2;
             my $elmName = $$scaffold[1];
@@ -826,7 +855,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
             }
             next SCAFFOLD unless $sub_content = $self->getMarkedText($tag, $content);
         }
-    	elsif ( 'TD' eq $tag or 'DT' eq $tag or 'DD' eq $tag )
+    	elsif ( $tag =~ m/^(TD|DT|DD|DIV)$/ )
         {
             next SCAFFOLD unless $sub_content = $self->getMarkedText($tag, $content); # and throw it away.
 #    		next SCAFFOLD unless ( $$content =~ s-(<$tag\s*[^>]*>(.*?)</$tag\s*[^>]*>)--si );  $sub_content = $2;
@@ -859,6 +888,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
         }
         elsif ( 'A' eq $tag ) 
         {
+            my $lbl = $$scaffold[1];
             if ( $$content =~ s-<A\s+HREF="([^"]+)"[^>]*>(.*?)</A>--si )
             {
                 print "<A> binding: $$scaffold[2]: '$2', $$scaffold[1]: '$1'\n" if $debug;
@@ -866,7 +896,6 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
                 $datParser = \&WWW::Search::Scraper::trimTags unless $datParser;
                 $hit->_elem($$scaffold[2], &$datParser($self, $hit, $2));
 
-                my $lbl = $$scaffold[1];
                my ($url) = new URI::URL($1, $self->{_base_url});
                $url = $url->abs;
                if ( $lbl eq 'url' ) {
@@ -876,15 +905,12 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
                    $hit->_elem($lbl, $url);
                }
                $total_hits_found = 1;
-            } else
-            {
-               $hit->add_url("Can't find <A HREF=\"\"> in '$$content'");
-               $hit->_elem($$scaffold[2], "Can't find <A> in '$$content'");
             }
             next SCAFFOLD;
         }
         elsif ( 'AN' eq $tag ) 
         {
+            my $lbl = $$scaffold[1];
             if ( $$content =~ s-<A\s+HREF=([^>]+)>(.*?)</A>--si )
             {
                 print "<A> binding: $$scaffold[2]: '$2', $$scaffold[1]: '$1'\n" if $debug;
@@ -893,7 +919,6 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
                 $datParser = \&WWW::Search::Scraper::trimTags unless $datParser;
                 $hit->_elem($$scaffold[2], &$datParser($self, $hit, $2));
 
-                my $lbl = $$scaffold[1];
                my ($url) = new URI::URL($1, $self->{_base_url});
                $url = $url->abs;
                if ( $lbl eq 'url' ) {
@@ -903,10 +928,6 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
                    $hit->_elem($lbl, $url);
                }
                $total_hits_found = 1;
-            } else
-            {
-               $hit->add_url("Can't find <A HREF=> in '$$content'");
-               $hit->_elem($$scaffold[2], "Can't find <A> in '$$content'");
             }
             next SCAFFOLD;
         }
@@ -943,7 +964,27 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
             $datParser = \&WWW::Search::Scraper::null unless $datParser;
             $hit->_elem($binding, &$datParser($self, $hit, $sub_content));
             next SCAFFOLD;
-        } elsif ( $tag eq 'TRACE' )
+        }
+        elsif ( $tag eq 'BOGUS' )
+        {
+            # Take back any hits at the header that are declared to be "bogus".
+            my $bogusCount = $$scaffold[1];
+            do { for ( 1..$bogusCount ) {
+                last unless $total_hits_found > 0;
+                $total_hits_found -= 1;
+                shift @{$self->{cache}};
+               }
+            } if $bogusCount > 0;
+            # Take back any hits at the footer that are declared to be "bogus".
+            do { for ( 1..(-$bogusCount) ) {
+                last unless $total_hits_found > 0;
+                $total_hits_found -= 1;
+                pop @{$self->{cache}};
+               }
+            } if $bogusCount < 0;
+            next SCAFFOLD;
+        }
+        elsif ( $tag eq 'TRACE' )
         {
             my $x = $$content;
             $x =~ s/\r//gs;
@@ -1060,11 +1101,30 @@ sub null { # Strip tag clutter from $_;
     return $dat;
 }
 
-use WWW::SearchResult::Scraper;
-sub newHit {
-    my $self = new WWW::SearchResult::Scraper;
-    return $self;
+# Alternative name for the next_result() method for Scraper.
+sub next_response {
+    my $self = shift;
+    $self->next_result(@_);
+}
+
+# Alternative name for the native_query() method for Scraper.
+sub setup_query {
+    my $self = shift;
+    $self->native_query(@_);
 }
 
 
+
+use WWW::Search::Scraper::Response;
+sub newHit {
+    my $self = new WWW::Search::Scraper::Response;
+    return $self;
+}
+
+{ package WWW::Search;
+sub getName {
+   return $_[0]->{'scraperName'};
+}
+
+}
 1;

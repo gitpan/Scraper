@@ -1,9 +1,38 @@
-package WWW::SearchResult::Scraper;
+package WWW::Search::Scraper::Response;
+
+
+=head1 NAME
+
+WWW::Search::Scraper::Response::Scraper - result class of generic scrapes.
+
+
+=head1 SYNOPSIS
+
+=head1 DESCRIPTION
+
+=head1 OPTIONS
+
+None at this time (2001.04.25)
+
+=head1 AUTHOR
+
+C<WWW::Search::Scraper::Response::Scraper> is written and maintained
+by Glenn Wood, <glenwood@alumni.caltech.edu>.
+
+=head1 COPYRIGHT
+
+Copyright (c) 2001 Glenn Wood
+All rights reserved.
+
+This program is free software; you can redistribute it and/or
+modify it under the same terms as Perl itself.
+
+=cut
 
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::SearchResult);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.1 $ =~ /(\d+)\.(\d+)/);
 require WWW::SearchResult;
 
 sub new { 
@@ -58,25 +87,16 @@ sub content {
 sub toHTML {
     my ($self) = @_;
     
-    my $title = $self->title();
-    my $description = $self->description();
-    my $company = $self->_elem('company');
-    my $location = $self->_elem('location');
-    my $filename = $self->_elem('filename');
-    my $relevance = $self->_elem('relevance');
-    my $engineName = $self->_elem('engine');
-    my $url = $self->url();
-    # might handle 'relatedurl' later.
-    $company .= '<BR>' if $company;
+    my $result = "<DT>from:</DT><DD>".$self->{'searchObject'}->getName()."</DD>\n";
+    my %results = %{$self->results()};
+    my %resultTitles = %{$self->resultTitles()};
     
-    return <<EOT;
-<TABLE border="1" cellpadding="2" cellspacing="1"><TR><TD>
-<A href="$url"><B>$title</B></A><BR>$description<BR>$company$location</TD>
-<TD>Relevance: $relevance<BR>Engine: $engineName</TD>
-</TR></TABLE>
-EOT
-
+    for ( keys %resultTitles ) {
+        $result .= "<DT>$resultTitles{$_}</DT><DD>$results{$_}</DD>\n";
+    }
+    return $result;
 }
+
 
 1;
 

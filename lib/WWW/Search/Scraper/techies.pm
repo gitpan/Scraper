@@ -103,13 +103,7 @@ F<http://www.techies.com>.
 =head1 AUTHOR
 
 C<WWW::Search::techies> is written and maintained
-by Glenn Wood, <glenwood@dnai.com>.
-
-The best place to obtain C<WWW::Search::techies>
-is from Glenn's releases on CPAN. Because www.techies.com
-sometimes changes its format in between his releases, 
-sometimes more up-to-date versions can be found at
-F<http://alumni.caltech.edu/~glenwood/SOFTWARE/index.html>.
+by Glenn Wood, <glenwood@alumni.caltech.edu>.
 
 =head1 COPYRIGHT
 
@@ -125,7 +119,7 @@ modify it under the same terms as Perl itself.
 #####################################################################
 
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.1 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Search::Scraper(qw(1.38));
 require WWW::SearchResult;
@@ -195,4 +189,13 @@ sub makeURL {
     $self->{'_http_method'} = 'POST';
     return $url;
 }
+
+use WWW::Search::Scraper::Response::Job;
+sub newHit {
+    my $self = new WWW::Search::Scraper::Response::Job;
+    return $self;
+}
+
+
+
 1;

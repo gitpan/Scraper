@@ -1,12 +1,3 @@
-#!/usr/local/bin/perl -w
-
-#
-# HotJobs.pm
-# by Glenn Wood
-#
-# Complete copyright notice follows below.
-#
-
 
 package WWW::Search::Scraper::HotJobs;
 
@@ -17,8 +8,8 @@ WWW::Search::HotJobs - class for searching HotJobs
 
 =head1 SYNOPSIS
 
-    require WWW::Search;
-    $search = new WWW::Search('HotJobs');
+    require WWW::Search::Scraper;
+    $search = new WWW::Search::Scraper('HotJobs');
 
 
 =head1 DESCRIPTION
@@ -113,21 +104,14 @@ MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 
 =cut
 
-
-
 #####################################################################
 
 require Exporter;
-@EXPORT = qw();
-@EXPORT_OK = qw(trimTags);
-@ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/);
-
-use Carp ();
-use WWW::Search::Scraper(qw(generic_option addURL trimTags));
-require WWW::SearchResult;
-
 use strict;
+use vars qw($VERSION @ISA);
+@ISA = qw(WWW::Search::Scraper);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/);
+use WWW::Search::Scraper(qw(generic_option addURL trimTags));
 
 # HotJobs JobSearch submission form . . . 
 # <FORM METHOD="post" ACTION="/cgi-bin/job-search" onSubmit="return setJobType(this, this.hjax)">  
@@ -320,4 +304,11 @@ sub native_setup_search
     print STDERR $self->{_base_url} . "\n" if ($self->{_debug});
 }
 
+use WWW::Search::Scraper::Response::Job;
+sub newHit {
+    my $self = new WWW::Search::Scraper::Response::Job;
+    return $self;
+}
+
 1;
+

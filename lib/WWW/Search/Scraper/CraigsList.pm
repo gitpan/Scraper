@@ -5,13 +5,13 @@ package WWW::Search::Scraper::CraigsList;
 
 =head1 NAME
 
-WWW::Search::CraigsList - class for searching CraigsList
+WWW::Search::Scraper::CraigsList - class for scraping CraigsList
 
 
 =head1 SYNOPSIS
 
-    require WWW::Search;
-    $search = new WWW::Search('CraigsList');
+    require WWW::Search::Scraper;
+    $search = new WWW::Search::Scraper('CraigsList');
 
 
 =head1 DESCRIPTION
@@ -101,7 +101,7 @@ set of results, otherwise it sets it to undef to indicate we're done.
 =head1 AUTHOR and CURRENT VERSION
 
 C<WWW::Search::CraigsList> is written and maintained
-by Glenn Wood, <glenwood@dnai.com>.
+by Glenn Wood, <glenwood@alumni.caltech.edu>.
 
 The best place to obtain C<WWW::Search::CraigsList>
 is from Martin Thurn's WWW::Search releases on CPAN.
@@ -144,84 +144,11 @@ MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 
 #####################################################################
 
-require Exporter;
-@EXPORT = qw();
-@EXPORT_OK = qw(trimTags);
-@ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
-
-use Carp ();
-use WWW::Search::Scraper(qw(generic_option addURL trimTags));
-require WWW::SearchResult;
-
 use strict;
-
-sub undef_to_emptystring {
-    return defined($_[0]) ? $_[0] : "";
-}
-
-
-
-
-
-=head1 XML Scaffolding
-
-Look at the idea from the perspective of the XML "scaffold" I'm suggesting for parsing the response HTML.
-
-(This is XML, but looks superficially like HTML)
-
-<HTML>
-<BODY>
-        <TABLE NAME="name" or NUMBER="number">
-                <TR TYPE="header"/>
-                        <TR TYPE = "detail*">
-                        <TD BIND="title" />
-                        <TD BIND="description" />
-                        <TD BIND="location" />
-                        <TD BIND="url" PARSE="anchor" />
-                </TR>
-        </TABLE>
-</BODY>
-</HTML>
-
-This scaffold describes the relevant skeleton of an HTML document; there's HTML and BODY elements, of course.
-Then the <TABLE> entry tells our parser to skip to the TABLE in the HTML named "name", or skip "number" TABLE entries
-(default=0, to pick up first TABLE element.)
-Then the TABLE is described. The first <TR> is described as a "header" row. 
-The parser throws that one away. The second <TR> is a "detail" row (the "*" means multiple detail rows, of course). 
-The parser picks up each <TD> element, extracts it's content, and places that in the hash entry corresponding to its 
-BIND= attribute. Thus, the first TD goes into $result->_elem('title')
-(I needed to learn to use LWP::MemberMixin. Thanks, another lesson learned!)  
-The second TD goes into $result->_elem('description'), etc. 
-(Of course, some of these are _elem_array, but these details will be resolved later). 
-The PARSE= in the url TD suggests a way for our parser to do special handling of a data element.
-The generic scaffold parser would take this XML and convert it to a hash/array to be processed at run time;
-we wouldn't actually use XML at run time. A backend author would use that hash/array in his native_setup_search() code,
-calling the "scaffolder" scanner with that hash as a parameter.
-
-As I said, this works great if the response is TABLE structured,
-but I haven't seen any responses that aren't that way already.
-
-This converts to an array tree that looks like this:
-
-    my $scaffold = [ 'HTML', 
-                     [ [ 'BODY', 
-                       [ [ 'TABLE', 'name' ,                  # or 'name' = undef; multiple <TABLE number=n> mean n 'TABLE's here ,
-                         [ [ 'NEXT', 1, 'NEXT &gt;' ] ,       # meaning how to find the NEXT button.
-                           [ 'TR', 1 ] ,                      # meaning "header".
-                           [ 'TR', 2 ,                        # meaning "detail*"
-                             [ [ 'TD', 1, 'title' ] ,         # meaning clear text binding to _elem('title').
-                               [ 'TD', 1, 'description' ] ,
-                               [ 'TD', 1, 'location' ] ,
-                               [ 'TD', 2, 'url' ]             # meaning anchor parsed text binding to _elem('title').
-                             ]
-                         ] ]
-                       ] ]
-                     ] ]
-                  ];
- 
-
-=cut                     
+use vars qw($VERSION @ISA);
+@ISA = qw(WWW::Search::Scraper);
+use WWW::Search::Scraper(qw(1.41 generic_option addURL trimTags));
+$VERSION = sprintf("%d.%02d", q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/);
 
 # Craigs List differs from other search engines in a few ways.
 # One of them is the results page is not tablulated, or data lined.
@@ -236,20 +163,27 @@ This converts to an array tree that looks like this:
 # private
 sub native_setup_search
 {
-    my($self, $native_query, $native_options_ref) = @_;
-    $self->user_agent('user');
-    $self->{_next_to_retrieve} = 0;
-    if (!defined($self->{_options})) {
-	$self->{_options} = {
-        'areaID' => '1',
-        'subAreaID' => '0',
-        'group' => 'J',
-        'catAbb' => '',
-        'areaAbbrev' => '',
-	    'search_url' => 'http://www.craigslist.org/cgi-bin/search.cgi',
-        };
-    };
-    $self->{'_http_method'} = 'POST';
+   my $self = shift;
+    
+   $self->{'_options'}{'scraperQuery'} =
+    [ 'POST'       # Type of query generation is 'QUERY', http_method = 'POST'
+      # This is the basic URL on which to build the query.
+     ,'http://www.craigslist.org/cgi-bin/search.cgi?'
+      # This is the Scraper attributes => native input fields mapping
+     ,{'scraperQuery' => 'query'
+      }
+      # Some more options for the Scraper operation.
+     ,{'cookies' => 0
+      }
+    ];
+
+   # Set up the default input field values.
+   $self->{_options}{'areaID'}   = '1';
+   $self->{_options}{'subAreaID'}= '0';
+   $self->{_options}{'group'}    = 'J';
+   $self->{_options}{'catAbb'}   =  '';
+   $self->{_options}{'areaAbbrev'}= '';
+    
     $self->{'_options'}{'scrapeFrame'} = 
        [ 'HTML', 
          [ [ 'BODY', '</FORM>', '' ,
@@ -263,30 +197,15 @@ sub native_setup_search
        ] ];
 
  
-    my($options_ref) = $self->{_options};
-    if (defined($native_options_ref)) {
-    	# Copy in new options.
-    	foreach (keys %$native_options_ref) {
-    	    $options_ref->{$_} = $native_options_ref->{$_};
-    	};
-    };
-    # Process the options.
-    # (Now in sorted order for consistency regarless of hash ordering.)
-    my($options) = '';
-    foreach (sort keys %$options_ref) {
-    	# printf STDERR "option: $_ is " . $options_ref->{$_} . "\n";
-    	next if (generic_option($_));
-    	$options .= $_ . '=' . $options_ref->{$_} . '&';
-    };
-    $self->{_debug} = $options_ref->{'search_debug'};
-    $self->{_debug} = 2 if ($options_ref->{'search_parse_debug'});
-    $self->{_debug} = 0 if (!defined($self->{_debug}));
-    
-    # Finally figure out the url.
-    $self->{_base_url} = 
-	$self->{_next_url} =
-	$self->{_options}{'search_url'} . "?" . $options . "query=" . $native_query;
-    print STDERR $self->{_base_url} . "\n" if ($self->{_debug});
+    # WWW::Search::Scraper understands all that and will setup the search.
+    return $self->SUPER::native_setup_search(@_);
 }
+
+use WWW::Search::Scraper::Response;
+sub newHit {
+    my $self = new WWW::Search::Scraper::Response;
+    return $self;
+}
+
 
 1;

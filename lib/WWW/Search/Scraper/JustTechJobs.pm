@@ -1,13 +1,3 @@
-#!/usr/local/bin/perl -w
-
-#
-# JustJobs.pm
-# by Glenn Wood
-#
-# Complete copyright notice follows below.
-#
-
-
 package WWW::Search::Scraper::JustTechJobs;
 
 =head1 NAME
@@ -26,10 +16,6 @@ WWW::Search::JustTechJobs - class for searching Just*Jobs
 This class is an JustTechJobs specialization of WWW::Search.
 It handles making and interpreting Hot*Jobs searches
 F<http://www.Hot*Jobs.com> (where * is 'Perl', 'Java', etc).
-
-This class exports no public interface; all interaction should
-be done through WWW::Search objects.
-
 
 =head1 OPTIONS
 
@@ -54,32 +40,10 @@ Specified at L<WWW::Search>.
 To make new back-ends, see L<WWW::Search>,
 or the specialized JustTechJobs searches described in options.
 
-
-=head1 HOW DOES IT WORK?
-
-C<native_setup_search> is called before we do anything.
-It initializes our private variables (which all begin with underscores)
-and sets up a URL to the first results page in C<{_next_url}>.
-
-C<native_retrieve_some> is called (from C<WWW::Search::retrieve_some>)
-whenever more hits are needed.  It calls the LWP library
-to fetch the page specified by C<{_next_url}>.
-It parses this page, appending any search hits it finds to 
-C<{cache}>.  If it finds a ``next'' button in the text,
-it sets C<{_next_url}> to point to the page for the next
-set of results, otherwise it sets it to undef to indicate we're done.
-
-
 =head1 AUTHOR
 
 C<WWW::Search::JustTechJobs> is written and maintained
 by Glenn Wood, <glenwood@alumni.caltech.edu>.
-
-The best place to obtain C<WWW::Search::JustTechJobs>
-is from Glenn's releases on CPAN. Because www.JustTechJobs.com
-sometimes changes its format in between his releases, 
-sometimes more up-to-date versions can be found at
-F<http://alumni.caltech.edu/~glenwood/SOFTWARE/index.html>.
 
 =head1 COPYRIGHT
 
@@ -89,29 +53,7 @@ All rights reserved.
 This program is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself.
 
---------------------------
-             
-Search.pm and Search::AltaVista.pm (of which JustTechJobs.pm is a derivative)
-is Copyright (c) 1996-1998 University of Southern California.
-All rights reserved.                                            
-
-Redistribution and use in source and binary forms are permitted
-provided that the above copyright notice and this paragraph are
-duplicated in all such forms and that any documentation, advertising
-materials, and other materials related to such distribution and use
-acknowledge that the software was developed by the University of
-Southern California, Information Sciences Institute.  The name of the
-University may not be used to endorse or promote products derived from
-this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
-WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
-MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
-
-
 =cut
-
-
 
 #####################################################################
 
@@ -119,7 +61,7 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(generic_option addURL trimTags));
@@ -794,8 +736,6 @@ sub native_setup_search
            ] ]
    ];
 
-       
- 
     my($options_ref) = $self->{_options};
     if (defined($native_options_ref)) {
     	# Copy in new options.
@@ -825,6 +765,12 @@ sub native_setup_search
             	"KEYW=" . $native_query;
 
     print STDERR $self->{_base_url} . "\n" if ($self->{_debug});
+}
+
+use WWW::Search::Scraper::Response::Job;
+sub newHit {
+    my $self = new WWW::Search::Scraper::Response::Job;
+    return $self;
 }
 
 1;

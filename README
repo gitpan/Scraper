@@ -6,8 +6,8 @@ WWW::Search::Scraper::*
 WWW::SearchResult::*
 
 These modules scrape data from search engines on the WWW (much like Apple's 
-Sherlock, but these are more capable and accurate.) Complete documentation can
-be found in WWW::Search::Scraper and WWW::Search::Sherlock.
+Sherlock, but these are more capable, complete, and accurate.) Complete
+documentation can be found in WWW::Search::Scraper and WWW::Search::Sherlock.
 
 Special options for each type of search engine are documented in their respective modules.
 
@@ -20,14 +20,18 @@ Examples include:
 		 can be extended to build a multi-engine scraper.
 		 
 
+If you want to write new Scraper modules to access new search engines, see
+FlipDog.pm for the current "best practices".
+
 Happy Hunting!
 
 
-AUTHOR: Glenn Wood, C<glenwood@alumni.caltech.edu>
+AUTHOR: Glenn Wood, glenwood@alumni.caltech.edu
 
 #---------------------------------------------------------------------#
-( $VERSION ) = sprintf("%d.%02d", q$Revision: 1.34 $ =~ /(\d+)\.(\d+)/)
+( $VERSION ) = sprintf("%d.%02d", q$Revision: 1.35 $ =~ /(\d+)\.(\d+)/)
 
+v1.35 - Added FlipDog.com, and a few features to Scraper.pm (e.g. 'BOGUS', etc).
 v1.34 - Introduced SearchResult sub-classing, with illustration in eg/Scraper.pl
         Improved reliability of BAJobs.pm
         Dice.com changed the result page format, again. I hope this version

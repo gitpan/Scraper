@@ -77,7 +77,7 @@ F<http://www.computerjobs.com>.
 =head1 AUTHOR
 
 C<WWW::Search::computerjobs> is written and maintained
-by Glenn Wood, <glenwood@dnai.com>.
+by Glenn Wood, <glenwood@alumni.caltech.edu>.
 
 The best place to obtain C<WWW::Search::computerjobs>
 is from Glenn's releases on CPAN. Because www.computerjobs.com
@@ -98,11 +98,11 @@ modify it under the same terms as Perl itself.
 
 #####################################################################
 
+use strict;
+use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/);
-
-use WWW::Search::Scraper(qw(1.38 trimTags trimLFs trimLFLFs));
-require WWW::SearchResult;
+$VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
+use WWW::Search::Scraper(1.41);
 
 use strict;
 
@@ -157,6 +157,7 @@ sub native_setup_search
                 ]
               ]
             ]
+           ,[ 'BOGUS', -2 ]
          ]
       ] 
    ]
@@ -174,17 +175,10 @@ sub parseDescriptionAndAllThat {
 }
 
 
-# www.computerjobs.com is special because the last two hits Scraper finds is bogus (a spacer gif).
-sub native_retrieve_some
-{
-    my ($self) = @_;
-
-    my $hits_found = $self->SUPER::native_retrieve_some();
-    $hits_found -= 2;
-    return undef unless $hits_found > 0;
-    pop @{$self->{cache}}; pop @{$self->{cache}};
-    return $hits_found;
+use WWW::Search::Scraper::Response::Job;
+sub newHit {
+    my $self = new WWW::Search::Scraper::Response::Job;
+    return $self;
 }
-
 
 1;

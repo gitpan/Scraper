@@ -1,5 +1,38 @@
 
+=pod
+
+=head1 NAME
+
+SearchApartments.pl - Search for apartments.
+
+=head1 SYNOPSIS
+
+    perl SearchApartments.pl
+
+Rips those annoying CRs out of all files in this folder, and all
+its subfolders, that are associated with Perl. This means *.pl, *.pm,
+MANIFEST and README. Others can easily be added to this list if desired.
+
+=head1 DESCRIPTION
+
+=head1 AUTHOR
+
+C<SearchApartments.pl> is written and maintained
+by Glenn Wood, <glenwood@alumni.caltech.edu>.
+
+=head1 COPYRIGHT
+
+Copyright (c) 2001 Glenn Wood  All rights reserved.
+
+This program is free software; you can redistribute it and/or
+modify it under the same terms as Perl itself.
+
+=cut
+
 use WWW::Search::Scraper;
+use strict;
+use vars qw($VERSION);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/);
 
 
     my $scraper = new WWW::Search::Scraper( 'apartments', {'search_debug' => 0} );

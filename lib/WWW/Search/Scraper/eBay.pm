@@ -41,7 +41,7 @@ Specified at L<WWW::Search>.
 =head1 AUTHOR and CURRENT VERSION
 
 C<WWW::Search::eBay> is written and maintained
-by Glenn Wood, <glenwood@dnai.com>.
+by Glenn Wood, <glenwood@alumni.caltech.edu>.
 
 The best place to obtain C<WWW::Search::eBay>
 is from Glenn's releases on CPAN. Because www.eBay.com
@@ -63,10 +63,11 @@ modify it under the same terms as Perl itself.
 #####################################################################
 
 require Exporter;
-@EXPORT = qw();
-@EXPORT_OK = qw(trimTags);
-@ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/);
+use strict;
+use vars qw($VERSION @ISA);
+@ISA = qw(WWW::Search::Scraper);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/);
+use WWW::Search::Scraper;
 
 use Carp ();
 use WWW::Search::Scraper(qw(1.24 generic_option addURL trimTags));
@@ -74,9 +75,6 @@ require WWW::SearchResult;
 
 use HTML::Form;
 use HTTP::Cookies;
-
-use strict;
-
 
 sub native_setup_search
 {
@@ -215,9 +213,9 @@ sub findNextForm {
 }
 
 
-use WWW::SearchResult::Auction;
+use WWW::Search::Scraper::Response::Auction;
 sub newHit {
-    return new WWW::SearchResult::Auction;
+    return new WWW::Search::Scraper::Response::Auction;
 }
 
 1;

@@ -8,14 +8,13 @@ use ExtUtils::MakeMaker;
 WriteMakefile(
     'NAME'	=> 'Scraper',
     'VERSION_FROM' => "README", # finds $VERSION
-    'PREREQ_PM' => { 'WWW::Search' => 2.16
+    'PREREQ_PM' => { 'WWW::Search' => 2.15
                     ,'HTML::Form' => 0.02
-                    ,'HTTP::Cookies' => 1.11
                     ,'Text::ParseWords' => 3.2
                    },
     ($] ge '5.005') ? (
                      'AUTHOR' => 'Glenn Wood <glenwood@alumni.caltech.edu>',
-                     'ABSTRACT' => 'Scraper data from web search engines',
+                     'ABSTRACT' => 'Scrape data from web search engines',
                     ) : (),
 );
 

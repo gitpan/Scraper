@@ -1,9 +1,3 @@
-#
-# Dice.pm
-#
-# WWW::Search back-end Dice
-# http://jobsearch.dice.com/jobsearch/jobsearch.cgi
-#
 
 package WWW::Search::Scraper::Dice;
 
@@ -37,7 +31,7 @@ It handles making and interpreting Dice searches at
 F<http://www.dice.com>.
 
 
-By default, returned WWW::SearchResult objects contain only url, title
+By default, returned WWW::Search::Scraper::Response objects contain only url, title
 and description which is a mixture of location and skills wanted.
 Function B<getMoreInfo( $url )> provides more specific info - it has to
 be used as
@@ -233,7 +227,7 @@ Changes the default to $num_to_retrieve.
 =head1 AUTHOR
 
 C<WWW::Search::Google> is written and maintained
-by Glenn Wood, <glenwood@dnai.com>.
+by Glenn Wood, <glenwood@alumni.caltech.edu>.
 
 =head1 LEGALESE
 
@@ -244,13 +238,12 @@ MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 =cut
 
 
-require WWW::SearchResult;
 require HTML::TokeParser;
-@EXPORT = qw();
-@EXPORT_OK = qw(trimTags);
-@ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
 use strict;
+use vars qw($VERSION @ISA);
+@ISA = qw(WWW::Search::Scraper);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/);
+use WWW::Search::Scraper;
 
 use Carp ();
 use WWW::Search::Scraper(qw(generic_option trimTags addURL));
@@ -289,7 +282,7 @@ sub native_setup_search
                [  
                   [ 'DL',                       # meaning detail is in a definition list
                      [
-                        [ 'DT', 'title', \&addURL ] # meaning that the job description link is here, in the definition term, 
+                        [ 'DT', 'title', \&titleJobID ] # meaning that the job description link is here, in the definition term, 
                        ,[ 'DD', 'location', \&touchupLocation ] # meaning the location is in the definition data.
                        ,[ 'RESIDUE', 'residue' ]
                      ]
@@ -428,6 +421,19 @@ sub native_retrieve_some
 } # native_retrieve_some
 
 
+sub titleJobID {
+    my ($self, $hit, $dat) = @_;
+    $self->addURL($hit, $dat);
+    $dat = $self->trimTags($hit, $dat);
+    if ( $dat =~ /^(.*?) - (.*)$/s ) {
+        $self->_elem('jobID', $1);
+        return $2;
+    } else {
+        return $dat;
+    }
+}
+
+
 # The location data of Dice's brief page contains both
 #  Location and Description, so we need to split them here.
 # e.g. "CA-408-San Jose-ASIC Verification,SONET,ATM,C++,UNIX,Perl."
@@ -476,6 +482,29 @@ sub getMoreInfo {
 	}
     }
     return ($company,$title,$date,$location);
+}
+
+sub resultTitles {
+    my $self = shift;
+    my $resultT = $self->SUPER::resultTitles();
+    $$resultT{'jobID'} = 'Job ID';
+    return $resultT;
+}
+
+sub results {
+    my $self = shift;
+    my $results = $self->SUPER::results();
+    $$results{'jobID'} = $self->jobID();
+    return $results;
+}
+
+sub jobID { return $_[0]->_elem('jobID'); }
+
+
+use WWW::Search::Scraper::Response::Job;
+sub newHit {
+    my $self = new WWW::Search::Scraper::Response::Job;
+    return $self;
 }
 
 1;
