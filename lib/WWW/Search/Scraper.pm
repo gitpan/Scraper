@@ -9,7 +9,7 @@ use strict;
 require Exporter;
 use vars qw($VERSION $MAINTAINER @ISA @EXPORT @EXPORT_OK);
 
-$VERSION = '2.13';
+$VERSION = '2.14';
 
 @EXPORT = qw(findNextForm);
 @EXPORT_OK = qw(findNextForm);
@@ -19,6 +19,7 @@ $MAINTAINER = 'Glenn Wood <glenwood@alumni.caltech.edu>';
 
 use Carp ();
 use WWW::Search( qw(strip_tags) );
+use URI::URL; # Somehow, without this WWW::Search fails 'POST' in Linux 2.2.
 use WWW::Search::Scraper::Request;
 use WWW::Search::Scraper::Response;
 

@@ -25,7 +25,6 @@ while (<TMP>) {
 #       next if $1 eq 'Sherlock';    # We're not smart enough to test Sherlock, yet!
         next if $1 eq 'apartments';  # went flippo - I'll fix this later.
         next if $1 eq 'BAJobs';     # BAJobs is sick this month - I'll fix later.
-#        next if $1 eq 'techies';     # This one doesn't work, anyway.
         next if $1 eq 'guru';        # This one doesn't work today, gdw.2001.08.22
         next if $1 eq 'HotJobs';     # HotJobs changed a lot - I'll fix this later.
         next if $1 eq 'JustTechJobs'; # went flippo - I'll fix this later; also, not ready for v2.01 ({'whichTech'}).
@@ -209,7 +208,6 @@ sub setupStandardAndExceptionalOptions {
     my %defaultPageCounts = (
                                  'CraigsList' => (9,20,0)
                                 ,'FlipDog' => (5,5,0)
-                                ,'Monster' => (5,5,0)
                                 ,'techies' => (9,9,0)
                             );
     my $onePageCount = 9;

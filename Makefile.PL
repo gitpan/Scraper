@@ -13,6 +13,7 @@ WriteMakefile(
                     ,'Text::ParseWords' => 3.2
                     ,'Storable' => '0.6'
                     ,'Tie::Persistent' => '0.901'
+                    ,'URI::URL' => '5.02'
                    },
     ($] ge '5.005') ? (
                      'AUTHOR' => 'Glenn Wood <glenwood@alumni.caltech.edu>',
