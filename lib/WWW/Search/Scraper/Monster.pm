@@ -43,18 +43,24 @@ my $scraperFrame =
                    #<B>Jobs <B>1</B> to <B>6</B> of <B>6</B></B>
                    #<B>Jobs <B>1</B> to <B>6</B> of more than <B>6,000</B></B>
         [ 'COUNT', 'Jobs \d+ to \d+ of (\d+)' ]  # Jobs 1 to 50 of 241
-       ,[ 'NEXT', \&findNextForm ]
+       ,[ 'NEXT', 1, 'Next' ]
        ,[ 'BODY', '<!-- Jobs \S+ of \S+ -->', undef,
           [
-            [ 'TABLE', 
+            [ 'TABLE' ]
+            ,[ 'TABLE', 
                [
-                   [ 'HIT*', 'Job',
+                   [ 'TABLE',
+                   [
+                      ['TABLE'],['TABLE'],[ 'TABLE' , 
+[
+['TR'], 
+                      [ 'HIT*', 'Job',
                         [ 
                             [ 'TR', 
                                 [
-                                    [ 'TD' ] # Listing number.
-                                   ,[ 'TD', 'postDate' ]
+                                    [ 'TD', 'postDate' ]
                                    ,[ 'TD', 'location', \&trimLFs ]
+                                   ,[ 'TD' ] # spacer.
                                    ,[ 'TD', [ [ 'A', 'url', 'title' ] ] ]
                                    ,[ 'TD', 'company' ]
                                 ]
@@ -63,19 +69,22 @@ my $scraperFrame =
                     ]
                    ,[ 'BOGUS', 1 ] # The first row is column titles.
                 ]
+                ]
+                ]
+]]
             ]
           ]
         ]
     ]
-];            
+];
 
 sub testParameters {
     # We can't test Dogpile, or any other TidyXML sub-class, until we know Tidy.exe is accessible.
     return {
                  'SKIP' => ''
-                ,'testNativeQuery' => 'Administrative Assistant'
-                ,'expectedOnePage' => 5
-                ,'expectedMultiPage' => 5
+                ,'testNativeQuery' => 'Sales'
+                ,'expectedOnePage' => 50
+                ,'expectedMultiPage' => 100
                 ,'expectedBogusPage' => 3
            };
 }

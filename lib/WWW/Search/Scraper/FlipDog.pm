@@ -93,7 +93,7 @@ sub testParameters {
     }
     
     return {
-                 'SKIP' => ''
+                 'SKIP' => &WWW::Search::Scraper::TidyXML::isNotTestable()
                 ,'testNativeQuery' => 'Java'
                 ,'expectedOnePage' => 5
                 ,'expectedMultiPage' => 21
@@ -143,11 +143,7 @@ sub getNextPage {
     return $url;
 }
 
-sub newHitX {
-    my $self = new WWW::Search::Scraper::Response::Job::FlipDog;
-    return $self;
-}
-    
+ 
 
 { package WWW::Search::Scraper::Response::Job::FlipDog;
 use vars qw(@ISA);

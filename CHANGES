@@ -1,6 +1,12 @@
 
 Revision history for WWW::Search::Scraper (::*).
 
+v2.23 - eBay moved their search page from 'search.html' to 'basicsearch.html'.
+	ZIPPlus4 - problems with "Zip_Code" method solved.
+	Updated Monster.pm to Monster's new <TABLE> structure.
+	Updated techies.pm to techie's new format.
+	Improved test.pl - more engines check for Tidy before proceeding.
+	Another problem with URI::URL under solaris solved (I hope for good this time!)
 v2.22 - Changes to Request/Response module that might help RedHat 7.0 implmentations.
         eg/ZipPlus4Fixer.pl - ZipPlus4 fixer - try it!
 	Simple (regressive) implementation of the WSDL interface.

@@ -82,7 +82,7 @@ sub testParameters {
     }
     
     return {
-                 'SKIP' => ''
+                 'SKIP' => &WWW::Search::Scraper::TidyXML::isNotTestable()
                 .'TODO' => 'Changed their format(?). How can I keep up with these, that is the question.'
                 ,'testNativeQuery' => 'Service'
                 ,'expectedOnePage' => 24

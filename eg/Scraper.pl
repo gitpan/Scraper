@@ -54,7 +54,7 @@ $VERSION = sprintf("%d.%02d", q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/);
         $options = {} unless $options;
         $limit = $testParameters->{'expectedMultiPage'};
         if ( $testParameters->{'SKIP'} ) {
-            die "Can't test $engine: $testParameters->{'SKIP'}\n";
+            warn "$engine marked untestable: $testParameters->{'SKIP'}\n";
         }
     }
 

@@ -161,9 +161,10 @@ sub getMarkedText {
 }
 
 sub isNotTestable {
+   my ($self, $scraperEngine) = @_;
     my $rslt = `tidy -version 2>tidy.stderr`;
     if ( $? ) {
-        return "This Scraper engine requires 'HTML Tidy' to scrub HTML before parsing.\nGet this program from 'http://tidy.sourceforge.net/docs/Overview.html#Download'\nMake sure it is in your execution search path.\n";
+        return ($scraperEngine?$scraperEngine:"This Scraper engine")." requires 'HTML Tidy' to scrub HTML before parsing.\nGet this program from 'http://tidy.sourceforge.net/docs/Overview.html#Download'\nMake sure it is in your execution search path.\n";
     }
     return '';
 }

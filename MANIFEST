@@ -37,6 +37,7 @@ lib/WWW/Search/Scraper/Response/Job.pm
 lib/WWW/Search/Scraper/Response/Sherlock.pm
 lib/WWW/Search/Scraper/TidyXML.pm
 lib/WWW/Search/Scraper/ZIPplus4.pm
+lib/WWW/Search/Scraper/YahooFinance.pm
 lib/WWW/Search/Scraper/Request/ZIPplus4.pm
 eg/SearchApartments.pl
 eg/SearchJobs.pl

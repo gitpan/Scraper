@@ -40,8 +40,9 @@ sub new {
             }
             elsif ( $rf =~ m/^WWW::Search::Scraper::([^:]*)$/ ) {
                 my $scraperRequest = $whatzit->scraperRequest();
-                if ( 0 and !$whatzit->_wantsNativeRequest() and $scraperRequest->{'defaultRequestClass'} ) {
+                if ( !$whatzit->_wantsNativeRequest() and $scraperRequest->{'defaultRequestClass'} ) {
                     $SubClass = $scraperRequest->{'defaultRequestClass'};
+                    $SubClassNormal = "$SubClass" unless $SubClassNormal;
                     eval "use WWW::Search::Scraper::Request::$SubClass;\$self = new WWW::Search::Scraper::Request::$SubClassNormal;";
                     die $@ if $@;
                     $isCanonical = $SubClass;
@@ -93,8 +94,8 @@ sub new {
         };
 
         my @subFields = join '\'=>\'$\',\'', keys %subFields;
-        my $subFieldsStruct = join '\'=>\'$\',\'', join '\'=>\'$\',\'', keys %subFieldsMethod;
-        
+        my $subFieldsStruct = join '\'=>\'$\',\'', keys %subFieldsMethod;
+
         die "No fields were found in the scraperFrames for WWW::Search::Scraper::Request$SubClass\n" unless keys %subFields;
 
         eval <<EOT;
@@ -155,7 +156,7 @@ sub GetFieldTitles {
     my ($self) = @_;
     my $answer = {'url' => 'URL'};
     for ( keys %$self ) {
-        $answer->{$_} = $_ unless $_ =~ /^_/ or $_ eq 'searchObject' or $_ =~ /^WWW::Search/;
+        $answer->{$_} = $_ unless $_ =~ /^_/ or $_ =~ /^WWW::Search/;
     }
     return $answer;
 }
@@ -254,13 +255,13 @@ sub prepare {
             # a subroutine tranforming the field into a (nam,val) pair,
             # or a FieldTranslation object.
             if ( 'CODE' eq ref $fieldTranslation ) {
-                my ($nam, $val, $postSelect) = &$fieldTranslation($scraper, $self, $self->$_());
+                my ($nam, $val, $postSelect) = &$fieldTranslation($scraper, $self, $self->$mthd());
                 next unless ( $nam );
                 $options_ref->{$nam} = $val;
                 # Stuff the postSelect criteria for checking later.
                 $self->_postSelect($nam, $postSelect) if defined $postSelect;
             } elsif ( ref $fieldTranslation ) { # We assume any other ref is an object of some sort.
-                my $nam = $fieldTranslation->translate($scraper, $self, $self->$_());
+                my $nam = $fieldTranslation->translate($scraper, $self, $self->$mthd());
                 for ( keys %$nam ) {
                     $options_ref->{$_} = $$nam{$_};
                 }

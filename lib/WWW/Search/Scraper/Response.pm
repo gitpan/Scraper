@@ -320,7 +320,7 @@ sub GetFieldTitles {
     my ($self) = @_;
     my $answer = {'url' => 'URL'};
     for ( keys %$self ) {
-        $answer->{$_} = $_ unless $_ =~ /^_/ or $_ eq 'searchObject' or $_ =~ /^WWW::Search/;
+        $answer->{$_} = $_ unless $_ =~ /^_/  or $_ =~ /^WWW::Search/;
     }
     return $answer;
 }
@@ -333,7 +333,7 @@ sub GetFieldValues {
                'url'        => $self->url()
            };
     for ( keys %$self ) {
-        $answer->{$_} = $self->{$_} unless $_ =~ /^_/ or $_ eq 'searchObject' or $_ eq 'url';
+        $answer->{$_} = $self->{$_} unless $_ =~ /^_/ or $_ eq 'url';
     }
     return $answer;
 }
@@ -342,8 +342,8 @@ sub GetFieldValues {
 sub response {
     my ($self) = @_;
 
-    my $request = HTTP::Request->new(GET => $self->url());
-    $self->{'_response'} = $self->{'searchObject'}->{'user_agent'}->request($request);
+    my $request = HTTP::Request->new(GET => ${$self->url()});
+    $self->{'_response'} = $self->_searchObject()->{'user_agent'}->request($request);
     return $self->{'_response'};
 }
 
@@ -361,19 +361,34 @@ sub toHTML {
     my ($self, $anchors) = @_;
     
     my $result = "<TABLE BORDER='4'  WIDTH='480'>"; #<DT>from:</DT><DD>".$self->{'searchObject'}->getName()."</DD>\n";
-    my %results = %{$self->results()};
-    my %resultTitles = %{$self->resultTitles()};
+    my %results = %{$self->GetFieldValues()};
+    my %resultTitles = %{$self->GetFieldTitles()};
     
-    $result .= "<TR><TD COLSPAN='3'>$resultTitles{'title'}: <A HREF='$results{'url'}'>$results{'title'}</A></TD></TR>\n";
+    my $url = $results{'url'};
+    $url = $$url if ref($url);
+#    $url = WWW::Search::unescape_query($url); # I don't know who's encoding this, but we want it back!
+    $result .= "<TR><TD COLSPAN='3'>$resultTitles{'title'}: <A HREF='$url'>$results{'title'}</A></TD></TR>\n";
     
     $result .= "<TR><TD COLSPAN='3'>$resultTitles{'company'}: <A HREF='$results{'companyProfileURL'}'>$results{'company'}</A></TD></TR>\n"
         if ($results{'companyProfileURL'});
 
-    for ( keys %resultTitles ) {
-        next if $_ eq 'companyProfileURL' or $_ eq 'company';
-        next if $_ eq 'url' or $_ eq 'title';
-        next unless $results{$_};
-        $result .= "<TR><TD COLSPAN='1'>$resultTitles{$_}</TD><TD COLSPAN='2'>$results{$_}</TD></TR>\n";
+    for my $title ( keys %resultTitles ) {
+        next if $title eq 'companyProfileURL' or $title eq 'company';
+        next if $title eq 'url' or $title eq 'title';
+        next unless $results{$title};
+        my $rslt = $results{$title};
+        $rslt = [$rslt] unless ref $rslt;
+         $result .= "<TR><TD COLSPAN='1'>$resultTitles{$title}</TD><TD COLSPAN='2'>";
+        my $comma = '';
+        for ( @$rslt ) {
+           if ( $resultTitles{$title} =~ m{url}i ) {
+              $result .= "$comma<a href=\"$_\">$_</a>";
+           } else {
+              $result .= "$comma$_";
+           }
+           $comma = "<BR>"
+        }
+        $result .= "</TD></TR>\n";
     }
 #    $result .= "<DT>from:</DT><DD>".$self->{'searchObject'}->getName()."</DD>\n";
     return $result.'</TABLE>';

@@ -153,12 +153,14 @@ my $scraperFrame =
   [ 
       [ 'COUNT', '<strong>Matches: (\d+)</strong>' ]
      ,[ 'NEXT', 1, '<img src="/Common/Graphics/Buttons/Next\.gif" border="0">' ]
-     # The content is framed by two NEW SEARCH buttons . . .
-     ,[ 'BODY', 'src="/Common/Graphics/Buttons/NewSearch.gif"', undef,   # There are two forms in this
-         [ [ 'BODY', undef, 'src="/Common/Graphics/Buttons/NewSearch.gif"', # result, by the same name!
-             [  
+     ,[ 'BODY', undef, 'src="/Common/Graphics/Buttons/NewSearch.gif"', # result, by the same name!
+         [  
+            ['TABLE'],['TABLE'],
+           ,['TABLE', 
+              [
                 [ 'HIT*' , 'Job',
-                    [ [ 'TR', 
+                   [
+                      [ 'TR', 
                          [
                             [ 'TD', 
                                 [ [ 'A', 'url', 'title' ]
@@ -168,11 +170,11 @@ my $scraperFrame =
                              ]
                          ]
                       ]
-#                     ,[ 'TR' ] # this row contains a horizontal rule separating each result.
-                    ]
+                   ]
                 ]
-             ]
-         ] ]
+              ]
+            ]
+         ]
       ] 
    ]
 ];
@@ -186,9 +188,9 @@ sub testParameters {
         $self->techiesLocation('bayarea'); # Set location for test.pl
     }
 
-    my $isNotTestable = WWW::Search::Scraper::isGlennWood()?0:0;
     return {
-                 'SKIP' => $isNotTestable
+                 'SKIP' => "'Please enable your cookies' comes up even though cookies are enabled!"
+                ,'TODO' => "'Please enable your cookies' comes up even though cookies are enabled!"
                 ,'testNativeQuery' => 'Java'
                 ,'expectedOnePage' => 9
                 ,'expectedMultiPage' => 11

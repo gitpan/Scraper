@@ -108,7 +108,7 @@ sub testParameters {
     }
     
     return {
-                 'SKIP' => ''
+                 'SKIP' => &WWW::Search::Scraper::TidyXML::isNotTestable()
                 ,'TODO' => ''
                 ,'testNativeQuery' => 'turntable'
                 ,'expectedOnePage' => 9

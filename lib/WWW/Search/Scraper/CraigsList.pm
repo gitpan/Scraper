@@ -51,16 +51,23 @@ my $scraperRequest =
    };
 
 my $scraperFrame =
-       [ 'HTML', 
-         [ [ 'BODY', '</FORM>', '' ,
-           [ #[ 'COUNT', 'found (\d+) entries'] ,
-             [ 'HIT*' ,
-                 [  [ 'REGEX', '(.*?)-.*?<a href=([^>]+)>(.*?)</a>(.*?)<.*?>(.*?)<', 
-                        'date', 'url', 'title', 'location', 'description'
-                 ]
-             ]   ]
-         ] ]
-       ] ];
+[ 'HTML', 
+   [ 
+      [ 'NEXT', 1, 'Next ' ]
+     ,[ 'BODY', '</FORM>', '' ,
+          [ 
+             [ 'COUNT', 'Found: (\d+)']
+            ,[ 'HIT*' ,
+                [  
+                   [ 'REGEX', '<p>\s*(&nbsp;)?(.*?-\d+).*?<a href=([^>]+)>(.*?)</a>.*?\((.*?)\).*?<.*?>(.*?)<', 
+                      undef, 'date', 'url', 'title', 'location', 'description'
+                   ]
+                ]
+             ]
+          ]
+      ]
+   ]
+];
 
 
 sub testParameters {
@@ -70,8 +77,8 @@ sub testParameters {
                  'SKIP' => $isNotTestable
                 ,'TODO' => 'Uses POST: certain versions of WWW::Search (2.25 to name one) fail with POSTs, and CL is funny about expectedMultiPage (should be 50)'
                 ,'testNativeQuery' => 'Quality'
-                ,'expectedOnePage' => 9
-                ,'expectedMultiPage' => 48
+                ,'expectedOnePage' => 50
+                ,'expectedMultiPage' => 100
                 ,'expectedBogusPage' => 0
                 ,'usesPOST' => 1
            };

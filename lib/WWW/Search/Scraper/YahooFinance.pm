@@ -1,10 +1,10 @@
 
-package WWW::Search::Scraper::eBay;
+package WWW::Search::Scraper::YahooFinance;
 
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.18 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.00 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Search::Scraper(qw(1.24 generic_option addURL trimTags));
 
@@ -17,7 +17,7 @@ my $scraperRequest =
      ,'submitButton' => undef
 
      # This is the basic URL on which to build the query.
-     ,'url' => 'http://pages.ebay.com/search/items/basicsearch.html'
+     ,'url' => 'http://finance.yahoo.com/'
      # This is the Scraper attributes => native input fields mapping
      ,'nativeQuery' => 'query'
      ,'nativeDefaults' => {
@@ -59,7 +59,7 @@ my $scraperFrame =
                                    ]
                                 ] 
                              ] 
-                            ,[ 'BOGUS', -1 ] # eBay's last hit is bogus (a spacer gif).
+                            ,[ 'BOGUS', -1 ] # YahooFinance's last hit is bogus (a spacer gif).
                            ] 
                        ] 
                      ]
@@ -72,7 +72,7 @@ my $scraperFrame =
 
 sub testParameters {
     return {
-                 'SKIP' => '' 
+                 'SKIP' => 'The YahooFinance module is not yet implemented.' 
                 ,'testNativeQuery' => 'turntable'
                 ,'expectedOnePage' => 9
                 ,'expectedMultiPage' => 50
@@ -135,6 +135,20 @@ sub findNextForm {
     return undef;
 }
 
+sub getMarketSummary {
+    use LWP::Simple;
+    my $yahooFinance = get 'http://finance.yahoo.com/';
+
+    my ($nasdaq) = ($yahooFinance =~ m{<small><nobr>Nasdaq</nobr></small></a></td><td nowrap><small>([\d,.]+)</small>}si);
+    my ($dow) = ($yahooFinance =~ m{<nobr>Dow</nobr></small></a></td><td nowrap><small>([\d,.]+)</small>}si);
+    my ($sap) = ($yahooFinance =~ m{<nobr>S&amp;P 500</nobr></small></a></td><td nowrap><small>([\d,.]+)</small>}si);
+    my ($tenYrBond) = ($yahooFinance =~ m{<small>10-Yr Bond</small></a></td><td nowrap><small>([\d.%]+)</small>}si);
+    my ($nyseVolume) = ($yahooFinance =~ m{<small>NYSE Volume</small></a></td><td colspan=2 nowrap><small>([\d,]+)</small>}si);
+    my ($nasdaqVolume) = ($yahooFinance =~ m{<small>Nasdaq Volume</small></a></td><td colspan=2 nowrap><small>([\d,]+)</small>}si);
+
+    return ($dow, $nasdaq, $sap, $tenYrBond, $nyseVolume, $nasdaqVolume);
+    
+}
 1;
 
 __END__
@@ -143,34 +157,43 @@ __END__
 
 =head1 NAME
 
-WWW::Search::Scraper::eBay - Scrapes www.eBay.com
+WWW::Search::Scraper::YahooFinance - Scrapes Finance.Yahoo.com
 
 
 =head1 SYNOPSIS
 
     require WWW::Search::Scraper;
-    $search = new WWW::Search::Scraper('eBay');
+    $search = new WWW::Search::Scraper('YahooFinance');
 
+    ($dow, $nasdaq, $sap, $tenYrBond, $nyseVolume, $nasdaqVolume)
+             = $scraper->getMarketSummary();
 
 =head1 DESCRIPTION
 
-This class is an eBay extension of WWW::Search::Scraper.
-It handles making and interpreting eBay searches
-F<http://www.eBay.com>.
+This class is an YahooFinance extension of WWW::Search::Scraper.
+It handles making and interpreting Yahoo Finance searches
+F<http://Finance.Yahoo.com>.
+
+The Search capabilities of module are not yet implemented; only the getMarketSummary method is implemented.
 
 =head1 OPTIONS
 
 =over 8
 
-=item search_debug, search_parse_debug, search_ref
-Specified at L<WWW::Search>.
+=item getMarketSummary
+
+Gets the "Market Summary" data off of finance.yahoo.com.
+
+    $scraper = new WWW::Search::Scraper('YahooFinance');
+    ($dow, $nasdaq, $sap, $tenYrBond, $nyseVolume, $nasdaqVolume)
+             = $scraper->getMarketSummary();
 
 =back
 
 
 =head1 AUTHOR
 
-C<WWW::Search::eBay> is written and maintained
+C<WWW::Search::YahooFinance> is written and maintained
 by Glenn Wood, http://search.cpan.org/search?mode=author&query=GLENNWOOD.
 
 =head1 COPYRIGHT

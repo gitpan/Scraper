@@ -34,24 +34,25 @@ WriteMakefile(
     # test.pl uses this hash, also, to poll all modules we depend on
     'PREREQ_PM' => { 'WWW::Search' => 2.28
                     ,'LWP' => 5.48
-                        ,'URI' => 0.0
-                        ,'URI::URL' => 0.0
-                        ,'URI::http' => 0.0
+                    ,'URI' => 0.0
+                    ,'URI::URL' => 0.0
+                    ,'URI::http' => 0.0
                     ,'HTML::Form' => 0.02
-                        ,'HTML::TreeBuilder' => 0.0
-                        ,'HTTP::Cookies' => 0.0
-                        ,'HTTP::Request' => 0.0
-                        ,'HTTP::Response' => 0.0
-                        ,'HTTP::Status' => 0.0
-                        ,'LWP::RobotUA' => 0.0
-                        ,'LWP::UserAgent' => 0.0
-                        ,'URI::Escape' => 0.0
-                        ,'LWP::UserAgent' => 0.0
-                        ,'Text::ParseWords' => 0.0
+                    ,'HTML::TreeBuilder' => 0.0
+                    ,'HTTP::Cookies' => 0.0
+                    ,'HTTP::Request' => 0.0
+                    ,'HTTP::Response' => 0.0
+                    ,'HTTP::Status' => 0.0
+                    ,'LWP::RobotUA' => 0.0
+                    ,'LWP::UserAgent' => 0.0
+                    ,'URI::Escape' => 0.0
+                    ,'LWP::UserAgent' => 0.0
+                    ,'Text::ParseWords' => 0.0
                     ,'Text::ParseWords' => 3.2
                     ,'Storable' => 0.6
                     ,'Tie::Persistent' => 0.901
-                    ,'XML::XPath' => 1.04
+                    ,'User' => 1.05
+                    ,'XML::XPath' => 0.0
 
                    },
     ($] ge '5.005') ? (

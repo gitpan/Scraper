@@ -10,12 +10,14 @@ require Exporter;
 use vars qw($VERSION $MAINTAINER @ISA @EXPORT @EXPORT_OK);
 @EXPORT = qw(testParameters);
 
-$VERSION = '2.22';
+$VERSION = '2.23';
 
 my $CVS_VERSION = sprintf("%d.%02d", q$Revision: 1.64 $ =~ /(\d+)\.(\d+)/);
 $MAINTAINER = 'Glenn Wood http://search.cpan.org/search?mode=author&query=GLENNWOOD';
 
 use Carp ();
+use URI::URL; # some Unix boxes simply won't load this one via WWW:Search, so . . .
+
 use WWW::Search( 2.27, qw(strip_tags) );
 use WWW::Search::Scraper::Request;
 use WWW::Search::Scraper::Response;
@@ -276,7 +278,7 @@ sub native_setup_search_FORM
     }
     
     my @forms = HTML::Form->parse($response->content(), $response->base());
-    my $form = $forms[$self->scraperRequest()->{'formNameOrNumber'} or ''];
+    my $form = $forms[$self->scraperRequest()->{'formNameOrNumber'} or 0];
 
     # Finally figure out the url.
     return undef unless $form;
@@ -907,6 +909,12 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
                             $url = '';
                         }
                         if ( $url ) {
+                           # Well, you learn something every day!
+                           if ( my ($newName, $newValue) = ($url =~ m{&(.*?)=(.*)$}) and $url !~ m{\?} ) {
+                              $url = $self->{'_last_url'};
+                              $url =~ s{&$newName=[^&]*}{}g; # remove any earlier appearance of this parameter.
+                              $url .= "&$newName=$newValue";
+                           }
                             my $datParser = $$scaffold[3];
                             $datParser = \&WWW::Search::Scraper::null unless $datParser;
                             $self->{'_base_url'} =~ m-^(.*)/.*$-;
@@ -1122,7 +1130,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
             REGEX_F:    
                 for ( @ary ) 
                 {
-                    if ( $_ eq '' ) {
+                    if ( ! $_ ) { # "if ( $_ eq '' )" reports "use of uninitialized variable" under diagnostics.
                         shift @dts;
                     }
                     elsif ( $_ eq 'url' ) {

@@ -83,7 +83,7 @@ sub testParameters {
     # 'POST' style scraperFrames can't be tested cause of a bug in WWW::Search(2.2[56]) !
     return {
                  'SKIP' => ''
-                ,'TODO' => "Dice is dicey; one moment it works, the next moment it doesn\'t (it mostly works, though)";#\nUses POST: certain versions of WWW::Search (2.25, aka 2.27, to name one) fail with POSTs."
+                ,'TODO' => "Dice is dicey; one moment it works, the next moment it doesn\'t (it mostly works, though)" #\nUses POST: certain versions of WWW::Search (2.25, aka 2.27, to name one) fail with POSTs."
                 ,'testNativeQuery' => 'Perl NOT Java'
                 ,'expectedOnePage' => 9
                 ,'expectedMultiPage' => 21
@@ -199,9 +199,10 @@ sub native_retrieve_someX
 
 sub titleJobID {
     my ($self, $hit, $dat) = @_;
+   my ($url) = ($dat =~ m{<a.*?href="([^"]*)"});
     $dat = $self->trimTags($hit, $dat);
-    if ( $dat =~ /^(.*?) - (.*)$/s ) {
-        return ($dat,$2,$1);
+    if ( $dat =~ /^(.*?)\s+-\s+(.*)$/s ) {
+        return ($url,$2,$1);
     } else {
         return ($dat,$dat, '');
     }
@@ -225,11 +226,6 @@ sub touchupLocation {
 }
 
 
-sub newHitX {
-    my $self = new WWW::Search::Scraper::Response::Job::Dice;
-    return $self;
-}
-    
 {
 package WWW::Search::Scraper::Response::Job::Dice;
 
