@@ -135,12 +135,42 @@ __END__
 
 WWW::Scraper::Google - Scrapes www.Google.com
 
+=head1 Caveat Kleptor
+
+Please note that using the Google Scraper module (may) be a violation of Google's "Terms of Service",
+of which your humble author has been repeatedly reminded. The TOS is not as easy to locate as some
+of these correspondents have suggested (without a smile), but you can find the TOS at http://www.google.com/terms_of_service.html
+
+Briefly, the relevant part is the "No Automated Querying" section.
+It's a kind of "do as I say, not as I do" dictum.
+Your author has tried to divine exactly what it means.  On the surface it's pretty clear,
+but if you follow the thread you will realize that it doesn't lead to a place any of us want to be.
+However, Google Inc's desire is clear enough. 
+They do not want to be *abused* for the exclusive benefit of someone else.
+
+Scraper is not a tool well suited for this kind of abuse. It is designed to be generally
+configurable and, as such, it is not particularly efficient. It obeys the "robot.txt"
+rules published by the web-server. It would require some effort on a user's part to
+cirumvent this feature. The Google.pm does not do a "meta-search" on Google.  Even if your 
+humble author removed Google.pm from the Scraper suite, it would be trivially easy for 
+someone to build a Google module for Scraper (their format is very simple compared to others).
+
+I believe that Google Inc. understands a little interloping (in moderation) is beneficial to all.
+I should note that Google Inc. has not notified your author of any concern on their part.
+This has been done by third parties who, for whatever reasons of their own, feel it necessary
+to interject themselves in others' disputes, even when no such dispute exists.
+
+Keep in mind that this is Google's livelihood. Should your use of Scraper be your hobby, or even 
+part of your livelihood, remember it never helps to hit someone where they live. They will defend
+themselves to the death (even if that death is yours).
+
+Scraper is a handy little tool for getting to stuff you can't get to otherwise. 
+Let's keep it that way!
 
 =head1 SYNOPSIS
 
     require WWW::Scraper;
     $search = new WWW::Scraper('Google');
-
 
 =head1 DESCRIPTION
 
@@ -154,7 +184,7 @@ Go to http://www.Google.com and search for "search scraper"; as in
 
 http://www.Google.com/search?q=search+scraper&sourceid=opera&num=0&ie=utf-8&oe=utf-8
 
-Interesting FIRST hit !
+Interesting top hits !
 
 =head1 AUTHOR and CURRENT VERSION
 

@@ -29,7 +29,7 @@ sub scrape {
         my $url = ${$TidyXML->asString()};
         $url = WWW::Scraper::unescape_query($url) if $TidyXML->m_isTidyd();
         $scraper->{'_next_url'} = &$datParser($scraper, $hit, $url);                
-        print STDERR  "NEXT_URL: $scraper->{'_next_url'}\n" if ($scraper->ScraperTrace('U'));
+        print STDERR  "NEXT_URL: $scraper->{'_next_url'}\n" if ($scraper->ScraperTrace('N'));
     }
     else
     {
@@ -55,6 +55,7 @@ sub scrape {
                       $url .= "&$newName=$newValue";
                    }
                     my $datParser = $ary[3];
+
                     $datParser = \&WWW::Scraper::null unless $datParser;
                     $scraper->{'_base_url'} =~ m-^(.*)/.*$-;
                     my $baseURL = $1;

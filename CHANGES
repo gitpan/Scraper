@@ -1,6 +1,8 @@
 
 Revision history for WWW::Search::Scraper (::*).
 
+v3.05 - Fix to NEXT opcode.
+	Caveat Leptor in Google.
 v3.04 - Added Opcodes NEXT, FONT, etc.
 v3.03 - Upgrades to Beaucoup, CraigsList, DogPile, and Google.
 v3.01 - OPCODES ! ! You can invent and use your own scraping operations in the Scraper frames themselves!

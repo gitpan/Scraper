@@ -33,7 +33,7 @@ use WWW::Scraper::Request;
 use vars qw($VERSION);
 use diagnostics;
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.01 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.12 $ =~ /(\d+)\.(\d+)/);
 
     select STDERR; $| = 1; select STDOUT; $| = 1; 
 
