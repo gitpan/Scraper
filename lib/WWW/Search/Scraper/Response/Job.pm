@@ -21,7 +21,7 @@ use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper::Response);
 use WWW::Search::Scraper::Response;
-$VERSION = sprintf("%d.%02d", q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/);
 
 sub resultTitles {
     return {
@@ -57,27 +57,6 @@ sub company { return $_[0]->_elem('company'); }
 sub companyProfileURL { return $_[0]->_elem('companyProfileURL'); }
 sub location { return $_[0]->_elem('location'); }
 sub postDate { return $_[0]->_elem('postDate'); }
-
-
-# This is the same as the super-class, except that
-#  'title' is folded into an anchor with 'url'.
-sub toHTML {
-    my ($self) = @_;
-    
-    my $result;
-    my %results = %{$self->results()};
-    my %resultTitles = %{$self->resultTitles()};
-    
-    $result .= "<DT>$resultTitles{'title'}: </DT><DD><A HREF='$results{'url'}'>$results{'title'}</A></DD>\n";
-    for ( keys %resultTitles ) {
-        next if $_ eq 'url' or $_ eq 'title';
-        next unless $results{$_};
-        $result .= "<DT>$resultTitles{$_}: </DT><DD>$results{$_}</DD>\n";
-    }
-    $result .= "<DT>from:</DT><DD>".$self->{'searchObject'}->getName()."</DD>\n";
-
-    return $result;
-}
 
 1;
 

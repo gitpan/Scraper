@@ -8,10 +8,10 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
-use WWW::Search::Scraper(qw(2.14 generic_option addURL trimTags findNextFormInXML));
+use WWW::Search::Scraper(qw(2.14 generic_option addURL trimLFs trimTags findNextFormInXML removeScriptsInHTML trimXPathHref));
 
 use strict;
 
@@ -45,41 +45,45 @@ my $scraperQuery =
        };
 
 my $scraperFrame =
-       [ 'TidyXML', 
+       [ 'TidyXML', \&removeScriptsInHTML, \&removeEmptyPs, \&removeDuplicateAttributes,
           [ 
-             [ 'CLEANUP', \&removeEmptyPs ]
-            ,[ 'BODY', '<table border="0">\s*<TR>\s*<TD>', '</TD>\s*</TR>\s*</TABLE>', 
-                [
-                   [ 'NEXT', 2, \&findNextFormInXML ]
-                ]
-             ]
-            ,[ 'XML', 'html.body',
+            [ 'XPath', '/html/body',
               [
                 [ 'HIT*' ,
                   [
-                    [ 'XML', 'p',
+                    [ 'XPath', 'p[hit()]',
                       [
-                         [ 'A', 'url', 'title' ]
-                        ,[ 'XML', 'i', 'company' ]
+                         [ 'XPath', 'a/@href', 'url', \&trimXPathHref ]
+                        ,[ 'XPath', 'a/text()', 'title', \&trimLFs ]
+                        ,[ 'XPath', 'i', 'company', \&trimTags ]
                       ]
                     ],
                   ]
                 ]
               ]
             ]
+           ,[ 'BODY', '<table border="0">\s*<TR>\s*<TD>', '</TD>\s*</TR>\s*</TABLE>', 
+                [
+                   [ 'NEXT', 2, \&findNextFormInXML ]
+                ]
+             ]
+
           ]
        ];
 
 
+sub removeDuplicateAttributes {
+    my ($self, $hit, $xml) = @_;
+    $$xml =~ s-alt=""--gs; # this one appears from Dogpile.com
+    return $xml;
+}
+
 sub removeEmptyPs {
     my ($self, $hit, $xml) = @_;
     
-    # remove empty <P/> tags, for Dogpile.pm
+    # remove empty <P/> tags
     $$xml =~ s-<p>\s*?</p>--gsi;
     $$xml =~ s-<p/>--gsi;
-open TMP, ">Dogpile.xml";
-print TMP $$xml;
-close TMP;
     return $xml;
 }
 
@@ -90,9 +94,9 @@ sub testParameters {
 
     return {
                  'isNotTestable' => &WWW::Search::Scraper::TidyXML::isNotTestable() 
-                ,'testNativeQuery' => 'Scraper'
+                ,'testNativeQuery' => 'turntable'
                 ,'expectedOnePage' => 9
-                ,'expectedMultiPage' => 50
+                ,'expectedMultiPage' => 20
                 ,'expectedBogusPage' => 1
            };
 }

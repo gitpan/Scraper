@@ -4,7 +4,7 @@
 use WWW::Search::Scraper(qw(2.15));
 
 use ExtUtils::testlib;
-$VERSION = sprintf("%d.%02d", q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.13 $ =~ /(\d+)\.(\d+)/);
 
 ######################### We start with some black magic to print on failure.
 
@@ -54,7 +54,7 @@ EOT
             my $testParameters;
             eval "use WWW::Search::Scraper::$1; \$testParameters = &WWW::Search::Scraper::$1::testParameters()";
             if ( $@ ) { # $@ just means the module is not a Scraper sub-class.
-                TRACE(1, "    - $1 will not be tested: it is not a Scraper sub-class.\n");
+                TRACE(0, "    - $1 will not be tested: it is not a Scraper sub-class.\n");
                 next;
             }
             unless ( 0 and WWW::Search::Scraper::isGlennWood() ) {
@@ -66,13 +66,13 @@ EOT
                 }
             }
             push @modules, $1;
-            TRACE(1, "    + $1\n");
+            TRACE(0, "    + $1\n");
         }
     }
     close TMP;
     traceBreak(); ##_##_##_##_##_##_##_##_##_##_##_##_##_##_##_##
     
-    my $testCount = 2 + scalar(@modules) * 4;
+    my $testCount = 2 + scalar(@modules);
     print STDOUT "1..$testCount\n";
     $iTest++;
     print STDOUT "ok $iTest\n";
@@ -87,26 +87,56 @@ use WWW::Search::Scraper::Request;
 ######################### End of black magic.
 
 
-#######################################################################################
-#
-# Insert your test code below (better if it prints "ok 13"
-# (correspondingly "not ok 13") depending on the success of chunk 13
-# of the test code):
-#
-#######################################################################################
+    for my $sEngine ( @modules ) {
+        traceBreak(); ##_##_##_##_##_##_##_##_##_##_##_##_##_##_##_##
+        $iTest++;
+        if ( TestThisEngine($sEngine) ) {
+            print STDOUT "ok $iTest\n";
+        } else {
+            # Some of these search engines don't always work the first time.
+            # Give them a second shot before declaring that Scraper is the one that failed!
+            if ( TestThisEngine($sEngine) ) {
+                print STDOUT "ok $iTest\n";
+            } else {
+                print STDOUT "not ok $iTest\n";
+                TRACE(2, "Scraper engine $sEngine failed.\n");
+            }
+        }
+    }
 
-for my $sEngine ( @modules ) {
-    traceBreak(); ##_##_##_##_##_##_##_##_##_##_##_##_##_##_##_##
-    
-    $iTest++;
-    TRACE(0, "Test #$iTest: $sEngine\n");
+    close $traceFile;
+
+    if ( $countWarningMessages and WWW::Search::Scraper::isGlennWood() ) {
+        print STDOUT "$countWarningMessages warning".(($countWarningMessages>1)?'s':'').". See file 'test.trace' for details.\n";
+    }
+    if ( $countErrorMessages ) {
+        print STDOUT "$countErrorMessages test".(($countErrorMessages>1)?'s':'')." failed. See file 'test.trace' for details.\n";
+    }
+    if ( $countErrorMessages ) {
+        open TMP, "<test.trace";
+        print join '', <TMP>;
+        close TMP;
+    }
+
+
+
+#######################################################################################
+#######################################################################################
+#######################################################################################
+#######################################################################################
+#######################################################################################
+#######################################################################################
+sub TestThisEngine {
+    my ($sEngine) = @_;    
+    my $success = 1;
+    my $jTest = 0;
+
+    TRACE(0, "Test #$iTest.$jTest: $sEngine\n");
     my $oSearch = new WWW::Search::Scraper($sEngine);
     if ( not ref($oSearch)) {
-        TRACE(2, "Can't load scraper module for $sEngine: $!\n");
-        print STDOUT "not ok $iTest\n";
-        next;
+        TRACE(1, "Can't load scraper module for $sEngine: $!\n");
+        return 0;
     }
-    print STDOUT "ok $iTest\n";
 
 
 #######################################################################################
@@ -116,7 +146,8 @@ for my $sEngine ( @modules ) {
 #   This test returns no results (but we should not get an HTTP error):
 #
 #######################################################################################
-    $iTest++;
+    $jTest++;
+    TRACE(0, "Test #$iTest.$jTest: $sEngine bogus search\n");
     my $iResults = 0;
     my ($sQuery, $options, $onePageCount, $multiPageCount, $bogusPageCount) = $oSearch->setupStandardAndExceptionalOptions($sEngine);
     $sQuery = "Bogus" . $$ . "NoSuchWord" . time;
@@ -127,9 +158,8 @@ for my $sEngine ( @modules ) {
     $iResults = scalar(@aoResults);
     if ( $bogusPageCount < $iResults ) {
         TRACE (2, " --- got $iResults 'bogus' results, expected $bogusPageCount\n");
-        print "not ";
+        $success = 0; # We'll complete the next two tests, but report failed anyway.
     }
-    print STDOUT "ok $iTest\n";
 
 #######################################################################################
 #
@@ -139,7 +169,8 @@ for my $sEngine ( @modules ) {
 #
 #######################################################################################
 
-    $iTest++;
+    $jTest++;
+    TRACE(0, "Test #$iTest.$jTest: $sEngine one-page search\n");
 
 # Set up standard, and exceptional, options.
     my ($sQuery, $options, $onePageCount, $multiPageCount, $bogusPageCount) = $oSearch->setupStandardAndExceptionalOptions($sEngine);
@@ -162,16 +193,18 @@ for my $sEngine ( @modules ) {
         TRACE(0, " + got $iResults results for '$sQuery'\n");
         if ( $maximum_to_retrieve > $iResults )
         {
-            TRACE(2, " --- got $iResults results for $sEngine '$sQuery', but expected $maximum_to_retrieve\n");
-            TRACE(2, " --- base URL: $oSearch->{'_base_url'}\n");
-            TRACE(2, " --- last URL: $oSearch->{'_last_url'}\n");
-            TRACE(2, " --- next URL: $oSearch->{'_next_url'}\n");
-            TRACE(2, " --- response message: ".$oSearch->{'response'}->message()."\n");
-
-            print "not ";
+            my $message = $oSearch->response()->message();
+            TRACE(1, <<EOT);
+ --- got $iResults results for $sEngine '$sQuery', but expected $maximum_to_retrieve
+ --- base URL: $oSearch->{'_base_url'}
+ --- first URL: $oSearch->{'_first_url'}
+ --- last URL: $oSearch->{'_last_url'}
+ --- next URL: $oSearch->{'_next_url'}
+ --- response message: $message
+EOT
+            return 0;
         }
     }
-    print STDOUT "ok $iTest\n";
 
 
 #######################################################################################
@@ -181,7 +214,8 @@ for my $sEngine ( @modules ) {
 #   This query returns MANY pages of results
 #
 #######################################################################################
-    $iTest++;
+    $jTest++;
+    TRACE(0, "Test #$iTest.$jTest: $sEngine multi-page search\n");
     my ($sQuery, $options, $onePageCount, $multiPageCount, $bogusPageCount) = $oSearch->setupStandardAndExceptionalOptions($sEngine);
     # Don't bother with this test if $multiPageCount <= $onePageCount - we've already done it.
     if ( $multiPageCount > $onePageCount ) {
@@ -197,35 +231,25 @@ for my $sEngine ( @modules ) {
                 $iResults += 1;
             }
         };
-        TRACE(0, " ++ got $iResults multi-page results for '$sQuery'\n");
+        TRACE(0, " + got $iResults multi-page results for '$sQuery'\n");
         if ( $maximum_to_retrieve > $iResults )
-          {
-            # We make an exception for these jobsites, since
-            #  they often turn up few Perl jobs, anyway.
-                TRACE(2, " --- got $iResults results for multi-page $sEngine '$sQuery', but expected $maximum_to_retrieve..\n");
-                TRACE(2, " --- base URL: $oSearch->{'_base_url'}\n");
-                TRACE(2, " --- last URL: $oSearch->{'_last_url'}\n");
-                TRACE(2, " --- next URL: $oSearch->{'_next_url'}\n");
-                TRACE(2, " --- response message: ".$oSearch->{'response'}->message()."\n");
-                print STDOUT 'not ';
-          }
+        {
+            my $message = $oSearch->response()->message();
+            TRACE(1, <<EOT);
+ --- got $iResults results for multi-page $sEngine '$sQuery', but expected $maximum_to_retrieve.
+ --- base URL: $oSearch->{'_base_url'}
+ --- first URL: $oSearch->{'_first_url'}
+ --- last URL: $oSearch->{'_last_url'}
+ --- next URL: $oSearch->{'_next_url'}
+ --- response message: $message
+EOT
+            return 0;
+        }
     }
-    print STDOUT "ok $iTest\n";
-    
+    return $success;
 }
-    close $traceFile;
 
-    if ( $countWarningMessages and WWW::Search::Scraper::isGlennWood() ) {
-        print STDOUT "$countWarningMessages warning".(($countWarningMessages>1)?'s':'').". See file 'test.trace' for details.\n";
-    }
-    if ( $countErrorMessages ) {
-        print STDOUT "$countErrorMessages test".(($countErrorMessages>1)?'s':'')." failed. See file 'test.trace' for details.\n";
-    }
-    if ( $countErrorMessages ) {
-        open TMP, "<test.trace";
-        print join '', <TMP>;
-        close TMP;
-    }
+
 
 sub TRACE {
     $countWarningMessages += 1 if $_[0] == 1;

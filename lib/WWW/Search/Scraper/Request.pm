@@ -10,7 +10,7 @@ use Class::Struct;
                 ,'_native_query' => '$'     # native_query for legacy (WWW::Search) style requests.
                 ,'_native_options' => '$'   # native_options for legacy (WWW::Search) style requests.
                 ,'_postSelect' => '%'
-                ,'Scraper_debug'  => '$'
+                ,'_Scraper_debug'  => '$'
            );
 }
 use base qw(WWW::Search::Scraper::Request::_struct_);

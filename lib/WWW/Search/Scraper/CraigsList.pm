@@ -9,7 +9,7 @@ use vars qw($VERSION @ISA);
 use WWW::Search::Scraper(qw(1.48 generic_option addURL trimTags));
 use WWW::Search::Scraper::FieldTranslation;
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.12 $ =~ /(\d+)\.(\d+)/);
 
 # Craigs List differs from other search engines in a few ways.
 # One of them is the results page is not tablulated, or data lined.
@@ -73,6 +73,12 @@ sub testParameters {
                 ,'expectedBogusPage' => 0
                 ,'usesPOST' => 1
            };
+}
+
+sub init {
+    my ($self) = @_;
+    $self->searchEngineHome('http://www.CraigsList.org');
+    $self->searchEngineLogo('<font size=5><b>craigslist</b></font>');
 }
 
 

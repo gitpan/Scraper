@@ -5,11 +5,10 @@ package WWW::Search::Scraper::Brainpower;
 use strict;
 use vars qw(@ISA $VERSION);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/);
 
-use WWW::Search::Scraper(qw(1.48 trimLFs trimLFLFs));
+use WWW::Search::Scraper(qw(2.18 trimTags trimLFs removeScriptsInHTML cleanupHeadBody));
 use WWW::Search::Scraper::FieldTranslation(1.00);
-use WWW::Search::Scraper::Request::Job(1.00);
 
 my $scraperQuery = 
    { 
@@ -44,15 +43,16 @@ my $scraperQuery =
 my $scraperFrame =
 [ 'HTML', 
     [ 
-        [ 'COUNT', 'Your search resulted in <b>([0-9,]+)</b> jobs.' ]
-       ,[ 'NEXT', 'Next&nbsp;' ]
+        [ 'NEXT', 'Next&nbsp;' ]
+       ,[ 'COUNT', 'Your search resulted in <b>([0-9,]+)</b> jobs.' ]
        ,[ 'BODY', '<!-- Begin Nested Right Table Cell -->', undef,
             [  
                [ 'TABLE', 
                  [
                    [ 'TABLE', 
                       [
-                          ['TR', '#1' ],
+                          [ 'TR' ]
+                         ,[ 'TR' ]
                          ,[ 'HIT*', #'Job::Brainpower',
                              [ 
                                  [ 'TR', 
@@ -81,40 +81,39 @@ my $scraperFrame =
 
     # scraperDetail describes the format of the detail page.
 my $scraperDetail = 
-        [ 'HTML', 
-            [ 
-                [ 'BODY', '<!-- Begin Nested Right Table Cell -->', undef,
-                    [  
-                        [ 'TABLE', 
-                           [
-                              [ 'TABLE', 
-                              [
-                                  [ 'TR', '#3' ]
-                                 ,[ 'HIT', 
-                                     [ 
-                                         [ 'TR', [[ 'TD' ],[ 'TD', 'title'    ]] ] # this is a more descriptive title than from the results page.
-                                        ,[ 'TR', [[ 'TD' ],[ 'TD', 'role'     ]] ]
-                                        ,[ 'TR', [[ 'TD' ],[ 'TD', 'skillSet' ]] ] # this replaces the lost results page 'title'.
-                                        ,[ 'TR', [[ 'TD' ],[ 'TD', 'type'     ]] ]
-                                        ,[ 'TR', [[ 'TD' ],[ 'TD', 'city'     ]] ]
-                                        ,[ 'TR', [[ 'TD' ],[ 'TD', 'state'    ]] ]
-                                        ,[ 'TR', [[ 'TD' ],[ 'TD', 'postDate' ]] ]
-                                        ,[ 'TR' ]
-                                        ,[ 'TR', [[ 'TD' ],[ 'TD', 'description' ]] ]
-                                        ,[ 'TR', [[ 'TD' ],[ 'TD', 'FX' ]] ]
-                                        ,[ 'TR', [[ 'TD' ],[ 'TD', 'FY' ]] ]
-                                        ,[ 'TR', [[ 'TD' ],[ 'TD', 'FZ' ]] ]
-                                     ]
-                                  ]
-                              ]
-                              ]
-                           ]
-                        ]
-                    ]
-                ]
+[ 'TidyXML', \&cleanupHeadBody, \&removeScriptsInHTML, \&specialBrainpowerTreatment, 
+    [ 
+        ['XPath', '/html/body/table[3]/tr/td[7]/table/tr/td/table', 
+            [  
+                 ['XPath', 'tr[5]/td[2]',  'title',   \&trimTags, \&trimLFs]
+                ,['XPath', 'tr[6]/td[2]',  'role',    \&trimTags, \&trimLFs]
+                ,['XPath', 'tr[7]/td[2]',  'skills',  \&trimTags, \&trimLFs]
+                ,['XPath', 'tr[8]/td[2]',  'jobType', \&trimTags, \&trimLFs]
+                ,['XPath', 'tr[9]/td[2]',  'payrate', \&trimTags, \&trimLFs]
+                ,['XPath', 'tr[10]/td[2]', 'jobLength', \&trimTags, \&trimLFs]
+                ,['XPath', 'tr[11]/td[2]', 'city',    \&trimTags, \&trimLFs]
+                ,['XPath', 'tr[12]/td[2]', 'state',   \&trimTags, \&trimLFs]
+                ,['XPath', 'tr[13]/td[2]', 'postdate', \&trimTags, \&trimLFs]
+                ,['XPath', 'tr[15]/td[2]', 'description', \&trimTags, \&trimLFs]
             ]
-        ];            
+        ]
+    ]
+];
 
+
+sub specialBrainpowerTreatment {
+    my ($self, $hit, $xml) = @_;
+    $$xml =~ s-\&reqid-\&amp;reqid-gsi;
+    $$xml =~ s-\&resumeid-\&amp;resumeid-gsi;
+    $$xml =~ s-\<mailto:-\&lt;mailto:-gsi;
+    return $xml;
+}
+
+sub init {
+    my ($self) = @_;
+    $self->searchEngineHome('http://www.Brainpower.com');
+    $self->searchEngineLogo('<IMG SRC="http://www.brainpower.com/images/logo_circ_01.gif">');
+}
 
 
 sub testParameters {
@@ -125,10 +124,10 @@ sub testParameters {
     }
     
     return {
-                 'isNotTestable' => '' 
+                 'isNotTestable' => &WWW::Search::Scraper::TidyXML::isNotTestable() 
                 ,'testNativeQuery' => 'Perl'
                 ,'expectedOnePage' => 9
-                ,'expectedMultiPage' => 41
+                ,'expectedMultiPage' => 16
                 ,'expectedBogusPage' => 3
                 ,'usesPOST' => 1
            };
@@ -209,7 +208,7 @@ sub postSelect {
 }
 
 
-{ package WWW::Search::Scraper::Response::Job::Brainpower;
+{ package WWW::Search::Scraper::Response::Job::BrainpowerX;
 use vars qw(@ISA);
 @ISA = qw(WWW::Search::Scraper::Response::Job);
 use WWW::Search::Scraper::Response::Job;
@@ -258,33 +257,15 @@ sub results {
     return $results;
 }
 
-sub jobID     { return $_[0]->_elem('jobID'); }
-sub skills     { return $_[0]->_elem('skills'); }
 sub location { my $x = $_[0]->SUPER::location(); $x =~ s/\s+$//g; return $x;}
 
-# 'title' is bi-modal, since detail page may give a better title that the results page.
-sub title { $_[0]->ScrapeDetailPage('title'); return $_[0]->_elem('title'); }
-
-# The following fields come from the detail page.
-sub role        { return $_[0]->ScrapeDetailPage('role') }
-sub skillSet    { return $_[0]->ScrapeDetailPage('skillSet') }
-sub type        { return $_[0]->ScrapeDetailPage('type') }
-sub payrate     { return $_[0]->ScrapeDetailPage('payrate') }
-sub length      { return $_[0]->ScrapeDetailPage('length') }
-sub city        { return $_[0]->ScrapeDetailPage('city') }
-sub state       { return $_[0]->ScrapeDetailPage('state') }
-sub postDate    { return $_[0]->ScrapeDetailPage('postDate') }
-sub description { my $rslt = $_[0]->ScrapeDetailPage('description');
+sub description { my $rslt = $_->SUPER::description();
 # Hey, if some of those bubble-heads at the KBDs want to put in a few hundred spaces, then !%^&!* them!
     $rslt =~ s/\s\s\s\s\s\s\s/\s/g;
 # The same goes for massive doses of <br>s. What is it with these people?
     $rslt =~ s/\n\n/\n/g;
     return $rslt;
  }
-
-sub FX { return $_[0]->ScrapeDetailPage('FX') }
-sub FY { return $_[0]->ScrapeDetailPage('FY') }
-sub FZ { return $_[0]->ScrapeDetailPage('FZ') }
 
 }
 

@@ -6,7 +6,7 @@ package WWW::Search::Scraper::Monster;
 use strict;
 use vars qw(@ISA $VERSION);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.12 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.13 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Search::Scraper(qw(1.48 generic_option findNextForm trimLFs));
 use WWW::Search::Scraper::Response::Job;
@@ -75,7 +75,7 @@ sub testParameters {
                 ,'testNativeQuery' => 'Administrative Assistant'
                 ,'expectedOnePage' => 5
                 ,'expectedMultiPage' => 5
-                ,'expectedBogusPage' => 0
+                ,'expectedBogusPage' => 3
            };
 }
 

@@ -1,7 +1,7 @@
 use strict;
 package WWW::Search::Scraper::FieldTranslation;
 use vars qw(@ISA $VERSION);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.0 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.1 $ =~ /(\d+)\.(\d+)/);
 use Tie::Persistent;
 use Storable;
 

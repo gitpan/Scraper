@@ -46,7 +46,7 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.12 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(1.48 generic_option addURL trimTags));
@@ -148,7 +148,7 @@ This converts to an array tree that looks like this:
             'ORACLE' => ["http://www.JustOracleJobs.com", 'jOracle j'] ,
             'PDA' => ["http://www.JustPDAJobs.com", 'jPDA j'] ,
             'PEOPLESOFT' => ["http://www.JustPeopleSoftJobs.com", 'jPeopleSoft j'] ,
-            'PERL' => ["http://www.JustPerlJobs.com", 'jperj'] ,
+            'PERL' => ["http://www.JustPerlJobs.com", 'JSSearchResults.asp?'] ,
             'POWERBUILDER' => ["http://www.JustPowerBuilderJobs.com", 'jPowerBuilder j'] ,
             'PROGRESS' => ["http://www.JustProgressJobs.com", 'jProgress j'] ,
             'PROJECT MANAGER' => ["http://www.JustProjectManagerJobs.com", 'jProject Manager j'] ,
@@ -670,7 +670,7 @@ my $scraperQuery =
    { 
       'type' => 'QUERY'       # Type of query generation is 'QUERY'
       # This is the basic URL on which to build the query.
-     ,'url' => 'http://www.apartments.com/search/oasis.dll?mfcisapicommand=quicksearch&QSearchType=1&'
+     ,'url' => '' # Calculated by scraperQuery().
       # This is the Scraper attributes => native input fields mapping
      ,'nativeQuery' => 'KEYW'
      ,'nativeDefaults' => {
@@ -730,10 +730,12 @@ my $scraperFrame =
    ];
 
 sub testParameters {
-    # 'POST' style scraperFrames can't be tested cause of a bug in WWW::Search(2.2[56]) !
-    my $isNotTestable = WWW::Search::Scraper::isGlennWood()?0:0;
+    my ($self) = @_;
+    if ( $self ) {
+        $self->whichTech('Perl');
+    }
     return {
-                 'isNotTestable' => $isNotTestable
+                 'isNotTestable' => 'JustChangedTheirFormat, and I haven\'t caught up with them yet.'
                 ,'testNativeOptions' => { 'whichTech' => 'Perl' }                                         
            };
 }
@@ -744,15 +746,21 @@ sub testParameters {
 sub scraperQuery { 
     my ($self, $native_query, $native_options) = @_;    
 
-    $native_options->{'whichTech'} = 'Perl' unless $native_options->{'whichTech'};
+    $native_options->{'whichTech'} = $self->whichTech() unless $native_options->{'whichTech'};
     my $siteKey = $JustTechJobsDirectories{uc $native_options->{'whichTech'}};
-    $scraperQuery->{'url'} = $$siteKey[0].'/'.$$siteKey[1].'.nsf/SearchResults?OpenForm&';
+    die "'$native_options->{'whichTech'}' is not a recognized 'whichTech' for JustTechJobs" unless $siteKey;
+    $scraperQuery->{'url'} = $$siteKey[0].'/'.$$siteKey[1];
     return $scraperQuery;
 }
 
 sub scraperFrame { $_[0]->SUPER::scraperFrame($scraperFrame); }
 sub scraperDetail{ undef }
 
+sub whichTech {
+    my ($self, $whichTech) = @_;
+    $self->{'whichTech'} = $whichTech if ( $whichTech );
+    return $self->{'whichTech'};
+}
 
 sub import
 {
@@ -768,7 +776,8 @@ sub import
         }
         if ( $_->{'whichTech'} ) {
             my $siteKey = $JustTechJobsDirectories{uc $_->{'whichTech'}};
-            $scraperQuery->{'url'} = $$siteKey[0].'/'.$$siteKey[1].'.nsf/SearchResults?OpenForm&'
+            $scraperQuery->{'url'} = $$siteKey[0].'/'.$$siteKey[1];
+            $package->whichTech($_->{'whichTech'});
         }
     }
 

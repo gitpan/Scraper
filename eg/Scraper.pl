@@ -31,13 +31,14 @@ use lib './lib';
 use WWW::Search::Scraper(qw(1.48));
 use WWW::Search::Scraper::Request::Job;
 use vars qw($VERSION);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/);
 
     select STDERR; $| = 1; select STDOUT; $| = 1; 
 
-    my ($engine, $query, $debug, $options);
-    $engine = 'eBay'      unless $engine = $ARGV[0];
-    $debug = $ARGV[2];
+    my ($engine, $query, $debug, $options) = @ARGV;
+    $engine = 'eBay'  unless $engine;
+    $query =~ s/(['"])(.*)\1$/\2/;
+    $debug = 'U'      unless $debug;
 
     my $scraper = new WWW::Search::Scraper( $engine );
     my $limit = 21;
@@ -73,26 +74,37 @@ $VERSION = sprintf("%d.%02d", q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/);
 
     my $resultCount = 0;
     while ( my $result = $scraper->next_response() ) {
-        # $result->{'_scraperSkipDetailPage'} = 1;
+        # $result->_SkipDetailPage(1);
         $resultCount += 1;
         %resultTitles = %{$result->resultTitles()};# unless %resultTitles;
         my %results = %{$result->results()};
-        for ( keys %resultTitles ) {
-            if ( 'ARRAY' eq ref($results{$_}) ) {
+#        for ( keys %resultTitles ) {
+        my $fieldNames = $result->_fieldNames();
+        for ( keys %$fieldNames ) {
+            #next unless $fieldNames->{$_} == 1;
+            my $value = $result->$_();
+            if ( 'ARRAY' eq ref($value) ) {
                 print "$resultTitles{$_}: (";
                 my $comma = '';
-                my $ary = $results{$_};
-                for ( @$ary ) {
-                    print "$comma'$results{$_}'";# if $results{$_};
+                for ( @$value ) {
+                    print "$comma'$_'";# if $results{$_};
                     $comma = ', ';
                 }
                 print ")\n";
             } else {
-                print "$resultTitles{$_}: '$results{$_}'\n";# if $results{$_};
+#                print "$resultTitles{$_}:= '$results{$_}'\n";# if $results{$_};
+                if ( defined $value ) {
+                    print "$_: '$$value'\n";# if $results{$_};
+                } else {
+                    print "$_: <NULL>\n";# if $results{$_};
+                }
             }
         }
         print "\n";
         last unless --$limit;
     }
 
+    print "Engine reported an 'approximate result count' of ".$scraper->approximate_result_count().".\n";
+
     print "\n$resultCount results found".($limit?", short of the expected":', successfully completing the test').".\n";
+

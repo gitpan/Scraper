@@ -132,7 +132,7 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(2.12 addURL trimTags));
@@ -274,7 +274,7 @@ sub native_setup_search
                  $$interpret{$_.'End'} ) {
                 my @rslts = ( 'CALLBACK', \&resultData, 
                                 $$interpret{$_.'Start'}, 
-                                $$interpret{$_.'End'}, "result_$_" );
+                                $$interpret{$_.'End'}, "$_" );
                 push @results, \@rslts;
             }
         }
@@ -329,6 +329,7 @@ sub native_setup_search
     $self->{'_next_url'} = $self->{'_options'}{'search_url'} .'?'. $options . 
                                 $self->{'sherlockNativeQuery'} . '=' .$native_query;
 
+    #use Data::Dumper; print Dumper($self);
     print STDERR $self->{_base_url} . "\n" if $self->ScraperTrace('U');
 }
 
@@ -472,9 +473,9 @@ sub resultItem {
         if ( $url ) {
             $url = new URI::URL($url, $self->{_base_url});
             $url = $url->abs;
-            $hit->add_url($url);
+            $hit->plug_url($url);
         }
-        $hit->_elem('result_detail', $sub_content);
+        $hit->plug_elem('detail', $sub_content);
     } else {
         $next_scaffold = undef;
     }
@@ -521,7 +522,7 @@ sub resultData {
     }
 
     if ( $found_sub_content) {
-        $hit->_elem($$scaffold[4], $sub_content);
+        $hit->plug_elem($$scaffold[4], $sub_content);
         $$total_hits_found = 1;
     }
     return (undef, undef);

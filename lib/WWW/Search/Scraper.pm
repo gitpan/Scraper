@@ -1,6 +1,6 @@
 
 ####################################################################################
-####################################################################################
+#########################################dsf###########################################
 ####################################################################################
 ####################################################################################
 package WWW::Search::Scraper;
@@ -10,22 +10,37 @@ require Exporter;
 use vars qw($VERSION $MAINTAINER @ISA @EXPORT @EXPORT_OK);
 @EXPORT = qw(testParameters);
 
-$VERSION = '2.17';
+$VERSION = '2.18';
 
-@ISA = qw(WWW::Search Exporter);
-my $CVS_VERSION = sprintf("%d.%02d", q$Revision: 1.59 $ =~ /(\d+)\.(\d+)/);
+my $CVS_VERSION = sprintf("%d.%02d", q$Revision: 1.60 $ =~ /(\d+)\.(\d+)/);
 $MAINTAINER = 'Glenn Wood http://search.cpan.org/search?mode=author&query=GLENNWOOD';
 
 use Carp ();
-use WWW::Search( 2.25, qw(strip_tags) );
+use WWW::Search( 2.28, qw(strip_tags) );
 use WWW::Search::Scraper::Request;
 use WWW::Search::Scraper::Response;
 use WWW::Search::Scraper::TidyXML;
 
 @EXPORT_OK = qw(escape_query unescape_query generic_option 
                 strip_tags trimTags trimLFs trimLFLFs
-                @ENGINES_WORKING addURL 
-                findNextForm findNextFormInXML removeScriptsInXML);
+                @ENGINES_WORKING addURL trimXPathAttr trimXPathHref
+                findNextForm findNextFormInXML removeScriptsInHTML cleanupHeadBody);
+
+
+# Here we begin our gradual migration from "can-o-worms" to Class::Struct structured Scraper.
+{ package WWW::Search::Scraper::_struct_;
+use Class::Struct;
+    struct ( 'WWW::Search::Scraper::_struct_' =>
+              {
+                  'response'         => '$'
+                 ,'searchEngineHome' => '$'
+                 ,'searchEngineLogo' => '$'
+                 ,'errorMessage'     => '$'
+                 ,'_forInterator'    => '$'
+              }
+           );
+}
+use base qw( WWW::Search::Scraper::_struct_ WWW::Search Exporter );
 
 
 sub new {
@@ -33,7 +48,7 @@ sub new {
     
     my $self;
     if ( $subclass =~ m-^\.\.[\/](.*)$- ) {  # Allow the form "../name" to indicate
-       $self = new WWW::Search($1);          # a WWW::Search backend. Also see "Some 
+        $self = new WWW::Search($1);          # a WWW::Search backend. Also see "Some 
         bless $self, 'WWW::Search::Scraper'; # searchers are not scrapers", below.
     } else {
         if ( $subclass =~ s/^(.*)\((.*)\)$/$1/ ) {
@@ -45,6 +60,7 @@ sub new {
             }
         }
         $self = new WWW::Search("Scraper::$subclass");
+#        bless $self, "Scraper::$subclass";
     }
 
     $self->{'agent_name'} = "Mozilla/WWW::Search::Scraper/$VERSION";
@@ -53,12 +69,21 @@ sub new {
     $self->{'scraperQF'} = 0; # Explicitly declare 'scraperQF' as the deprecated mode.
     $searchName = $subclass unless $searchName;
     $self->{'scraperName'} = $searchName;
+
+    # Finally, call the sub-scraper's init() method.
+    $self->init();
+
     return $self;
 }
 
+# The sub-scraper should override this.
+sub init {
+}
 
-# Help avoid embarrassment when Glenn releases test, debug or tracing code to CPAN!
+
+# To help avoid embarrassment when Glenn releases test, debug or tracing code to CPAN, Glenn uses this.
 sub isGlennWood { return $ENV{'VSROOT'} and ($ENV{'USERNAME'} eq 'Glenn') and ($ENV{'USERDOMAIN'} eq 'ORCHID'); }
+
 # Return empty testFrame for sub-scrapers that choose not to provide one.
 sub testParameters {
     my ($self) = @_;
@@ -67,7 +92,6 @@ sub testParameters {
         $self->{'isTesting'} = 1;
     }
     
-    # 'POST' style scraperFrames can't be tested cause of a bug in WWW::Search(2.2[56]) !
     my $isNotTestable = WWW::Search::Scraper::isGlennWood()?0:'No testParameters provided.';
     return { 
              'isNotTestable' => $isNotTestable
@@ -117,6 +141,7 @@ sub scraperDetail{ undef }
 #   T - lists progress of each TidyXML tree-walking operation.
 #   d - excruciating details about parsing the results and details pages.
 sub ScraperTrace {
+    return $_[0]->{'_traceFlags'} unless $_[1]; # default traceFlags if no match string sent.
     return ( $_[0]->{'_traceFlags'} =~ m-$_[1]- );
 }
 sub setScraperTrace {
@@ -135,7 +160,7 @@ sub request {
         $rqst->prepare($self);
         
         # Move the debug option from the request to the Scraper module.
-        $self->{'_debug'} = $rqst->Scraper_debug();
+        $self->{'_debug'} = $rqst->_Scraper_debug();
 
         $self->{'_scraperRequest'} = $rqst;
         
@@ -155,6 +180,9 @@ sub native_setup_search
     my $self = shift;
     my ($native_query, $native_options) = @_;
     $native_query = WWW::Search::unescape_query($native_query); # Thanks, but no thanks, Search.pm!
+
+    $self->{'_first_url'} = undef;
+    $self->{'_first_url_method'} = undef;
 
     # Provides some backward compatibility, perhaps . . .
     $self->{'_options'}{'scraperQuery'} = $self->scraperQuery();
@@ -195,7 +223,7 @@ sub native_setup_search
     $self->request()->_native_query($native_query);
 
     # These traceFlags will ultimately come from many places . . .
-    $self->setScraperTrace($self->{'_debug'}) unless $self->{'_traceFlags'};
+    #$self->setScraperTrace($self->{'_debug'}) unless $self->{'_traceFlags'};
 
     for ( $self->scraperQuery()->{'type'} ) {
         m/SHERLOCK/ && do { return $self->native_setup_search_SHERLOCK(); };
@@ -440,6 +468,8 @@ sub native_retrieve_some
     my ($self) = @_;
     my $debug = $self->{_debug};
 
+    $self->{'total_hits_count'} = 0; # for HIT(i)
+
     # fast exit if already done
 AGAIN:    
     unless ( defined($self->{_next_url}) ) {
@@ -457,10 +487,14 @@ AGAIN:
 
     print STDERR "Fetching NEXT_URL via $method: '".$self->{_next_url}."'\n" if $self->ScraperTrace('U');
     
-    $self->{'_last_url'} =$self->{_next_url};
+    $self->{'_last_url'} = $self->{_next_url};
+    unless ( $self->{'_first_url'} ) {
+        $self->{'_first_url'} = $self->{_next_url};
+        $self->{'_first_url_method'} = $method;
+    }
     my $response = $self->http_request($method, $self->{_next_url});
 
-        while ( $response->code() eq '302' ) {
+    while ( $response->code() eq '302' ) {
         my $redirect = $response->header('location');
         if ( $redirect =~ m-^/- ) {
             my $url = $self->{_next_url};
@@ -481,10 +515,11 @@ AGAIN:
     }
 
     $self->{'_last_url'} = $self->{'_next_url'}; $self->{'_next_url'} = undef;
-    $self->{'response'} = $response;
+    $self->response($response);
     
     unless ( $response->is_success ) {
-        print STDERR "Request failed in Scraper.pm: ".$response->message() if $debug;
+        $self->errorMessage("Request failed in Scraper.pm: ".$response->message());
+        print STDERR $self->errorMessage()."\n" if $self->ScraperTrace();
         return undef;
     }
 
@@ -528,11 +563,83 @@ sub postSelect {
     return $rqst->postSelect($self, $rslt);
 }
 
-# Public
-sub scrape { my ($self, $content, $debug) = @_;
-   for (${$self->scraperFrame()}[0]) {
-       return $self->scraperHTML(${$self->scraperFrame()}[1], \$content, undef, $debug) if m/HTML/;
-       return $self->scraperTidyXML($self->scraperFrame(), \$content, undef, $debug) if m/TidyXML/;
+
+{ package WWW::Search;
+sub getName {
+   return $_[0]->{'scraperName'};
+}
+
+}
+
+
+
+{
+    package LWP::RobotUA;
+
+# Dice always redirects the first query page via 302 status code.
+# BAJobs frequently (but not always) redirects via 302 status code.
+# We need to tell LWP::RobotUA that it's ok to redirect on Dice and BAJobs.
+sub redirect_ok
+{
+    # draft-ietf-http-v10-spec-02.ps from www.ics.uci.edu, specify:
+    #
+    # If the 30[12] status code is received in response to a request using
+    # the POST method, the user agent must not automatically redirect the
+    # request unless it can be confirmed by the user, since this might change
+    # the conditions under which the request was issued.
+    
+    my($self, $request) = @_;
+    return 1 if $request->uri() =~ m-seeker\.dice\.com/jobsearch/jobsearch_r\.epl-i;
+    return 1 if $request->uri() =~ m-seeker\.dice\.com/jobsearch/resultSummary\.epl-i;
+#    return 1 if $request->uri() =~ m-jobsearch\.dice\.com/jobsearch/jobsearch\.cgi-i;
+    return 1 if $request->uri() =~ m-www\.bajobs\.com/jobseeker/searchresults\.jsp-i;
+    return 1 if $request->uri() =~ m-\.techies\.com/Common-i;
+    return 0 if $request->method eq "POST";
+    1;
+}
+}
+
+
+##################### < E X C E P T I O N S > ######################
+# some kind of problem with URI in LWP since LWP(5.60)
+eval <<EOT
+    use URI::http;
+    { package URI::http;
+    sub abs {
+        my \$self = shift;
+        return \$self->SUPER::abs(\@_) if \$_[0];
+        return \$self->canonical(\@_);
+    }
+    use URI::https;
+    { package URI::https;
+    sub abs {
+        my \$self = shift;
+        return \$self->SUPER::abs(\@_) if \$_[0];
+        return \$self->canonical(\@_);
+    }
+EOT
+if ( ($LWP::VERSION ge '5.60') and ($LWP::VERSION le '5.63') );
+#################### < / E X C E P T I O N S > #####################
+
+
+##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### 
+ ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### 
+  ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### 
+   ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### 
+    ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### 
+     ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### 
+     ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### 
+    ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### 
+   ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### 
+  ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### 
+ ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### 
+##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### 
+
+sub scrape { my ($self, $content, $debug, $scraperFrame, $hit) = @_;
+    $scraperFrame = $self->scraperFrame() unless $scraperFrame;
+   for (${$scraperFrame}[0]) {
+       return $self->scraperHTML($scraperFrame, \$content, $hit, $debug) if m/HTML/;
+       return $self->scraperTidyXML($scraperFrame, \$content, $hit, $debug) if m/TidyXML/;
    }
    die "Scraper format '${$self->scraperFrame()}[0]' is not implemented in version $VERSION of Scraper.pm for ".ref($self)."\n";
 }
@@ -541,7 +648,7 @@ sub scrape { my ($self, $content, $debug) = @_;
 sub scraperHTML { my ($self, $scaffold_array, $content, $hit, $debug) = @_;
     my $TidyXML = new WWW::Search::Scraper::TidyXML();
     $TidyXML->m_asString($content);
-    return $self->scraper(${$self->scraperFrame()}[1], $TidyXML, undef, $debug);
+    return $self->scraper($$scaffold_array[1], $TidyXML, $hit, $debug);
 }
 
 # private
@@ -554,52 +661,58 @@ sub scraperTidyXML { my ($self, $scaffold_array, $content, $hit, $debug) = @_;
         $content = &$datParser($self, $hit, $content);
     }
     my $TidyXML = new WWW::Search::Scraper::TidyXML($content);
-    return $self->scraper($$scaffold_array[$i], $TidyXML, undef, $debug);
+    return $self->scraper($$scaffold_array[$i], $TidyXML, $hit, $debug);
 }
 
 
 # private
-sub scraperRecurse { my ($self, $sub_string, $sub_xml, $next_scaffold, $TidyXML, $hit, $debug) = @_;
+sub scraperRecurse { my ($self, $sub_string, $next_scaffold, $TidyXML, $hit, $debug) = @_;
 
     my $myTidyXML = $TidyXML;
-    unless ( $myTidyXML ) {
-        $myTidyXML = new WWW::Search::Scraper::TidyXML unless $myTidyXML;
-        $myTidyXML->m_asString($sub_string);
-        $myTidyXML->m_asXML($sub_xml);
-        if ( $sub_string ) {
-            $$sub_string =~ m/<(\w+)/;
-            $myTidyXML->m_implicitRootNode($1);
-        } 
-        else {
-            die "non-recursing scraperRecurse is not implemented.";
+    my ($saveContext, $saveFoundContext, $saveString);
+    if ( $myTidyXML ) {
+        $saveContext = $TidyXML->m_context();
+        $saveFoundContext = $TidyXML->m_found_context();
+        $myTidyXML->m_context($TidyXML->m_found_context);
+        $saveString = $myTidyXML->m_asString();
+        if ( $$sub_string ) {
+            $myTidyXML->m_asString($sub_string);
         }
-    } 
-        
+    } else {
+        $myTidyXML = new WWW::Search::Scraper::TidyXML;
+        $myTidyXML->m_asString($sub_string);
+    }
+    
     my $total_hits_found = $self->scraper($next_scaffold, $myTidyXML, $hit, $debug);
+
+    $myTidyXML->m_context($saveContext);
+    $myTidyXML->m_found_context($saveFoundContext);
+    $myTidyXML->m_asString($saveString);
 
     return $total_hits_found;
 }
    
 # private
 sub scraper { my ($self, $scaffold_array, $TidyXML, $hit, $debug) = @_;
-    
+
 	# Here are some variables that we use frequently done here.
-    my $total_hits_found = 0;
+    my $total_hits_found = 0; # counts hits, and is boolean for "any-hit-found".
     
     my $sub_string = undef;
-    my $sub_xml = undef;
     my $next_scaffold = undef;
     $TidyXML->m_TRACE($self->{'_traceFlags'}) if $TidyXML;
 
+    my (@ary,@dts); # 'F' and 'REGEX' are co-functional, so we need these shared variables here.
+
 SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
         my $tag = $$scaffold[0];
-
-       print "TAG: $tag\n" if $debug > 1;
+        print "TAG: $tag\n" if $debug > 1;
 
         # 'HIT*' is special since it has pre- and post- processing (adding the hits to the hit-list).
         # All other tokens simply process data as it moves along, then they're done,
         #  so they will do a set up, then pass along to recurse on scraper() . . .
         if ( 'HIT' eq $tag ) {
+            $self->{'total_hits_count'} = 1;
             my $resultType = $$scaffold[1];
             if ( 'ARRAY' eq ref $resultType ) {
                 $next_scaffold = $resultType;
@@ -626,16 +739,16 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
             my $hit;
             do 
             {
+                $self->{'total_hits_count'} += 1;
                 if ( $hit && $self->postSelect($self->request(), $hit) )
                 {
                     push @{$self->{cache}}, $hit;
                     $total_hits_found += 1;
                 }
-                $hit = $self->newHit($resultType);
-                $hit->{'searchObject'} = $self;
-#            } while ( $self->scraper($next_scaffold, $TidyXML, $hit, $debug) );
+                $hit = $self->newHit($resultType, $next_scaffold, $self->scraperDetail());
+                $hit->_searchObject($self);
             
-            } while ( $self->scraperRecurse(undef, undef, $next_scaffold, $TidyXML, $hit, $debug) );
+            } while ( $self->scraperRecurse($TidyXML->asString(), $next_scaffold, $TidyXML, $hit, $debug) );
             next SCAFFOLD;
         }
     
@@ -645,15 +758,12 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
             if ( $$scaffold[1] and $$scaffold[2] ) {
                 ${$TidyXML->asString()} =~ s-$$scaffold[1](.*?)$$scaffold[2]--si; # Strip off the adminstrative clutter at the beginning and end.
                 $sub_string = $1;
-                $sub_xml = undef;
             } elsif ( $$scaffold[1] ) {
                 ${$TidyXML->asString()} =~ s-$$scaffold[1](.*)$-$1-si; # Strip off the adminstrative clutter at the beginning.
                 $sub_string = $1;
-                $sub_xml = undef;
             } elsif ( $$scaffold[2] ) {
                 ${$TidyXML->asString()} =~ s-^(.*?)$$scaffold[2]-$1-si; # Strip off the adminstrative clutter at the end.
                 $sub_string = $1;
-                $sub_xml = undef;
             } else {
                 next SCAFFOLD;
             }
@@ -676,10 +786,10 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
                 {
                     my $url = new URI::URL(&$datParser($self, $hit, $sub_string), $self->{_base_url});
                     $url = $url->abs();
-                    $hit->add_url($url);
+                    $hit->plug_url($url);
                 } 
                 elsif ( $binding) {
-                    $hit->_elem($binding, &$datParser($self, $hit, $sub_string));
+                    $hit->plug_elem($binding, &$datParser($self, $hit, $sub_string));
                 }
                 $total_hits_found = 1;
                 next SCAFFOLD;
@@ -690,7 +800,6 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
     	
         elsif ( 'CALLBACK' eq $tag ) {
             ($sub_string, $next_scaffold) = &{$$scaffold[1]}($self, $hit, $TidyXML->asString(), $scaffold, \$total_hits_found);
-            $sub_xml = undef;
             next SCAFFOLD unless $next_scaffold;
         }
     	
@@ -700,12 +809,11 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
             if ( $$scaffold[1] and $$scaffold[2] ) {
                 ${$TidyXML->asString()} =~ s-$$scaffold[1](.*?)$$scaffold[2]--si;
                 $sub_string = $1;
-                $sub_xml = undef;
             } else {
                 next SCAFFOLD;
             }
             my $binding = $$scaffold[3];
-            $hit->_elem($binding, $sub_string);
+            $hit->plug_elem($binding, $sub_string);
             $total_hits_found = 1;
             next SCAFFOLD;
         }
@@ -730,11 +838,12 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
             $$scaffold[1] = $$scaffold[2] 
                 if ( $$scaffold[1] eq 1 or $$scaffold[1] eq 2 );
 
-            $sub_xml = undef;
             if ( ref $$scaffold[1] )
             {
                 my $datParser = $$scaffold[1];
-                $self->{'_next_url'} = &$datParser($self, $hit, ${$TidyXML->asString()});                
+                my $url = ${$TidyXML->asString()};
+                $url = WWW::Search::Scraper::unescape_query($url) if $TidyXML->m_isTidyd();
+                $self->{'_next_url'} = &$datParser($self, $hit, $url);                
                 print STDERR  "NEXT_URL: $self->{'_next_url'}\n" if ($self->ScraperTrace('U'));
                 next SCAFFOLD;
             }
@@ -774,6 +883,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
                             $url = new URI::URL(&$datParser($self, $hit, $url), $self->{'_base_url'});
                             $url = $url->abs();
                         }
+                        $url = WWW::Search::Scraper::unescape_query($url);# if $TidyXML->m_isTidyd();
                         $self->{'_next_url'} = $url;
                         print STDERR  "NEXT_URL: $url\n" if ($self->ScraperTrace('U'));
                         next SCAFFOLD;
@@ -787,7 +897,6 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
         {
             ${$TidyXML->asString()} =~ m-<HTML>(.*)</HTML>-si;
             $sub_string = $1;
-            $sub_xml = undef;
             $next_scaffold = $$scaffold[1];
         }
 
@@ -804,7 +913,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
     		{
                 for (1..$1)
     			{
-                    my $x = $self->getMarkedText($tag, $TidyXML->asString()); # and throw it away.
+                    $TidyXML->getMarkedText($tag); # and throw it away.
     			}
                 $next_scaffold = $$scaffold[2];
             }
@@ -813,50 +922,75 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
                 $next_scaffold = $$scaffold[2];
                 die "Element-name form of <$tag> is not implemented, yet.";
             }
-            $sub_xml = undef;
-            next SCAFFOLD unless $sub_string = $self->getMarkedText($tag, $TidyXML->asString());
+            next SCAFFOLD unless $sub_string = $TidyXML->getMarkedText($tag);
         }
     	
 
     	elsif ( 'TAG' eq $tag )
         {
-            $sub_xml = undef;
-            $tag = $$scaffold[1];
-            next SCAFFOLD unless $sub_string = $self->getMarkedText($tag, $TidyXML->asString()); # and throw it away.
-#    		next SCAFFOLD unless ( $$content =~ s-(<$tag\s*[^>]*>(.*?)</$tag\s*[^>]*>)--si );  $sub_content = $2;
-    		$next_scaffold = $$scaffold[2];
+            next SCAFFOLD unless $sub_string = $TidyXML->getMarkedText($$scaffold[1]); # and throw it away.
+            $next_scaffold = $$scaffold[2];
             if ( 'ARRAY' ne ref $next_scaffold  ) # if next_scaffold is an array ref, then we'll recurse (below)
             {
-               my $binding = $next_scaffold;
-               my $datParser = $$scaffold[3];
-               print STDERR  "raw dat: '$sub_string'\n" if ($self->ScraperTrace('d'));
-               if (  $self->ScraperTrace('d') ) { # print ref $ aways does something screwy
-                  print STDERR  "datParser: ";
-                  print STDERR  ref $datParser;
-                  print STDERR  "\n";
-               };
-               $datParser = \&WWW::Search::Scraper::trimTags unless $datParser;
-               print STDERR  "binding: '$binding', " if ($self->ScraperTrace('d'));
-               print STDERR  "parsed dat: '".&$datParser($self, $hit, $sub_string)."'\n" if ($self->ScraperTrace('d'));
+                my $binding = $next_scaffold;
+                my $datParser = $$scaffold[3];
+                print STDERR  "raw dat: '$sub_string'\n" if ($self->ScraperTrace('d'));
+                if (  $self->ScraperTrace('d') ) { # print ref $ aways does something screwy
+                  print STDERR  "datParser: ".ref($datParser)."\n";
+                };
+                $datParser = \&WWW::Search::Scraper::trimTags unless $datParser;
+                print STDERR  "binding: '$binding', " if ($self->ScraperTrace('d'));
+                print STDERR  "parsed dat: '".&$datParser($self, $hit, $sub_string)."'\n" if ($self->ScraperTrace('d'));
                 if ( $binding eq 'url' )
                 {
-                    my $url = new URI::URL(&$datParser($self, $hit, $sub_string), $self->{_base_url});
-                    $url = $url->abs();
-                    $hit->add_url($url);
+                   my $url = new URI::URL(&$datParser($self, $hit, $sub_string), $self->{_base_url});
+                   $url = $url->abs();
+                   $hit->plug_url($url);
                 } 
                 elsif ( $binding) {
-                    $hit->_elem($binding, &$datParser($self, $hit, $sub_string));
+                   $hit->plug_elem($binding, &$datParser($self, $hit, $sub_string));
                 }
                 $total_hits_found = 1;
                 next SCAFFOLD;
             }
         }
 
-    	elsif ( $tag =~ m/^(TD|DT|DD|DIV)$/ )
+#    	elsif ( 'F' eq $tag )
+#        {
+#            $tag = $$scaffold[1];
+#            next SCAFFOLD unless $sub_string = $TidyXML->getMarkedText($tag); # and throw it away.
+##    		next SCAFFOLD unless ( $$content =~ s-(<$tag\s*[^>]*>(.*?)</$tag\s*[^>]*>)--si );  $sub_content = $2;
+#    		$next_scaffold = $$scaffold[2];
+#            if ( 'ARRAY' ne ref $next_scaffold  ) # if next_scaffold is an array ref, then we'll recurse (below)
+#            {
+#               my $binding = $next_scaffold;
+#               my $datParser = $$scaffold[3];
+#               print STDERR  "raw dat: '$sub_string'\n" if ($self->ScraperTrace('d'));
+#               if (  $self->ScraperTrace('d') ) { # print ref $ aways does something screwy
+#                  print STDERR  "datParser: ";
+#                  print STDERR  ref $datParser;
+#                  print STDERR  "\n";
+#               };
+#               $datParser = \&WWW::Search::Scraper::trimTags unless $datParser;
+#               print STDERR  "binding: '$binding', " if ($self->ScraperTrace('d'));
+#               print STDERR  "parsed dat: '".&$datParser($self, $hit, $sub_string)."'\n" if ($self->ScraperTrace('d'));
+#                if ( $binding eq 'url' )
+#                {
+#                    my $url = new URI::URL(&$datParser($self, $hit, $sub_string), $self->{_base_url});
+#                    $url = $url->abs();
+#                    $hit->plug_url($url);
+#                } 
+#                elsif ( $binding) {
+#                    $hit->plug_elem($binding, &$datParser($self, $hit, $sub_string));
+#                }
+#                $total_hits_found = 1;
+#                next SCAFFOLD;
+#            }
+#        }
+    	
+        elsif ( $tag =~ m/^(TD|DT|DD|DIV)$/ )
         {
-            $sub_xml = undef;
-            next SCAFFOLD unless $sub_string = $self->getMarkedText($tag, $TidyXML->asString()); # and throw it away.
-#    		next SCAFFOLD unless ( $$content =~ s-(<$tag\s*[^>]*>(.*?)</$tag\s*[^>]*>)--si );  $sub_content = $2;
+            next SCAFFOLD unless $sub_string = $TidyXML->getMarkedText($tag); # and throw it away.
     		$next_scaffold = $$scaffold[1];
             if ( 'ARRAY' ne ref $next_scaffold  ) # if next_scaffold is an array ref, then we'll recurse (below)
             {
@@ -875,10 +1009,10 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
                 {
                     my $url = new URI::URL(&$datParser($self, $hit, $sub_string), $self->{_base_url});
                     $url = $url->abs();
-                    $hit->add_url($url);
+                    $hit->plug_url($url);
                 } 
                 elsif ( $binding) {
-                    $hit->_elem($binding, &$datParser($self, $hit, $sub_string));
+                    $hit->plug_elem($binding, &$datParser($self, $hit, $sub_string));
                 }
                 $total_hits_found = 1;
                 next SCAFFOLD;
@@ -887,20 +1021,25 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
         elsif ( 'A' eq $tag ) 
         {
             my $lbl = $$scaffold[1];
-            if ( ${$TidyXML->asString()} =~ s-<A[^>]+?HREF="([^"]+)"[^>]*>(.*?)</A>--si )
+            my $anchor;
+            next SCAFFOLD unless ($sub_string, $anchor) = $TidyXML->getMarkedText('A'); # and throw it away.
+            if ( ( $anchor =~ s-A\s.*?HREF=(["'])([^"']+?)\1--si) or
+                 ( $anchor =~ s-A\s.*?HREF(=)([^> ]+)--si) 
+               )
             {
-                print "<A> binding: $$scaffold[2]: '$2', $$scaffold[1]: '$1'\n" if ($self->ScraperTrace('d'));
+                print "<A> binding: $$scaffold[2]: '$sub_string', $$scaffold[1]: '$2'\n" if ($self->ScraperTrace('d'));
                 my $datParser = $$scaffold[3];
                 $datParser = \&WWW::Search::Scraper::trimTags unless $datParser;
-                $hit->_elem($$scaffold[2], &$datParser($self, $hit, $2));
+                $hit->plug_elem($$scaffold[2], &$datParser($self, $hit, $sub_string));
 
-               my ($url) = new URI::URL($1, $self->{_base_url});
+               my ($url) = new URI::URL($2, $self->{_base_url});
                $url = $url->abs();
                if ( $lbl eq 'url' ) {
-                    $hit->add_url($url);
+                   $url = WWW::Search::Scraper::unescape_query($url) if $TidyXML->m_isTidyd();
+                   $hit->plug_url($url);
                }
                else {
-                   $hit->_elem($lbl, $url);
+                   $hit->plug_elem($lbl, $url);
                }
                $total_hits_found = 1;
             }
@@ -915,28 +1054,39 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
                 
                 my $datParser = $$scaffold[3];
                 $datParser = \&WWW::Search::Scraper::trimTags unless $datParser;
-                $hit->_elem($$scaffold[2], &$datParser($self, $hit, $2));
+                $hit->plug_elem($$scaffold[2], &$datParser($self, $hit, $2));
 
                my ($url) = new URI::URL($1, $self->{_base_url});
                $url = $url->abs();
                if ( $lbl eq 'url' ) {
-                    $hit->add_url($url);
+                   $url = WWW::Search::Scraper::unescape_query($url) if $TidyXML->m_isTidyd();
+                   $hit->plug_url($url);
                }
                else {
-                   $hit->_elem($lbl, $url);
+                   $hit->plug_elem($lbl, $url);
                }
                $total_hits_found = 1;
             }
             next SCAFFOLD;
         }
+        elsif ( 'F' eq $tag ) 
+        {
+            @ary = @$scaffold;
+            shift @ary;
+            my $datParser = shift @ary;
+            $datParser = \&WWW::Search::Scraper::trimTags unless $datParser;
+            @dts = &$datParser($self, $hit, ${$TidyXML->asString()});
+            goto REGEX_F;
+        }
         elsif ( 'REGEX' eq $tag ) 
         {
-            my @ary = @$scaffold;
+            @ary = @$scaffold;
             shift @ary;
             my $regex = shift @ary;
             if ( ${$TidyXML->asString()} =~ s/$regex//si )
             {
-                my @dts = ($1,$2,$3,$4,$5,$6,$7,$8,$9);
+                @dts = ($1,$2,$3,$4,$5,$6,$7,$8,$9);
+            REGEX_F:    
                 for ( @ary ) 
                 {
                     if ( $_ eq '' ) {
@@ -945,10 +1095,10 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
                     elsif ( $_ eq 'url' ) {
                         my $url = new URI::URL(shift @dts, $self->{_base_url});
                         $url = $url->abs();
-                        $hit->add_url($url);
+                        $hit->plug_url($url);
                     } 
                     else {
-                        $hit->_elem($_, $self->trimTags($hit, shift @dts));
+                        $hit->plug_elem($_, $self->trimTags($hit, shift @dts));
                     }
                 }
                 $total_hits_found = 1;
@@ -960,25 +1110,46 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
             my $binding = $$scaffold[1];
             my $datParser = $$scaffold[2];
             $datParser = \&WWW::Search::Scraper::null unless $datParser;
-            $hit->_elem($binding, &$datParser($self, $hit, $sub_string));
+            $hit->plug_elem($binding, &$datParser($self, $hit, $sub_string));
             next SCAFFOLD;
-        } elsif ( $tag eq 'XML' )
+
+        } elsif ( $tag eq 'FOR' ) {
+            my $iterator = $$scaffold[1];
+            my $iterationString = $$scaffold[2];
+            $next_scaffold = $$scaffold[3];
+            my ($i,$j) = ($iterationString =~ m/^(\d+)\.\.(\d+)$/);
+            for my $itr ($i..$j) {
+                $self->_forInterator($itr);
+                $total_hits_found += $self->scraperRecurse(\$sub_string, $next_scaffold, $TidyXML, $hit, $debug);
+            }
+        } elsif ( $tag eq 'XPath' )
         {
+            my $xpath = $$scaffold[1];
+            if ( $xpath =~ /for\((\w+)?\)/i ) {
+                my $forN = $self->_forInterator();
+                $xpath =~ s/for\((\w+)?\)/$forN/i;
+            }
+            if ( $xpath =~ /hit\((\d+)?\)/i ) {
+                my $hitN = $self->{'total_hits_count'} + $1;
+                $xpath =~ s/hit\((\d+)?\)/$hitN/i;
+            }
             my $binding = $$scaffold[2];
+            $sub_string = ${$TidyXML->asString($xpath)};  # This also sets m_found_context, for recursing.
+            next SCAFFOLD unless $sub_string;
             if ( 'ARRAY' eq ref $binding ) {
-                $sub_string = ${$TidyXML->asString($$scaffold[1])}; # because asXML() doesn't work, yet.
-                #$sub_xml = $TidyXML->asXML();
-                #$sub_string = undef;
+                $sub_string = undef; # We don't need sub_string for recursing.
                 $next_scaffold = $binding;
             } elsif ( defined $$scaffold[2] ) {
-                if ( $sub_string = ${$TidyXML->asString($$scaffold[1])} ) {
-                    $hit->_elem($binding, $sub_string);
-                    $total_hits_found = 1;
+                my $i = 3;
+                while ( $$scaffold[$i] and 'ARRAY' ne ref $$scaffold[$i] ) {
+                    my $datParser = $$scaffold[$i];
+                    $i += 1;
+                    $sub_string = &$datParser($self, $hit, $sub_string);
                 }
+                $hit->plug_elem($binding, $sub_string);
+                $total_hits_found = 1;
                 next SCAFFOLD;
             } else {
-#                $sub_string = ${$TidyXML->asString($$scaffold[1])}; # because asXML() doesn't work, yet.
-                $TidyXML->asString($$scaffold[1]); # because asXML() doesn't work, yet.
                 next SCAFFOLD;
             }
 
@@ -1024,14 +1195,15 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
             die "Unrecognized ScraperFrame option: '$tag'";
         }
 
-        $total_hits_found += $self->scraperRecurse(\$sub_string, $sub_xml, $next_scaffold, undef, $hit, $debug);
+        next SCAFFOLD unless $next_scaffold;
+        $total_hits_found += $self->scraperRecurse(\$sub_string, $next_scaffold, $TidyXML, $hit, $debug);
     }
     return $total_hits_found;
 }
 
 
 sub newHit {
-    my ($self, $resultType) = @_;
+    my ($self, $resultType, $scraperFrame, $scraperDetailFrame) = @_;
     my $hit;
     if ( 'CODE' eq ref $resultType ) {
         $hit = &$resultType();
@@ -1040,10 +1212,10 @@ sub newHit {
 #                if ( $@ ) {
 #                    die "Can't load your Response module '$resultType': $@";
 #                };
-        eval "use WWW::Search::Scraper::Response$resultType; \$hit = new WWW::Search::Scraper::Response$resultType(\$self)";
-        if ( $@ ) {
-            die "Can't instantiate your Response module '$resultType': $@";
-        };
+#        eval "use WWW::Search::Scraper::Response$resultType; \$hit = new WWW::Search::Scraper::Response$resultType(\$self)";
+        $hit = new WWW::Search::Scraper::Response($self->{'scraperName'}, $scraperFrame, $scraperDetailFrame);
+        die "Can't instantiate your Response module '$resultType': $!" unless $hit;
+        $hit->_ScraperEngine($self);
     }
     return $hit;
 }
@@ -1103,17 +1275,19 @@ sub addURL {
    {
       my ($url) = new URI::URL($1, $self->{_base_url});
       $url = $url->abs();
-      $hit->add_url($url);
+      $hit->plug_url($url);
    } else
    {
-      $hit->add_url("Can't find HREF in '$dat'");
+      $hit->plug_url("Can't find HREF in '$dat'");
    }
 
    return trimTags($self, $hit, $dat);
 }
 
-
-sub trimTags { # Strip tag clutter from $_;
+# trimTags
+#
+# Strip tag clutter from $dat, in the context of $hit.
+sub trimTags {
     my ($self, $hit, $dat) = @_;
    # This simply rearranges the parameter list from the datParser form.
     $dat =~ s/<br>/\n/gi;
@@ -1139,7 +1313,24 @@ sub trimLFLFs { # Strip double-LFs, then tag clutter from $_;
     return $dat;
 }
 
-sub removeScriptsInXML {
+# XML::XPath seems to keep a blank, the attribute name, and the '=' sign in the result.
+#       Is this standard XPath conventions? useless to us, though.
+sub trimXPathAttr {
+    my ($self, $hit, $dat) = @_;
+    $dat =~ s/^ \w+?=(['"])(.*)\1$/$2/;
+    return $dat;
+}
+# This does trimXPathAttr, then converts the result to an absolute URL.
+sub trimXPathHref {
+    my ($self, $hit, $dat) = @_;
+    $dat =~ m/^ \w+?=(['"])(.*)\1$/;
+    my ($url) = new URI::URL($2, $self->{_base_url});
+    $url = $url->abs();
+    $url = WWW::Search::Scraper::unescape_query($url);
+    return $url;
+}
+
+sub removeScriptsInHTML {
     my ($self, $hit, $xml) = @_;
     
     # Strip out some regions that contain no information, but might be ill-formed output of "Tidy".
@@ -1151,6 +1342,15 @@ sub removeScriptsInXML {
     }
     $self->{'removedScripts'} = \$removedScripts;
     
+    return $xml;
+}
+
+# Remove everything between </HEAD> and <BODY> - this confuses TidyXML.
+sub cleanupHeadBody {
+    my ($self, $hit, $xml) = @_;
+    $$xml =~ s-<html>(.*)<head>-<html><head>-gsi;
+    $$xml =~ s-</head>(.*)<body>-</head><body>-gsi;
+    $self->{'cleanedupHeadBody'} = \$1;
     return $xml;
 }
 
@@ -1233,64 +1433,16 @@ sub findNextFormInXML {
     return undef;
 }
 
-
-
-{ package WWW::Search;
-sub getName {
-   return $_[0]->{'scraperName'};
-}
-
-}
-
-
-
-{
-    package LWP::RobotUA;
-
-# Dice always redirects the first query page via 302 status code.
-# BAJobs frequently (but not always) redirects via 302 status code.
-# We need to tell LWP::RobotUA that it's ok to redirect on Dice and BAJobs.
-sub redirect_ok
-{
-    # draft-ietf-http-v10-spec-02.ps from www.ics.uci.edu, specify:
-    #
-    # If the 30[12] status code is received in response to a request using
-    # the POST method, the user agent must not automatically redirect the
-    # request unless it can be confirmed by the user, since this might change
-    # the conditions under which the request was issued.
-    
-    my($self, $request) = @_;
-    return 1 if $request->uri() =~ m-seeker\.dice\.com/jobsearch/jobsearch_r\.epl-i;
-    return 1 if $request->uri() =~ m-seeker\.dice\.com/jobsearch/resultSummary\.epl-i;
-#    return 1 if $request->uri() =~ m-jobsearch\.dice\.com/jobsearch/jobsearch\.cgi-i;
-    return 1 if $request->uri() =~ m-www\.bajobs\.com/jobseeker/searchresults\.jsp-i;
-    return 1 if $request->uri() =~ m-\.techies\.com/Common-i;
-    return 0 if $request->method eq "POST";
-    1;
-}
-}
-
-
-##################### < E X C E P T I O N S > ######################
-# some kind of problem with URI in LWP since LWP(5.60)
-eval <<EOT
-    use URI::http;
-    { package URI::http;
-    sub abs {
-        my \$self = shift;
-        return \$self->SUPER::abs(\@_) if \$_[0];
-        return \$self->canonical(\@_);
+sub unescape_query {
+    # code stolen, and enhanced, from URI::Escape.pm.
+    my @copy = @_;
+    for (@copy) {
+	    s/\+/ /g;
+        s/\&amp;/&/g;
+    	s/%([\dA-Fa-f]{2})/chr(hex($1))/eg;
     }
-    use URI::https;
-    { package URI::https;
-    sub abs {
-        my \$self = shift;
-        return \$self->SUPER::abs(\@_) if \$_[0];
-        return \$self->canonical(\@_);
-    }
-EOT
-if ( ($LWP::VERSION ge '5.60') and ($LWP::VERSION le '5.63') );
-#################### < / E X C E P T I O N S > #####################
+    return wantarray ? @copy : $copy[0];
+}
 
 1;
 
@@ -1529,6 +1681,33 @@ There are two forms of the C<A> command since some loosely coded HTML will suppl
 This creates some disturbing results sometimes, so if your data is in an anchor where the HREF is
 provided without quotes, then the C<AN> operation will parse it more reliably.
 
+=item XPath
+
+Find significant data by specifying the XPath to that data's region. 
+This requires the TidyXML method to convert HTML to well-formed XML.
+
+    [ 'XPath', 'font/a/@href', 'url', \&trimXPathHref ]
+
+This finds the HREF attribute of the anchor in the <font> element, processes it with the trimXPathHref function,
+then assigns it to the 'url' response field.
+
+See F<http://www.w3.org/TR/xpath> to learn how to code "location paths" in the XPath language.
+
+See FlipDog.pm and Dogpile.pm for examples of 'XPath' in Scraper engines.
+
+=item TidyXML
+
+Instead of 'HTML', use 'TidyXML' to convert the HTML to well-formed XML before processing.
+This changes the structure slightly, but especially it makes it accessible to the XPath method for locating data.
+
+    [ 'TidyXML', \&cleanupHeadBody, \&removeScriptsInHTML, [ [ frame ] ] ]
+
+The functions (cleanupHeadBody() and removeScriptsInHTML) are executed on the HTML before handing it to TidyXML.
+These two functions are handy, in that TidyXML doesn't like stuff in </HEAD>. . .<BODY> (which some engines produce),
+and scripts in some engines results often contain unrecognized entities, but are otherwise useless content to us.    
+
+See FlipDog.pm and Brainpower (detail page) for examples.
+
 =item HIT*
 
 This command declares that the hits are about to be coming!
@@ -1541,6 +1720,17 @@ The last parameter (being second or third parameter, depending if you declare a 
 as described here, for parsing all the data for one complete record.
 HIT* will process that script, instantiate a Response object, stash the results into it, discarding the parsed text,
 and continuing until there is no more parsable data to be found.
+
+=item FOR
+
+For iteration - specify a interator name, and a "for" condition in "i..j" format.
+The contained frame is executed for each value in the range "i" to "j".
+The current iteration can be substituted into XPath strings using the function "for(iteratorName)".
+
+    [ 'FOR', 'myInterator', '3..7', [ [ frame ] ] ]
+
+See FlipDog.pm for an example
+
 
 =item REGEX
 
@@ -1850,11 +2040,11 @@ See F<WWW::Search::Scraper::Request.pm> for more information on Translations.
 
 =head1 AUTHOR
 
-Glenn Wood, Chttp://search.cpan.org/search?mode=author&query=GLENNWOOD.
+Glenn Wood, http://search.cpan.org/search?mode=author&query=GLENNWOOD.
 
 =head1 COPYRIGHT
 
-Copyright (C) 2001 Glenn Wood. All rights reserved.
+Copyright (C) 2001-2002 Glenn Wood. All rights reserved.
 This program is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself.
 

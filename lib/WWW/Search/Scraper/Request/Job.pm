@@ -14,7 +14,7 @@ use Class::Struct;
                 ,'_engines' => '%'
                 ,'_native_query' => '$'
                 ,'_native_options' => '$'   # reference to hash of native_options.
-                ,'Scraper_debug'  => '$'
+                ,'_Scraper_debug'  => '$'
                 # Now for the Job specific members.
                 ,'skills'    => '$'
                 ,'locations' => '$'

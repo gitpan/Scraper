@@ -6,26 +6,10 @@ package WWW::Search::Scraper::FlipDog;
 use strict;
 use vars qw(@ISA $VERSION);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/);
 
-use WWW::Search::Scraper(qw(1.48 trimLFs trimLFLFs removeScriptsInXML));
+use WWW::Search::Scraper(qw(1.48 trimLFs trimLFLFs removeScriptsInHTML trimTags trimXPathHref));
 
-sub resultsX
-  {
-  my $self = shift;
-  print STDERR " + results(",$self->{'native_query'},")\n" if $self->{debug};
-  Carp::croak "search not yet specified" if (!defined($self->{'native_query'}));
-  # Put all the SearchResults into the cache:
-  print "1\n" while ($self->retrieve_some());
-  if ($#{$self->{cache}} >= $self->{maximum_to_retrieve})
-    {
-    return @{$self->{cache}}[0..($self->{maximum_to_retrieve}-1)];
-    }
-  else 
-    {
-    return @{$self->{cache}};
-    }
-  } # results
 
 # SAMPLE
 # http://www.flipdog.com/js/jobsearch-results.html?loc=CA-San+Jose+Area&cat=Computing%2FMIS-Software+Development&srch=Perl&job=1
@@ -44,7 +28,8 @@ my $scraperQuery =
      ,'fieldTranslations' =>
              {
                  '*' =>
-                     {    '*'             => '*'
+                     {    'location' => 'loc'
+                         ,'*'        => '*'
                      }
              }
       # Some more options for the Scraper operation.
@@ -52,60 +37,51 @@ my $scraperQuery =
    };
 
 my $scraperFrame =
-[ 'TidyXML', \&removeScriptsInXML, 
+[ 'TidyXML', \&removeScriptsInHTML, 
     [ 
-        [ 'COUNT', 'var jobTotal = (\d+)' ]
+        [ 'COUNT', '<b>(\d+)</b>\s+jobs\s+shown\s+below' ]
        ,[ 'NEXT', \&getNextPage ]
-       ,[ 'XML', 'html.body.table(5)', 
-            [  
-                [ 'HIT*', 'Job',
-                    [ 
-                        [ 'XML', 'tr' ] # waste one leading row . . .
-                       ,[ 'XML', 'tr' ] # waste two leading rows . . .
-                       ,[ 'XML', 'tr',
-                            [
-                                [ 'XML', 'td(3)', 
+       ,[ 'FOR', 'fiveSix', '5..6', # Sometimes FlipDog offers "Premium" listings in an extra table.
+           [
+               [ 'XPath', '/html/body/table[for(fiveSix)]', 
+                    [  
+                        [ 'HIT*',
+                            [ 
+                                [ 'XPath', 'tr[ ( hit() * 4 ) - 1 ]',
                                     [
-                                        [ 'A', 'url', 'title', \&trimLFs ]
-                                       ,[ 'A', 'companyProfileURL', 'company', \&trimLFs ]
-                                       ,[ 'XML', 'div', 'description' ]
+                                        [ 'XPath', 'td[3]', 
+                                            [
+                                                [ 'XPath', 'div', 'description', \&trimTags ] # This is there only on "Premium" listings.
+                                               ,[ 'XPath', 'font/a/@href', 'url', \&trimXPathHref ]
+                                               ,[ 'XPath', 'font/a/text()', 'title', \&trimLFs ]
+                                               ,[ 'XPath', 'font/a[2]/@href', 'companyURL', \&trimXPathHref ]
+                                               ,[ 'XPath', 'font/a[2]/text()', 'company', \&trimLFs ]
+                                            ]
+                                        ]
+                                       ,[ 'XPath', 'td[4]', 'postDate', \&trimTags, \&trimLFs ]
+                                       ,[ 'XPath', 'td[5]', 
+                                           [
+                                                [ 'XPath', 'font/a/@href', 'locationURL', \&trimXPathHref ]
+                                               ,[ 'XPath', 'font/a/text()', 'location', \&trimLFs ]
+                                           ]
+                                        ]
                                     ]
                                 ]
-                               ,[ 'TD', 'location', \&parseLocation ]
-                               ,[ 'XML', 'td', 'postingDate' ]
                             ]
                         ]
-                       ,[ 'XML', 'tr' ] # waste one trailing row . . .
-                    ]
-                ]
-            ]
-        ]
-       ,[ 'XML', 'html.body.table(5)', 
-            [  
-                [ 'HIT*', 'Job',
-                    [ 
-                        [ 'XML', 'tr' ] # waste one leading row . . .
-                       ,[ 'XML', 'tr' ] # waste two leading rows . . .
-                       ,[ 'XML', 'tr',
-                            [
-                               [ 'XML', 'td(3)', 
-                                [
-                                   [ 'A', 'url', 'title', \&trimLFs ]
-                                  ,[ 'A', 'companyProfileURL', 'company', \&trimLFs ]
-                                ]
-                              ,[ 'XML', 'div', 'description' ]
-                            ]
-                           ,[ 'TD', 'location', \&parseLocation ]
-                           ,[ 'XML', 'td', 'postingDate' ]
-                            ]
-                        ]
-                       ,[ 'XML', 'tr' ] # waste one trailing row . . .
                     ]
                 ]
             ]
         ]
     ]
 ];
+
+
+sub init {
+    my ($self) = @_;
+    $self->searchEngineHome('http://www.FlipDog.com');
+    $self->searchEngineLogo('<IMG SRC="http://www.flipdog.com/images/nav/flipdog_job_careers_here.gif">');
+}
 
 
 sub testParameters {
@@ -116,10 +92,10 @@ sub testParameters {
     }
     
     return {
-                 'isNotTestable' => &WWW::Search::Scraper::TidyXML::isNotTestable() 
+                 'isNotTestable' => ''
                 ,'testNativeQuery' => 'Java'
                 ,'expectedOnePage' => 5
-                ,'expectedMultiPage' => 11
+                ,'expectedMultiPage' => 21
                 ,'expectedBogusPage' => 0
            };
 }
@@ -130,20 +106,6 @@ sub scraperFrame { $_[0]->SUPER::scraperFrame($scraperFrame); }
 sub scraperDetail{ undef }
 
 
-
-##############################################################
-# The text in this <TD> element are four lines representing
-# postDate, location, jobCategory and jobType. Parse that here.
-sub parseLocation {
-    my ($self, $hit, $dat) = @_;
-    $dat = $self->trimLFLFs($hit, $dat);
-    $dat =~ m/\n(.*?)\n(.*?)\n(.*?)\n(.*)/s;
-    $hit->_elem('postDate', $1);
-#    $self->_elem('location', $2);
-    $hit->_elem('jobCategory', $3);
-    $hit->_elem('jobType', $4);
-    return $2;
-}
 
 
 ###############################################

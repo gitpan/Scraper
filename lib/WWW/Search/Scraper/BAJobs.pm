@@ -6,7 +6,7 @@ package WWW::Search::Scraper::BAJobs;
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.16 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.17 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(1.48 generic_option addURL trimTags));
@@ -46,7 +46,7 @@ my $scraperQuery =
                             {
                                  'searchKeywordsMethod' => 1
                                 ,'wholeWord' => 'true'
-                                ,'displayResultsPerPage' => '100'
+                                ,'displayResultsPerPage' => '50' #'100' we can do 100, but test.pl frequently can't test multipage, then.
                                 ,'displaySortOrder' => 1
                                 ,'postingAge' => '7'
                                 ,'countyList' => ''
@@ -102,6 +102,12 @@ my $scraperFrame =
         ];
 
 
+sub init {
+    my ($self) = @_;
+    $self->searchEngineHome('http://www.BAJobs.com');
+    $self->searchEngineLogo('<IMG SRC="http://www.bajobs.com/graphics/bajlogo118x80.gif">');
+}
+
 sub testParameters {
     my ($self) = @_;
 
@@ -113,9 +119,9 @@ sub testParameters {
     my $isNotTestable = WWW::Search::Scraper::isGlennWood()?0:0;
     return { 
              'isNotTestable' => $isNotTestable
-            ,'testNativeQuery' => 'Service'
+            ,'testNativeQuery' => 'Sales'
             ,'expectedOnePage' => 9
-            ,'expectedMultiPage' => 101
+            ,'expectedMultiPage' => 51
             ,'expectedBogusPage' => 0
            };
 }

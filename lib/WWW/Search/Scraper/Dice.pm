@@ -3,7 +3,7 @@ package WWW::Search::Scraper::Dice;
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.13 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.14 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Search::Scraper(qw(1.48 generic_option trimTags addURL));
 use WWW::Search::Scraper::FieldTranslation;
@@ -56,8 +56,8 @@ my $scraperFrame =
                [  
                   [ 'DL',                       # meaning detail is in a definition list
                      [
-                        [ 'DT', 'title', \&titleJobID ] # meaning that the job description link is here, in the definition term, 
-                       ,[ 'DD', 'location', \&touchupLocation ] # meaning the location is in the definition data.
+                        [ 'DT', [[ 'F', \&titleJobID, 'url', 'title', 'jobID' ]] ] # meaning that the job description link is here, in the definition term, 
+                       ,[ 'DD', [[ 'F', \&touchupLocation, 'location', 'description']] ] # meaning the location is in the definition data.
                        ,[ 'RESIDUE', 'residue' ]
                      ]
                   ]
@@ -67,6 +67,11 @@ my $scraperFrame =
       ];
 
 
+sub init {
+    my ($self) = @_;
+    $self->searchEngineHome('http://www.Dice.com');
+}
+
 sub testParameters {
     my ($self) = @_;
     
@@ -75,7 +80,7 @@ sub testParameters {
     }
     
     # 'POST' style scraperFrames can't be tested cause of a bug in WWW::Search(2.2[56]) !
-    my $isNotTestable = WWW::Search::Scraper::isGlennWood()?0:0;
+    my $isNotTestable = WWW::Search::Scraper::isGlennWood()?0:'Dice is so dicey; one moment it works, the next moment it doesn\'t (it mostly works, though)';
     return {
                  'isNotTestable' => $isNotTestable
                 ,'testNativeQuery' => 'Perl NOT Java'
@@ -193,13 +198,11 @@ sub native_retrieve_someX
 
 sub titleJobID {
     my ($self, $hit, $dat) = @_;
-    $self->addURL($hit, $dat);
     $dat = $self->trimTags($hit, $dat);
     if ( $dat =~ /^(.*?) - (.*)$/s ) {
-        $self->_elem('jobID', $1);
-        return $2;
+        return ($dat,$2,$1);
     } else {
-        return $dat;
+        return ($dat,$dat, '');
     }
 }
 
@@ -213,16 +216,15 @@ sub touchupLocation {
    $dat = WWW::Search::Scraper::trimTags($self, $hit, $dat);
    if ( $dat =~ m/(.+-\d+.+)-(.*)/si )
    {
-      $hit->_elem('description', $2);
-      return $1;
+      return ($1, $2);
    } else
    {
-      return "WWW::Search::Dice.pm can't find location-description in '$dat'";
+      return ($dat, "WWW::Search::Dice.pm can't find location-description in '$dat'");
    }
 }
 
 
-sub newHit {
+sub newHitX {
     my $self = new WWW::Search::Scraper::Response::Job::Dice;
     return $self;
 }

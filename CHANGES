@@ -1,6 +1,11 @@
 
 Revision history for WWW::Search::Scraper (::*).
 
+v2.18 - Added BayAreaHelpWanted.com, and ZIPplus4 (ZIP+4 Code Look-up).
+	Added auto-sub-classing of responses via Response.pm and each scraper "frame".
+	Added lazy-access to field values resident on the detail page (via auto-sub-classing).
+	Added 'XPath' as scraping option.
+	Added Lycos.
 v2.17 - Added Beaucoup - yup! Beaucoup's Super Search!
 	More verbose reports from "make test" (see file 'test.trace' after "make test")
 v2.16 - Special fixes to make Scraper work with LWP versions between 5.60 and 5.63

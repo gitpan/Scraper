@@ -6,9 +6,9 @@ package WWW::Search::Scraper::Beaucoup;
 use strict;
 use vars qw(@ISA $VERSION);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.1 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/);
 
-use WWW::Search::Scraper(qw(1.48 trimLFs trimLFLFs removeScriptsInXML));
+use WWW::Search::Scraper(qw(1.48 trimLFs trimLFLFs));
 
 # SAMPLE
 # http://www.Beaucoup.com/js/jobsearch-results.html?loc=CA-San+Jose+Area&cat=Computing%2FMIS-Software+Development&srch=Perl&job=1
@@ -22,8 +22,10 @@ my $scraperQuery =
      ,'nativeDefaults' =>
                       {    'phrases' => 'off'
                           ,'rpp' => '10'
-                          ,'Beaucoup' => 'cb'
+                          ,'cb' => 'Beaucoup'
                           ,'qtype' => '0'
+                          ,'lang' => '1'
+                          ,'timeout' => '4'
                           ,'Search.x' => 1
                           ,'Search.y' => 1
                       }
@@ -74,8 +76,8 @@ sub testParameters {
                  'isNotTestable' => &WWW::Search::Scraper::TidyXML::isNotTestable() 
                 ,'testNativeQuery' => 'search scraper'
                 ,'expectedOnePage' => 5
-                ,'expectedMultiPage' => 15
-                ,'expectedBogusPage' => 0
+                ,'expectedMultiPage' => 11
+                ,'expectedBogusPage' => 2000
            };
 }
 

@@ -2,6 +2,29 @@
 # $Name:  $
 
 use ExtUtils::MakeMaker;
+
+{   package MM;
+sub new {
+    my $self = shift;
+    use WWW::Search;
+    if ( $WWW::Search::VERSION eq '2.26' ) {
+        warn <<EOT;
+
+>    Warning: You are using WWW::Search version 2.25.
+>    That version of WWW::Search contains a bug in the POST method that
+>    makes several Scraper modules fail. Unfortunately, the \$VERSION in
+>    WWW::Search::Search.pm(2.25) reads "2.26", and the \$VERSION in 
+>    WWW::Search::Search.pm(2.26) reads "2.28", so Scraper cannot simply
+>    recommend that you "upgrade to 2.28" - that would be confusing (since 
+>    there is no WWW::Search(2.28) as yet).
+>    Instead, we (Makefile.PL) recommend that you upgrade to WWW::Search(2.26)!
+>    (ignore the subsequent message "prerequisite WWW::Search 2.28 not found")
+    
+EOT
+    }
+    $self->SUPER::new(@_);
+}
+}
 # See lib/ExtUtils/MakeMaker.pm for details of how to influence
 # the contents of the Makefile that is written.
 
@@ -9,7 +32,7 @@ WriteMakefile(
     'NAME'	=> 'Scraper',
     'VERSION_FROM' => "lib/WWW/Search/Scraper.pm", # finds $VERSION
     # test.pl uses this hash, also, to poll all modules we depend on
-    'PREREQ_PM' => { 'WWW::Search' => 2.26
+    'PREREQ_PM' => { 'WWW::Search' => 2.28
                     ,'LWP' => 5.48
                         ,'URI' => 0.0
                         ,'URI::URL' => 0.0
@@ -28,6 +51,8 @@ WriteMakefile(
                     ,'Text::ParseWords' => 3.2
                     ,'Storable' => 0.6
                     ,'Tie::Persistent' => 0.901
+                    ,'XML::XPath' => 1.04
+
                    },
     ($] ge '5.005') ? (
                      'AUTHOR' => 'Glenn Wood http://search.cpan.org/search?mode=author&query=GLENNWOOD',

@@ -31,7 +31,7 @@ modify it under the same terms as Perl itself.
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper::Response);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.1 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/);
 use WWW::Search::Scraper::Response;
 
 sub resultTitles {
