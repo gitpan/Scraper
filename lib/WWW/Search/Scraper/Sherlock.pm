@@ -175,7 +175,7 @@ sub native_setup_search
     $self->user_agent('user');
     $self->{_next_to_retrieve} = 0;
 
-    $self->{'scraperQuery'} = 
+    $self->{'scraperRequest'} = 
         { 
               'type' => 'SHERLOCK'    # This is a WWW::Search module - notify native_setup_search_NULL() of that.
               # This is the basic URL on which to build the query.
@@ -183,7 +183,7 @@ sub native_setup_search
               # names the native input field to recieve the query string.
              ,'nativeQuery' => 'query'
               # specify defaults, by native field names
-             ,'nativeDefaults' => { }
+             ,'nativeDefaults' => { 'query' => undef }
              ,'fieldTranslations' => undef # This gives us a null %inputsHash, so WWW::Search::Scraper will ignore that functionality (hopefully)
              , 'cookies' => 0 # The WWW::Search module must maintain its own cookies.
         };
@@ -329,7 +329,7 @@ sub native_setup_search
     $self->{'_next_url'} = $self->{'_options'}{'search_url'} .'?'. $options . 
                                 $self->{'sherlockNativeQuery'} . '=' .$native_query;
 
-    #use Data::Dumper; print Dumper($self);
+    $self->SetRequest( new WWW::Search::Scraper::Request({$self->{'scraperRequest'}->{'nativeQuery'} => $native_query}) );
     print STDERR $self->{_base_url} . "\n" if $self->ScraperTrace('U');
 }
 
@@ -351,7 +351,7 @@ sub testParameters {
            };
 }
 
-sub scraperQuery { return $_[0]->{'scraperQuery'}; }
+sub scraperRequest { return $_[0]->{'scraperRequest'}; }
 
 ##########################################################################
 # Handles "attribute" specifications of the form:

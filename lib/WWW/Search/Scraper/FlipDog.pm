@@ -13,7 +13,7 @@ use WWW::Search::Scraper(qw(1.48 trimLFs trimLFLFs removeScriptsInHTML trimTags 
 
 # SAMPLE
 # http://www.flipdog.com/js/jobsearch-results.html?loc=CA-San+Jose+Area&cat=Computing%2FMIS-Software+Development&srch=Perl&job=1
-my $scraperQuery = 
+my $scraperRequest = 
    { 
       'type' => 'QUERY'       # Type of query generation is 'QUERY'
      # This is the basic URL on which to build the query.
@@ -25,6 +25,7 @@ my $scraperQuery =
                           ,'cat' => 'Computing/MIS-Software Development'
                           ,'job' => '1'
                       }
+     ,'defaultRequestClass' => 'Job'
      ,'fieldTranslations' =>
              {
                  '*' =>
@@ -101,7 +102,7 @@ sub testParameters {
 }
 
 # Access methods for the structural declarations of this Scraper engine.
-sub scraperQuery { $scraperQuery }
+sub scraperRequest { $scraperRequest }
 sub scraperFrame { $_[0]->SUPER::scraperFrame($scraperFrame); }
 sub scraperDetail{ undef }
 

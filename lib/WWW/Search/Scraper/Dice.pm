@@ -8,7 +8,7 @@ $VERSION = sprintf("%d.%02d", q$Revision: 1.17 $ =~ /(\d+)\.(\d+)/);
 use WWW::Search::Scraper(qw(1.48 generic_option trimTags addURL));
 use WWW::Search::Scraper::FieldTranslation;
 
-my $scraperQuery = 
+my $scraperRequest = 
    { 
       'type' => 'POST'       # Type of query generation is 'POST'
      ,'redirectMethod' => 'GET' # Let me quote W3C HTTP 1.1 Specification (at http://www.w3.org/Protocols/rfc2068/rfc2068)
@@ -22,6 +22,7 @@ my $scraperQuery =
      ,'url' => 'http://jobsearch.dice.com/jobsearch/jobsearch.cgi?'
       # This is the Scraper attributes => native input fields mapping
       ,'nativeQuery' => 'query'
+      ,'defaultRequestClass' => 'Job'
       ,'nativeDefaults' =>
            {
                'Search.x' => 1,'Search.y' => 1,
@@ -82,7 +83,7 @@ sub testParameters {
     # 'POST' style scraperFrames can't be tested cause of a bug in WWW::Search(2.2[56]) !
     return {
                  'SKIP' => ''
-                ,'TODO' => "Dice is dicey; one moment it works, the next moment it doesn\'t (it mostly works, though)\nUses POST: certain versions of WWW::Search (2.25 to name one) fail with POSTs."
+                ,'TODO' => "Dice is dicey; one moment it works, the next moment it doesn\'t (it mostly works, though)\nUses POST: certain versions of WWW::Search (2.25, aka 2.27, to name one) fail with POSTs."
                 ,'testNativeQuery' => 'Perl NOT Java'
                 ,'expectedOnePage' => 9
                 ,'expectedMultiPage' => 21
@@ -92,7 +93,7 @@ sub testParameters {
 }
 
 # Access methods for the structural declarations of this Scraper engine.
-sub scraperQuery { $scraperQuery }
+sub scraperRequest { $scraperRequest }
 sub scraperFrame { $scraperFrame }
 sub scraperDetail{ undef }
 

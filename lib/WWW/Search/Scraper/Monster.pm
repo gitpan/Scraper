@@ -12,7 +12,7 @@ use WWW::Search::Scraper(qw(1.48 generic_option findNextForm trimLFs));
 use WWW::Search::Scraper::Response::Job;
 use WWW::Search::Scraper::FieldTranslation(1.00);
 
-my $scraperQuery = 
+my $scraperRequest = 
    { 
       'type' => 'QUERY'       # Type of query generation is 'QUERY'
       # This is the basic URL on which to build the query.
@@ -24,6 +24,7 @@ my $scraperQuery =
                           ,'cy'  => 'US'
                           ,'fn'  => '6'
                       }
+     ,'defaultRequestClass' => 'Job'
      ,'fieldTranslations' =>
              { '*' => 
                   {    'skills'    => 'q'
@@ -81,7 +82,7 @@ sub testParameters {
 
 
 # Access methods for the structural declarations of this Scraper engine.
-sub scraperQuery { $scraperQuery; }
+sub scraperRequest { $scraperRequest; }
 sub scraperFrame { $_[0]->SUPER::scraperFrame($scraperFrame); }
 sub scraperDetail{ undef }
 

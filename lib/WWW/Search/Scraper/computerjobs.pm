@@ -7,7 +7,7 @@ use vars qw($VERSION @ISA);
 $VERSION = sprintf("%d.%02d", q$Revision: 1.12 $ =~ /(\d+)\.(\d+)/);
 use WWW::Search::Scraper(qw(1.48 trimLFs testParameters));
 
-my $scraperQuery = 
+my $scraperRequest = 
    { 
       'type' => 'QUERY'       # Type of query generation is 'QUERY'
       # This is the basic URL on which to build the query.
@@ -15,6 +15,7 @@ my $scraperQuery =
       # This is the Scraper attributes => native input fields mapping
      ,'nativeQuery' => 's_kw'
      ,'nativeDefaults' => {}
+     ,'defaultRequestClass' => 'Job'
      ,'fieldTranslations' =>
              {
                  '*' =>
@@ -72,7 +73,7 @@ sub testParameters {
     }
     
     return { 
-             'SKIP' => 'computerjobs.pm has known problem with timeout'
+             'SKIP' => ''
             ,'testNativeQuery' => 'Perl'
             ,'expectedOnePage' => 9
             ,'expectedMultiPage' => 11
@@ -81,7 +82,7 @@ sub testParameters {
 }
 
 # Access methods for the structural declarations of this Scraper engine.
-sub scraperQuery { $scraperQuery }
+sub scraperRequest { $scraperRequest }
 sub scraperFrame { $_[0]->SUPER::scraperFrame($scraperFrame); }
 sub scraperDetail{ undef }
 

@@ -128,7 +128,7 @@ use strict;
 # SAMPLE
 # "http://" + marketurl + ".techies.com/Common/Includes/Main/Search_Session_include_m.jsp?Search=" + escape(searchString)
 #
-my $scraperQuery = 
+my $scraperRequest = 
    { 
       'type' => 'QUERY'       # Type of query generation is 'QUERY'
      # This is the basic URL on which to build the query.
@@ -198,19 +198,18 @@ sub testParameters {
 }
 
 # Access methods for the structural declarations of this Scraper engine.
-sub scraperQuery  { $scraperQuery }
-sub scraperRequest{ return $_[0]->request() }
+sub scraperRequest  { $scraperRequest }
 sub scraperFrame  { $_[0]->SUPER::scraperFrame($scraperFrame); }
 sub scraperDetail { undef }
 
 sub techiesLocation {
-    $_[0]->scraperQuery()->{'nativeDefaults'}{'Location'} = $_[1];
+    $_[0]->scraperRequest()->{'nativeDefaults'}{'Location'} = $_[1];
 }
 
 
 sub makeURL {
     my ($self, $native_query, $native_options_ref) = @_;
-    my $location = $self->scraperQuery()->{'nativeDefaults'}{'Location'};
+    my $location = $self->scraperRequest()->{'nativeDefaults'}{'Location'};
     unless ( defined $location ) {
         print STDERR "www.techies.com requires that you set a native value for 'Location'.\nSee http://www.techies.com, and set with method Scraper::techies::techiesLocation().\n";
         return undef;

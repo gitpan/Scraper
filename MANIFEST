@@ -3,6 +3,7 @@ Makefile.PL
 README
 CHANGES
 lib/WWW/Search/Scraper.pm
+lib/WWW/Search/ScraperPOD.pm
 lib/WWW/Search/Scraper/apartments.pm
 lib/WWW/Search/Scraper/BAJobs.pm
 lib/WWW/Search/Scraper/BAJobs.Job.locations
@@ -36,6 +37,7 @@ lib/WWW/Search/Scraper/Response/Job.pm
 lib/WWW/Search/Scraper/Response/Sherlock.pm
 lib/WWW/Search/Scraper/TidyXML.pm
 lib/WWW/Search/Scraper/ZIPplus4.pm
+lib/WWW/Search/Scraper/Request/ZIPplus4.pm
 eg/SearchApartments.pl
 eg/SearchJobs.pl
 eg/Sherlock.pl

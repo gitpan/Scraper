@@ -21,7 +21,7 @@ my($Have_Plan) = 0;
 my $Curr_Test = 0;
 
 
-=head1 NAME
+=head1 NAME_TEST
 
 Test::Builder - Backend for building test libraries
 

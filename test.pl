@@ -5,11 +5,7 @@ use ExtUtils::testlib;
 use lib 't/lib','../blib/lib','./blib/lib';
 use Test::More;
 $VERSION = sprintf("%d.%02d", q$Revision: 1.15 $ =~ /(\d+)\.(\d+)/);
-
-#my $warn = $^W;
-#$^W = 0;
-#$^W = $warn if WWW::Search::Scraper::isGlennWood();
-
+my @TestTheseOnly;# = qw(Sherlock); # this is active only when WWW::Search::Scraper::isGlennWood;
 
 ######################### We start with some black magic to print on failure.
 
@@ -59,8 +55,18 @@ EOT
     open TMP, "<MANIFEST";
     my (@modules, @skipModules, @todoModules);
     while (<TMP>) {
-        if ( m-^lib/WWW/Search/Scraper/(\w+)\.pm$- ) {
-    
+        if ( my ($scraperEngine) = m-^lib/WWW/Search/Scraper/(\w+)\.pm$- ) {
+            
+            # If parameters supplied to "make test", then test just those engines.
+            if ( WWW::Search::Scraper::isGlennWood and @TestTheseOnly ) {
+                my $testThis;
+                map { $testThis = ( $scraperEngine eq $_ ) } @TestTheseOnly;
+                unless ( $testThis ) {
+                    TRACE(0, "    - $1 will not be tested: it is not in the \@TestTheseOnly list.\n");
+                    next;
+                }
+            }
+
             my $testParameters;
             eval "use WWW::Search::Scraper::$1; \$testParameters = &WWW::Search::Scraper::$1\::testParameters()";
             if ( $@ ) { # $@ just means the module is not a Scraper sub-class.
@@ -127,10 +133,10 @@ use WWW::Search::Scraper::Request;
     close $traceFile;
 
     if ( $countWarningMessages and WWW::Search::Scraper::isGlennWood() ) {
-        print STDOUT "$countWarningMessages warning".(($countWarningMessages>1)?'s':'').". See file 'test.trace' for details.\n";
+        diag "$countWarningMessages warning".(($countWarningMessages>1)?'s':'').". See file 'test.trace' for details.\n";
     }
     if ( $countErrorMessages ) {
-        print STDOUT "$countErrorMessages test".(($countErrorMessages>1)?'s':'')." had problems. See file 'test.trace' for details.\n";
+        diag "$countErrorMessages test".(($countErrorMessages>1)?'s':'')." had problems. See file 'test.trace' for details.\n";
     }
     if ( $countErrorMessages ) {
         open TMP, "<test.trace";
@@ -158,7 +164,6 @@ sub TestThisEngine {
         return 0;
     }
 
-
 #######################################################################################
 #
 #       BOGUS QUERY 
@@ -171,8 +176,8 @@ sub TestThisEngine {
     my $iResults = 0;
     my ($sQuery, $options, $onePageCount, $multiPageCount, $bogusPageCount) = $oSearch->setupStandardAndExceptionalOptions($sEngine);
     $sQuery = "Bogus" . $$ . "NoSuchWord" . time;
-    my $request = new WWW::Search::Scraper::Request($sQuery);
-    $oSearch->request($request);
+    my $request = new WWW::Search::Scraper::Request($oSearch, $sQuery, $options);
+    $oSearch->SetRequest($request);
 
     my @aoResults = $oSearch->results();
     $iResults = scalar(@aoResults);
@@ -197,10 +202,10 @@ sub TestThisEngine {
 
     # Skip this test if no results are expected anyway.
     if ( $onePageCount ) {
-        my $request = new WWW::Search::Scraper::Request($sQuery, $options);
+        my $request = new WWW::Search::Scraper::Request($oSearch, $sQuery, $options);
 
         $oSearch->native_query($sQuery); # This let's us test pre-v2.00 modules from here, too.
-        $oSearch->request($request);
+        $oSearch->SetRequest($request);
 
         my $maximum_to_retrieve = $onePageCount;
         $oSearch->maximum_to_retrieve($maximum_to_retrieve); # 1 page
@@ -241,9 +246,9 @@ EOT
     if ( $multiPageCount > $onePageCount ) {
         my $maximum_to_retrieve = $multiPageCount; # 2 or 3 pages
         $oSearch->maximum_to_retrieve($maximum_to_retrieve); # 2 or 3 pages
-        my $request = new WWW::Search::Scraper::Request($sQuery);
+        my $request = new WWW::Search::Scraper::Request($oSearch, $sQuery, $options);
         $oSearch->native_query($sQuery); # This let's us test pre-v2.00 modules from here, too.
-        $oSearch->request($request);
+        $oSearch->SetRequest($request);
         $iResults = 0;
         eval { 
             while ( $iResults < $maximum_to_retrieve ) {

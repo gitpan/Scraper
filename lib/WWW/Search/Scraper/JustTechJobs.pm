@@ -666,11 +666,11 @@ This converts to an array tree that looks like this:
 
 #'http://www.justperljobs.com/jperj.nsf/SearchResults?OpenForm&POST=&VISA=&CONT=&ENTL=&STRT=&COMP=&LOCA=&KEYW=Perl&LOGF=AND&NEXT=1'
 #'http://www.JustPerlJobs.com/jperj.nsf/SearchResults?OpenForm&COMP=&CONT=&ENTL=&LOCA=&LOGF=AND&NEXT=1&POST=&SKIL=01&STRT=&VISA=&query=Perl'
-my $scraperQuery = 
+my $scraperRequest = 
    { 
       'type' => 'QUERY'       # Type of query generation is 'QUERY'
       # This is the basic URL on which to build the query.
-     ,'url' => '' # Calculated by scraperQuery().
+     ,'url' => '' # Calculated by scraperRequest().
       # This is the Scraper attributes => native input fields mapping
      ,'nativeQuery' => 'KEYW'
      ,'nativeDefaults' => {
@@ -686,6 +686,7 @@ my $scraperQuery =
                           'NEXT' => '1',
                           'whichTech' => 'Perl'
                       }
+     ,'defaultRequestClass' => 'Job'
      ,'fieldTranslations' =>
               { '*' => 
                       {    'skills'    => 'KEYW'
@@ -743,14 +744,14 @@ sub testParameters {
 
 
 # Access methods for the structural declarations of this Scraper engine.
-sub scraperQuery { 
+sub scraperRequest { 
     my ($self, $native_query, $native_options) = @_;    
 
     $native_options->{'whichTech'} = $self->whichTech() unless $native_options->{'whichTech'};
     my $siteKey = $JustTechJobsDirectories{uc $native_options->{'whichTech'}};
     die "'$native_options->{'whichTech'}' is not a recognized 'whichTech' for JustTechJobs" unless $siteKey;
-    $scraperQuery->{'url'} = $$siteKey[0].'/'.$$siteKey[1];
-    return $scraperQuery;
+    $scraperRequest->{'url'} = $$siteKey[0].'/'.$$siteKey[1];
+    return $scraperRequest;
 }
 
 sub scraperFrame { $_[0]->SUPER::scraperFrame($scraperFrame); }
@@ -772,11 +773,11 @@ sub import
     foreach (@options)
     {
         if ( $_->{'scraperBaseURL'} ) {
-            $scraperQuery->{'url'} = $_->{'scraperBaseURL'};  # new form
+            $scraperRequest->{'url'} = $_->{'scraperBaseURL'};  # new form
         }
         if ( $_->{'whichTech'} ) {
             my $siteKey = $JustTechJobsDirectories{uc $_->{'whichTech'}};
-            $scraperQuery->{'url'} = $$siteKey[0].'/'.$$siteKey[1];
+            $scraperRequest->{'url'} = $$siteKey[0].'/'.$$siteKey[1];
             $package->whichTech($_->{'whichTech'});
         }
     }

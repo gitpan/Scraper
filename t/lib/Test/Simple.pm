@@ -20,7 +20,7 @@ sub import {
 }
 
 
-=head1 NAME
+=head1 NAME_TEST
 
 Test::Simple - Basic utilities for writing tests.
 

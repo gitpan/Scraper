@@ -16,7 +16,7 @@ use WWW::Search::Scraper(qw(2.14 generic_option addURL trimLFs trimTags findNext
 use strict;
 
 # Example query - http://search.lycos.com/main/default.asp?lpv=1&loc=searchhp&query=Perl
-my $scraperQuery = 
+my $scraperRequest = 
         { 
             # This engine is driven from it's <form> page
             'type' => 'QUERY'
@@ -93,7 +93,7 @@ sub testParameters {
     my ($self) = @_;
 
     return {
-                 'SKIP' => &WWW::Search::Scraper::TidyXML::isNotTestable('Dogpile') || "Dogpile.pm is still flaky."
+                 'SKIP' => &WWW::Search::Scraper::TidyXML::isNotTestable('Dogpile')
                 ,'TODO' => "Dogpile is still flaky; I'll let it pass this time."
                 ,'testNativeQuery' => 'turntable'
                 ,'expectedOnePage' => 9
@@ -112,7 +112,7 @@ sub import
     foreach (@options)
     {
         if ( $_->{'scraperBaseURL'} ) {
-            $scraperQuery->{'url'} = $_->{'scraperBaseURL'};
+            $scraperRequest->{'url'} = $_->{'scraperBaseURL'};
         }
     }
 
@@ -121,7 +121,7 @@ sub import
 }
 
 # Access methods for the structural declarations of this Scraper engine.
-sub scraperQuery { $scraperQuery }
+sub scraperRequest { $scraperRequest }
 sub scraperFrame { $_[0]->SUPER::scraperFrame($scraperFrame); }
 
 1;

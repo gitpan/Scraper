@@ -10,7 +10,7 @@ $VERSION = sprintf("%d.%02d", q$Revision: 1.12 $ =~ /(\d+)\.(\d+)/);
 use WWW::Search::Scraper(qw(2.18 trimTags trimLFs removeScriptsInHTML cleanupHeadBody));
 use WWW::Search::Scraper::FieldTranslation(1.00);
 
-my $scraperQuery = 
+my $scraperRequest = 
    { 
       'type' => 'QUERY'       # Type of query generation is 'QUERY'
       # This is the basic URL on which to build the query.
@@ -28,6 +28,7 @@ my $scraperQuery =
                           #,'state' => 5                  # California (North)
                           ,'rate' => ''
                       }
+      ,'defaultRequestClass' => 'Job'
       ,'fieldTranslations' =>
               { '*' => 
                       {    'skills'    => 'skills'
@@ -135,7 +136,7 @@ sub testParameters {
 }
 
 # Access methods for the structural declarations of this Scraper engine.
-sub scraperQuery { $scraperQuery }
+sub scraperRequest { $scraperRequest }
 sub scraperFrame { $scraperFrame }
 sub scraperDetail{ $scraperDetail }
 

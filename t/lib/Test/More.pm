@@ -46,7 +46,7 @@ sub _export_to_level
 }
 
 
-=head1 NAME
+=head1 NAME_TEST
 
 Test::More - yet another framework for writing test scripts
 

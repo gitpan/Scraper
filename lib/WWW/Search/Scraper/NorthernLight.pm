@@ -12,7 +12,7 @@ use Carp ();
 use WWW::Search::Scraper(qw(1.48 generic_option addURL trimTags testParameters));
 use WWW::Search::Scraper::FieldTranslation;
 
-my $scraperQuery = 
+my $scraperRequest = 
    { 
       'type' => 'FORM'       # Type of query generation is 'QUERY'
      ,'formNameOrNumber' => 'powSearch'
@@ -21,7 +21,9 @@ my $scraperQuery =
      ,'url' => 'http://www.northernlight.com/power.html'
       # This is the Scraper attributes => native input fields mapping
       ,'nativeQuery' => 'qr'
-      ,'nativeDefaults' => {}
+      ,'nativeDefaults' => {
+                            'qr' => undef
+                           }
       ,'fieldTranslations' =>
               {
                   '*' =>
@@ -62,7 +64,7 @@ my $scraperFrame =
                            ]
                         ]
                      ] 
-                    ,[ 'BOGUS', -1 ] # NorthernLight's last hit is bogus.
+#                    ,[ 'BOGUS', -1 ] # NorthernLight's last hit is bogus.
                   ]
               ]
            ]
@@ -71,7 +73,7 @@ my $scraperFrame =
 
 
 # Access methods for the structural declarations of this Scraper engine.
-sub scraperQuery { $scraperQuery }
+sub scraperRequest { $scraperRequest }
 sub scraperFrame { $_[0]->SUPER::scraperFrame($scraperFrame); }
 sub scraperDetail{ undef }
 

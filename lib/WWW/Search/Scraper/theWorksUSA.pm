@@ -54,7 +54,7 @@ $VERSION = sprintf("%d.%02d", q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/);
 use WWW::Search::Scraper(qw(1.48 generic_option addURL trimTags));
 use strict;
 
-my $scraperQuery = 
+my $scraperRequest = 
    { 
       'type' => 'FORM'
      ,'formNameOrNumber' => undef
@@ -65,6 +65,7 @@ my $scraperQuery =
      # This is the Scraper attributes => native input fields mapping
      ,'nativeQuery' => 'UserQuery'
      ,'nativeDefaults' => {}
+     ,'defaultRequestClass' => 'Job'
      ,'fieldTranslations' =>
              {
                  '*' =>
@@ -106,7 +107,7 @@ sub testParameters {
 
 
 # Access methods for the structural declarations of this Scraper engine.
-sub scraperQuery { $scraperQuery }
+sub scraperRequest { $scraperRequest }
 sub scraperFrame { $_[0]->SUPER::scraperFrame($scraperFrame); }
 sub scraperDetail{ undef }
 

@@ -15,7 +15,7 @@ use WWW::Search::Scraper(qw(2.12 generic_option addURL trimTags));
 
 use strict;
 
-my $scraperQuery = 
+my $scraperRequest = 
         { 
             # This engine is driven from it's <form> page
             'type' => 'FORM'
@@ -96,7 +96,7 @@ sub import
     foreach (@options)
     {
         if ( $_->{'scraperBaseURL'} ) {
-            $scraperQuery->{'url'} = $_->{'scraperBaseURL'};
+            $scraperRequest->{'url'} = $_->{'scraperBaseURL'};
         }
     }
 
@@ -105,7 +105,7 @@ sub import
 }
 
 # Access methods for the structural declarations of this Scraper engine.
-sub scraperQuery { $scraperQuery }
+sub scraperRequest { $scraperRequest }
 sub scraperFrame { $_[0]->SUPER::scraperFrame($scraperFrame); }
 
 1;

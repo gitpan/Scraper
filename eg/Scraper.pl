@@ -29,7 +29,7 @@ modify it under the same terms as Perl itself.
 use strict;
 use lib './lib';
 use WWW::Search::Scraper(qw(1.48));
-use WWW::Search::Scraper::Request::Job;
+use WWW::Search::Scraper::Request;
 use vars qw($VERSION);
 $VERSION = sprintf("%d.%02d", q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/);
 
@@ -56,10 +56,10 @@ $VERSION = sprintf("%d.%02d", q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/);
         }
     }
 
-    my $request = new WWW::Search::Scraper::Request::Job($query);
+    my $request = new WWW::Search::Scraper::Request($scraper,$query,$options);
     $scraper->setScraperTrace($debug);
     
-    $request->skills($query);
+#    $request->skills($query);
 #    $scraper->native_query($query); # This let's us test pre-v2.00 modules from here, too.
 
 #    $request->locations([ 'CA-San Jose'
@@ -70,16 +70,16 @@ $VERSION = sprintf("%d.%02d", q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/);
 #                         ]);
 
     my %resultTitles;
-    $scraper->request($request);
+    $scraper->SetRequest($request);
 
     my $resultCount = 0;
     while ( my $result = $scraper->next_response() ) {
         # $result->_SkipDetailPage(1);
         $resultCount += 1;
-        %resultTitles = %{$result->resultTitles()};# unless %resultTitles;
-        my %results = %{$result->results()};
+        %resultTitles = %{$result->GetFieldTitles()};# unless %resultTitles;
+        my %results = %{$result->GetFieldValues()};
 #        for ( keys %resultTitles ) {
-        my $fieldNames = $result->_fieldNames();
+        my $fieldNames = $result->GetFieldNames();
         for ( keys %$fieldNames ) {
             #next unless $fieldNames->{$_} == 1;
             my $value = $result->$_();

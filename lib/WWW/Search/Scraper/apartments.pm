@@ -11,7 +11,7 @@ use WWW::Search::Scraper(qw(1.48));
 
 # SAMPLE 
 # http://www.apartments.com/search/oasis.dll?mfcisapicommand=quicksearch&QSearchType=1&city=New%20York&state=NY&numbeds=0&minrnt=0&maxrnt=9999
-my $scraperQuery = 
+my $scraperRequest = 
    { 
       'type' => 'QUERY'       # Type of query generation is 'QUERY'
       # This is the basic URL on which to build the query.
@@ -102,7 +102,7 @@ sub testParameters {
 }
 
 # Access methods for the structural declarations of this Scraper engine.
-sub scraperQuery { $scraperQuery }
+sub scraperRequest { $scraperRequest }
 sub scraperFrame { $_[0]->SUPER::scraperFrame($scraperFrame); }
 sub scraperDetail{ undef }
 

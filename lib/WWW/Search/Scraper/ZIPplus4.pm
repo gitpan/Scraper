@@ -8,14 +8,14 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(2.12 generic_option addURL trimTags));
 
 use strict;
 
-my $scraperQuery = 
+my $scraperRequest = 
         { 
             'type' => 'POST'
 #            ,'formNameOrNumber' => undef
@@ -27,21 +27,22 @@ my $scraperQuery =
            # specify defaults, by native field names
 #           ,'nativeQuery' => 'Delivery+Address'
            ,'nativeDefaults' => { 
-                                    'submit.x' => 1, 'submit.y' => 1 # the Process button.
+                                    'Firm' => ''
                                    ,'Urbanization' => ''
                                 }
             
             # specify translations from canonical fields to native fields
+           ,'defaultRequestClass' => 'ZIPplus4'
            ,'fieldTranslations' =>
                    {
                        '*' =>
                            {     
                                  'Firm' => 'Firm'
                                 ,'Urbanization' => 'Urbanization'
-                                ,'DeliveryAddress' => 'Delivery Address'
+                                ,'Delivery_Address' => 'Delivery Address'
                                 ,'City' => 'city'
                                 ,'State' => 'state'
-                                ,'ZipCode' => 'Zip Code'
+                                ,'Zip_Code' => 'Zip Code'
                            }
                    }
             # Miscellaneous options for the Scraper operation.
@@ -55,10 +56,14 @@ my $scraperFrame =
                [ 
                   [ 'HIT*' ,
                      [  
-                          [ 'REGEX', '<b>(.*?<BR>.*?)<BR>\s*(.*?)\s(..)\s(\d\d\d\d\d-\d\d\d\d)<BR>.*?<b>(.*?)</b>.*?<b>(.*?)</b>.*?<b>(.*?)</b>.*?<b>(.*?)</b>',
-                             'address', 'city', 'state', 'zip', 'carrierRoute', 'county', 'deliveryPoint' , 'checkDigit' ]
-                         ,[ 'REGEX', '<b>(.*?)</b>.*?<b>(.*?)\s(..)\s(\d\d\d\d\d-\d\d\d\d)</b>.*?<b>(.*?)</b>.*?<b>(.*?)</b>.*?<b>(.*?)</b>.*?<b>(.*?)</b>',
-                             'address', 'city', 'state', 'zip', 'carrierRoute', 'county', 'deliveryPoint' , 'checkDigit' ]
+                          [ 'REGEX', '<b>(.*?(<BR>)?.*?)<BR>\s*(.*?)\s(..)\s(\d\d\d\d\d-\d\d\d\d)<BR>.*?<b>(.*?)</b>.*?<b>(.*?)</b>.*?<b>(.*?)</b>.*?<b>(.*?)</b>'
+                            ,'address', undef, 'city', 'state', 'zip', 'carrierRoute', 'county', 'deliveryPoint' , 'checkDigit' ]
+                     ]
+                  ]
+                 ,[ 'HIT*' ,
+                     [  
+                          [ 'REGEX', '<b>(.*?)</b>.*?<b>(.*?)\s(..)\s(\d\d\d\d\d-\d\d\d\d)</b>.*?<b>(.*?)</b>.*?<b>(.*?)</b>.*?<b>(.*?)</b>.*?<b>(.*?)</b>'
+                            ,'address', 'city', 'state', 'zip', 'carrierRoute', 'county', 'deliveryPoint' , 'checkDigit' ]
                      ]
                   ]
                ]
@@ -75,24 +80,24 @@ sub testParameters {
     }
     
     return {
-                 'SKIP' => 'ZIPplus4 test parameters have not yet been fixed' 
-                ,'TODO' => 'Uses POST: certain versions of WWW::Search (2.25 to name one) fail with POSTs.'
+                 'SKIP' => ''#'ZIPplus4 test parameters have not yet been fixed' 
+                ,'TODO' => 'ZIPplus4 test parameters have not yet been fixed'#'Uses POST: certain versions of WWW::Search (2.25 to name one) fail with POSTs.'
                 ,'testNativeQuery' => '94043'
                 ,'testNativeOptions' => {
-                                             'Delivery Address' => '1600 Pennsylvannia Ave'
-                                            ,'city' => 'Washington'
-                                            ,'state' => 'DC'
-                                            ,'Zip Code' => '20500'
+                                             'Delivery_Address' => '1600 Pennsylvannia Ave'
+                                            ,'City' => 'Washington'
+                                            ,'State' => 'DC'
+                                            ,'Zip_Code' => '20500'
                                         }
-                ,'expectedOnePage' => 1
-                ,'expectedMultiPage' => 1
+                ,'expectedOnePage' => 8
+                ,'expectedMultiPage' => 8
                 ,'expectedBogusPage' => 1
            };
 }
 
 
 # Access methods for the structural declarations of this Scraper engine.
-sub scraperQuery { $scraperQuery }
+sub scraperRequest { $scraperRequest }
 sub scraperFrame { $_[0]->SUPER::scraperFrame($scraperFrame); }
 
 1;
@@ -108,26 +113,50 @@ WWW::Search::Scraper::ZIPplus4 - Get ZIP+4 code, given street address, from www.
 
 =head1 SYNOPSIS
 
-    use WWW::Search::Scraper(qw(1.48));
-    use WWW::Search::Scraper::Request::ZIPplus4;
+=over 1
 
-    my $ZIPplus4 = new WWW::Search::Scraper( 'ZIPplus4' );
+=item Simple
 
-    my $request = new WWW::Search::Scraper::Request::ZIPplus4;
-    
-    # Note: DeliveryAddress(), and either ZipCode(), or City() and State(), are required.
-    $request->DeliveryAddress('1600 Pennsylvannia Ave');
-    $request->City('Washington');
-    $request->State('DC');
-    $request->ZipCode('20500');
+ use WWW::Search::Scraper(qw(1.48));
+ use WWW::Search::Scraper::Request::ZIPplus4;
 
-    $ZIPplus4->request($request);
-    while ( my $response = $ZIPplus4->next_response() )
-    {    
-        for ( qw(address city state zip county carrierRoute checkDigit deliveryPoint) ) {
-            print "$_: ".${$response->$_()}."\n";
-        }
-    }
+ my $ZIPplus4 = new WWW::Search::Scraper(
+         'ZIPplus4',
+        ,{   'Delivery_Address' => '1600 Pennsylvannia Ave'
+            ,'City'             => 'Washington'
+            ,'State'            => 'DC'
+            ,'Zip_Code'         => '20500'
+         } );
+
+ while ( my $response = $ZIPplus4->next_response() )
+ {    
+     print $response->zip()."\n";
+ }
+
+=item Complete
+
+ use WWW::Search::Scraper(qw(1.48));
+ use WWW::Search::Scraper::Request::ZIPplus4;
+
+ my $ZIPplus4 = new WWW::Search::Scraper( 'ZIPplus4' );
+
+ my $request = new WWW::Search::Scraper::Request::ZIPplus4;
+ 
+ # Note: Delivery_Address(), and either Zip_Code(), or City() and State(), are required.
+ $request->Delivery_Address('1600 Pennsylvannia Ave');
+ $request->City('Washington');
+ $request->State('DC');
+ $request->Zip_Code('20500');
+
+ $ZIPplus4->scraperRequest($request);
+ while ( my $response = $ZIPplus4->next_response() )
+ {    
+     for ( qw(address city state zip county carrierRoute checkDigit deliveryPoint) ) {
+         print "$_: ".${$response->$_()}."\n";
+     }
+ }
+
+=back
 
 =head1 DESCRIPTION
 

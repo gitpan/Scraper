@@ -12,7 +12,7 @@ use WWW::Search::Scraper(qw(1.48 trimLFs trimLFLFs));
 
 # SAMPLE
 # http://www.Beaucoup.com/js/jobsearch-results.html?loc=CA-San+Jose+Area&cat=Computing%2FMIS-Software+Development&srch=Perl&job=1
-my $scraperQuery = 
+my $scraperRequest = 
    { 
       'type' => 'QUERY'       # Type of query generation is 'QUERY'
      # This is the basic URL on which to build the query.
@@ -20,11 +20,12 @@ my $scraperQuery =
      # This is the Scraper attributes => native input fields mapping
      ,'nativeQuery' => 'query'
      ,'nativeDefaults' =>
-                      {    'phrases' => 'off'
-                          ,'rpp' => '10'
-                          ,'cb' => 'Beaucoup'
-                          ,'qtype' => '0'
-                          ,'lang' => '1'
+                      {    'query'   => undef
+                          ,'phrases' => 'off'
+                          ,'rpp'     => '10'
+                          ,'cb'      => 'Beaucoup'
+                          ,'qtype'   => '0'
+                          ,'lang'    => '1'
                           ,'timeout' => '4'
                           ,'Search.x' => 1
                           ,'Search.y' => 1
@@ -74,7 +75,7 @@ sub testParameters {
     
     return {
                  'SKIP' => &WWW::Search::Scraper::TidyXML::isNotTestable() 
-                ,'testNativeQuery' => 'search scraper'
+                ,'testNativeQuery' => 'turntable'
                 ,'expectedOnePage' => 5
                 ,'expectedMultiPage' => 11
                 ,'expectedBogusPage' => 2000
@@ -82,7 +83,7 @@ sub testParameters {
 }
 
 # Access methods for the structural declarations of this Scraper engine.
-sub scraperQuery { $scraperQuery }
+sub scraperRequest { $scraperRequest }
 sub scraperFrame { $_[0]->SUPER::scraperFrame($scraperFrame); }
 sub scraperDetail{ undef }
 

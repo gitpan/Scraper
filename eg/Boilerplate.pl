@@ -5,6 +5,7 @@ my $searchEngineName = 'www.Sample.com';
 my $scraperQuery = 'http://search.Sample.com/search?';
 my $scraperMethod = 'QUERY';
 my $scraperNativeQuery = 'query';
+my $defaultRequestClass = 'undef';
 my $scraperCookies = 0;
 my $AuthorName = 'Glenn Wood';
 my $AuthorContactInfo = 'http://search.cpan.org/search?mode=author&query=GLENNWOOD';
@@ -20,13 +21,13 @@ package WWW::Search::Scraper::$scraperName;
 
 \@ISA = qw(WWW::Search::Scraper Exporter);
 # This is an appropriate VERSION calculation to use for CVS revision numbering.
-\$VERSION = sprintf("%d.%02d", q\$Revision: 1.1 $ \=\~ /(\d+)\.(\d+)/);
+\$VERSION = sprintf("%d.%02d", q\$Revision: 1.1 $ \=\~ /(\\d+)\.(\\d+)/);
 
 use WWW::Search::Scraper(qw(2.19 generic_option trimLFs trimTags findNextFormInXML removeScriptsInHTML trimXPathHref));
 
 use strict;
 
-my \$scraperQuery = 
+my \$scraperRequest = 
         { 
             # This engine's method is $scraperMethod
             'type' => '$scraperMethod'
@@ -42,6 +43,7 @@ my \$scraperQuery =
                                 }
             
             # specify translations from canonical fields to native fields
+           ,'defaultRequestClass' => '$defaultRequestClass'
            ,'fieldTranslations' =>
                    {
                        '*' =>
@@ -71,7 +73,7 @@ my \$scraperFrame =
                 ]
               ]
             ]
-           ,[ 'BODY', '<table border="0">\s*<TR>\s*<TD>', '</TD>\s*</TR>\s*</TABLE>', 
+           ,[ 'BODY', '<table border="0">\\s*<TR>\\s*<TD>', '</TD>\\s*</TR>\\s*</TABLE>', 
                 [
                    [ 'NEXT', 2, \&findNextFormInXML ]
                 ]
@@ -91,7 +93,7 @@ sub removeEmptyPs {
     my (\$self, \$hit, \$xml) = \@_;
     
     # remove empty <P/> tags
-    \$\$xml =~ s-<p>\s*?</p>--gsi;
+    \$\$xml =~ s-<p>\\s*?</p>--gsi;
     \$\$xml =~ s-<p/>--gsi;
     return \$xml;
 }
@@ -116,7 +118,7 @@ sub testParameters {
 }
 
 # Access methods for the structural declarations of this Scraper engine.
-sub scraperQuery { \$scraperQuery }
+sub scraperRequest { \$scraperRequest }
 sub scraperFrame { \$_[0]->SUPER::scraperFrame(\$scraperFrame); }
 sub scraperDetail { undef }
 

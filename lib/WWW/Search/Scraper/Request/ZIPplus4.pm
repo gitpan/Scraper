@@ -1,34 +1,49 @@
-package WWW::Search::Scraper::Request::Job;
+package WWW::Search::Scraper::Request::ZIPplus4;
 
 use strict;
 
 use vars qw($VERSION @ISA);
 $VERSION = sprintf("%d.%02d", q$Revision: 1.0 $ =~ /(\d+)\.(\d+)/);
-use WWW::Search::Scraper::Request;
-@ISA = qw(WWW::Search::Scraper::Request);
 
-#use base qw( WWW::Search::Scraper::Request );
+use WWW::Search::Scraper::Request;
+use base qw( WWW::Search::Scraper::Request );
 
 sub new {
-    shift;
-    my $self = WWW::Search::Scraper::Request::new('Job',
-                  ,{   
-                       'skills' => ''
-                      ,'locations' => ''
-                      ,'payrate' => ''
-                   }
-                  ,@_
-               );
+    my $self = WWW::Search::Scraper::Request::new(
+         'ZIPplus4'
+        ,{
+             'Firm' => ''
+            ,'Urbanization' => ''
+            ,'Delivery_Address' => '' # required
+            ,'City' => ''             # required unless Zip is provided
+            ,'State' => ''            # required unless Zip is provided
+            ,'Zip_Code' => ''         # recommended, else City and State are required
+         }
+        ,@_);
     return $self;
-
 }
 
+sub GetFieldNames {
+    return {
+             'Firm' => 'Firm'
+            ,'Urbanization' => 'Urbanization'
+            ,'Delivery Address' => 'Delivery Address'
+            ,'City' => 'City'
+            ,'State' => 'State'
+            ,'Zip Code' => 'Zip Code'
+           }
+}
 sub FieldTitles {
-    return { 'skills'        => 'Skills'
-            ,'locations'     => 'Locations'
-            ,'payrate'       => 'Payrate'
-           };
+    return {
+             'Firm' => 'Firm'
+            ,'Urbanization' => 'Urbanization'
+            ,'Delivery_Address' => 'Delivery Address'
+            ,'City' => 'City'
+            ,'State' => 'State'
+            ,'Zip_Code' => 'Zip Code'
+           }
 }
+
 
 1;
 
@@ -36,13 +51,13 @@ __END__
 
 =head1 NAME
 
-WWW::Search::Scraper::Request::Job - Canonical Request - skills, locations, payrate
+WWW::Search::Scraper::Request::ZIPplus4 - Canonical form for Scraper::ZIPplus4 requests
 
 =head1 SYNOPSIS
 
-    use WWW::Search::Scraper::Request::Job;
+    use WWW::Search::Scraper::Request::ZIPplus4;
 
-    $rqst = new WWW::Search::Scraper::Request::Job;
+    $rqst = new WWW::Search::Scraper::Request::ZIPplus4;
     $rqst->skills(['Perl', '!Java']);
     $rqst->locations('CA-San Jose');
     $rqst->payrate('100000/A');
@@ -50,9 +65,9 @@ WWW::Search::Scraper::Request::Job - Canonical Request - skills, locations, payr
 =head1 DESCRIPTION
 
 This module provides a canonical taxonomy for specifying requests to search engines (via Scraper modules).
-C<Request::Job> is targeted toward job searches.
+C<Request::ZIPplus4> is targeted toward job searches.
 
-See L<WWW::Search::Scraper::ScraperPOD> or L<WWW::Search::Scraper::Request> for a description of how this interfaces with Scraper modules.
+See the C<WWW::Search::Scraper::Request> module for a description of how this interfaces with Scraper modules.
 
 =head1 FIELDS
 

@@ -1,18 +1,82 @@
 package WWW::Search::Scraper::Response;
 
-
 =head1 NAME
 
-WWW::Search::Scraper::Response - result class of generic scrapes.
-
+WWW::Search::Scraper::Response - Response class of generic scrapes.
 
 =head1 SYNOPSIS
 
+    use WWW::Search::Scraper('engineName');
+    #
+    my $scraper = new WWW::Search::Scraper('engineName');
+    my $response = $scraper->Response();
+    #
+    my $field = $response->$fieldName();
+    # or
+    my $field = $scraper->Response->$fieldName();
+    #
+    # or, specify your own Response class.
+    my $scraper = new WWW::Search::Scraper('engineName', 'responseClass');
+    my $field = $scraper->Response->$fieldName();
+
 =head1 DESCRIPTION
 
-=head1 OPTIONS
+Scraper automatically generates a "Response" class for each scraper engine.
+It does this by parsing the "scraperFrame" to identify all the field names fetched by the scraper.
+It defines a get/set method for each of these fields, each named the same as the field name found in the "scraperFrame".
 
-None at this time (2001.04.25)
+Optionally, you may write your own Response class and declare that as the Response class for your queries.
+This is useful for defining a common Response class to a set of scraper engines (all auction sites, for instance).
+See WWW::Search::Scraper::Response::Auction for an example of this type of Response class.
+
+=head1 METHODS
+
+=over 8
+
+=item $fieldName
+
+As mentioned, Response will automatically define get/set methods for each of the fields in the "scraperFrame".
+For instance, for a field named "postDate", you can get the field value with 
+
+    $response->postDate();
+
+You may also set the value of the postDate, but that would be kind of silly, wouldn't it?
+
+=item GetFieldNames
+
+A reference to a hash is returned listing all the field names in this response.
+The keys of the hash are the field names, while the values are 1, 2, or 3.
+A value of 1 means the value comes from the result page;
+2 means the value comes from the detail page;
+3 means the value is in both pages.
+
+=item SkipDetailPage
+
+A well-constructed Response class (as Scraper auto-generates) implements a lazy-access method for each
+of the fields that come from the detail page. 
+This means the detail page is fetched only if you ask for that field value.
+The SkipDetailPage() method controls whether the detail page will be fetched or not.
+If you set it to 1, then the detail page is never fetched (detail dependent fields return undef).
+Set to 2 to read the detail page on demand.
+Set to 3 to read the detail page for fields that are only on the detail page,
+and don't fetch the detail page, but return the results page value, for fields that appear on both pages.
+
+SkipDetailPage defaults to 2.
+
+=item ScrapeDetailPage
+
+Forces the detail page to be read and scraped right now.
+
+=item GetFieldValues
+
+Returns all field values of the response in a hash table (by reference).
+Like GetFieldNames(), the keys are the field names, but in this case the values are the field values of each field.
+
+=item GetFieldTitles
+
+Returns a reference to a hash table containing titles for each field (which might be different than the field names).
+
+=back
 
 =head1 AUTHOR
 
@@ -109,7 +173,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold ) {
         {
             my @ary = @$scaffold;
             shift @ary; shift @ary;
-            push @fields, @ary;
+            map { push @fields, $_ if defined $_ } @ary;
             next SCAFFOLD;
         }
         elsif ( 'CALLBACK' eq $tag ) 
@@ -163,7 +227,7 @@ sub new {
         my @subFields = join '\'=>\'$\',\'', keys %subFields;
         my $subFieldsStruct = join '\'=>\'$\',\'', join '\'=>\'$\',\'', keys %subFields;
         
-        die "No fields were found in the scraperFrames for WWW::Search::Scraper$SubClass\n" unless keys %subFields;
+        die "No fields were found in the scraperFrames for WWW::Search::Scraper::Response$SubClass\n" unless keys %subFields;
 
         eval <<EOT;
 { package WWW::Search::Scraper::Response$SubClass\::_struct_;
@@ -207,8 +271,11 @@ EOT
     my $fieldNames = $self->_fieldNames();
     my $detailAccessors = "\n";
     for ( keys %$fieldNames ) {
-        if ( $fieldNames->{$_} > 1 ) {
-            $detailAccessors .= "sub $_ { my \$slf = shift; \$slf->ScrapeDetailPage() if defined \$_[0]; \$slf->SUPER::$_(\@_) }\n";
+        if ( $fieldNames->{$_} == 2 ) {
+            $detailAccessors .= "sub $_ { my \$slf = shift; \$slf->ScrapeDetailPage(); \$slf->SUPER::$_(\@_) }\n";
+        }
+        elsif ( $fieldNames->{$_} == 3 ) {
+            $detailAccessors .= "sub $_ { my \$slf = shift; \$slf->ScrapeDetailPage() if \$slf->_skipDetailPage() != 3; \$slf->SUPER::$_(\@_) }\n";
         }
     }
     my $warn = $^W;
@@ -235,8 +302,13 @@ sub plug_url {
 }
 
 
+# Return a table of names and origins for all data result columns.
+sub GetFieldNames {
+    $_[0]->_fieldNames();
+}
+
 # Return a table of names and titles for all data result columns.
-sub resultTitles {
+sub GetFieldTitles {
     my ($self) = @_;
     my $answer = {'url' => 'URL'};
     for ( keys %$self ) {
@@ -246,7 +318,7 @@ sub resultTitles {
 }
 
 
-sub results {
+sub GetFieldValues {
     my $self = shift;
     my $answer = {
 #                'relevance'  => $self->relevance()
@@ -257,9 +329,6 @@ sub results {
     }
     return $answer;
 }
-
-sub relevance { return $_[0]->_elem('result_relevance'); }
-#  sub url () {} - identical to WWW::SearchResult.
 
 # This gets the target document via HTTP GET, if needed.
 sub response {
@@ -303,11 +372,17 @@ sub toHTML {
 }
 
 
+sub SkipDetailPage {
+    my $self = shift;
+    return $self->_skipDetailPage() if $_[0] < 1 or $_[0] > 3;
+    $self->_skipDetailPage(@_);
+}
+
 # Fetch and scrape the detail page if necessary.
 sub ScrapeDetailPage {
     my $self = shift;
 
-    return if $self->_skipDetailPage();
+    return if $self->_skipDetailPage() == 1;
     
     my $detail = $self->_gotDetailPage();
     return if $detail;

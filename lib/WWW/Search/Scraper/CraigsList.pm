@@ -23,7 +23,7 @@ $VERSION = sprintf("%d.%02d", q$Revision: 1.13 $ =~ /(\d+)\.(\d+)/);
 #
 # private
 
-my $scraperQuery = 
+my $scraperRequest = 
    { 
       'type' => 'POST'       # Type of query generation is 'POST'
       # This is the basic URL on which to build the query.
@@ -37,6 +37,7 @@ my $scraperQuery =
                           ,'catAbb'     => ''
                           ,'areaAbbrev' => ''
                       }
+      ,'defaultRequestClass' => 'Job'
       ,'fieldTranslations' =>
              { '*' => 
                   {    '*'         => '*'
@@ -84,7 +85,7 @@ sub init {
 
 
 # Access methods for the structural declarations of this Scraper engine.
-sub scraperQuery { $scraperQuery }
+sub scraperRequest { $scraperRequest }
 sub scraperFrame { $_[0]->SUPER::scraperFrame($scraperFrame); }
 sub scraperDetail{ undef }
 

@@ -10,7 +10,7 @@ use WWW::Search::Scraper(qw(1.24 generic_option addURL trimTags));
 
 use HTML::Form;
 
-my $scraperQuery = 
+my $scraperRequest = 
    { 
       'type' => 'FORM'
      ,'formNameOrNumber' => undef
@@ -20,7 +20,9 @@ my $scraperQuery =
      ,'url' => 'http://pages.ebay.com/search/items/search.html'
      # This is the Scraper attributes => native input fields mapping
      ,'nativeQuery' => 'query'
-     ,'nativeDefaults' => {}
+     ,'nativeDefaults' => {
+                            'query' => undef
+                          }
      ,'fieldTranslations' =>
              {
                  '*' =>
@@ -80,7 +82,7 @@ sub testParameters {
 
 
 # Access methods for the structural declarations of this Scraper engine.
-sub scraperQuery { $scraperQuery }
+sub scraperRequest { $scraperRequest }
 sub scraperFrame { $_[0]->SUPER::scraperFrame($scraperFrame); }
 sub scraperDetail{ undef }
 
@@ -97,7 +99,7 @@ sub import
     foreach (@options)
     {
         if ( $_->{'scraperBaseURL'} ) {
-            $scraperQuery->{'url'} = $_->{'scraperBaseURL'};  # new form
+            $scraperRequest->{'url'} = $_->{'scraperBaseURL'};  # new form
             $$defaultScraperForm_url[0] = $_->{'scraperBaseURL'}; # old form
         }
     }

@@ -16,7 +16,7 @@ use WWW::Search::Scraper(qw(2.12 generic_option addURL trimTags removeScriptsInH
 use strict;
 
 # Example query - http://search.lycos.com/main/default.asp?lpv=1&loc=searchhp&query=Perl
-my $scraperQuery = 
+my $scraperRequest = 
         { 
             # This engine is driven from it's <form> page
             'type' => 'QUERY'
@@ -45,24 +45,23 @@ my $scraperQuery =
 my $scraperFrame =
        [ 'TidyXML', \&removeScriptsInHTML, 
           [ 
-                  [ 'NEXT', 1, '[^>]>Next<' ],
-                  [ 'COUNT', 'Showing\s+Results\s+<b>[\d-]+</b>\s+of\s+([\d,]+)'] ,
-                  [ 'XPath', '/html/body/table[2]/tr[3]/td[2]/table[2]',
+                  [ 'NEXT', 1, '[^>]>Next<' ]
+                 ,[ 'COUNT', 'Showing\s+Results\s+<b>[\d-]+</b>\s+of\s+([\d,]+)']
+                 ,[ 'FOR', 'allTables', '2..3',
                     [
-                      [ 'HIT*' ,
+                      [ 'XPath', '/html/body/table[2]/tr[3]/td[2]/table[for(allTables)]',
                         [
-                          [ 'XPath', 'table/tr[hit()]',
+                          [ 'HIT*' ,
                             [
-                             [ 'XPath', 'tr', #/td[2]/table/tr/td[2]/table/tr/td',
-                              [
-                                [ 'A', 'url', 'description' ],
-                                [ 'XPath', 'tr/td[2]/font', 'title' ],
-                                [ 'XPath', 'tr/td[3]/i/font', 'urls' ]
+                              [ 'XPath', 'tr[hit() + 1]',
+                                [
+                                     [ 'XPath', 'td[2]/font', 'title' ]
+                                    ,[ 'XPath', 'td[3]/i/font', 'urls' ]
+                                    ,[ 'A', 'url', 'description' ],
+                                ]
                               ]
-                             ]
                             ]
                           ]
-#                         ,[ 'XPath', '/tr' ], # this one's a spacer between data rows.
                         ]
                       ]
                     ]
@@ -79,16 +78,17 @@ sub testParameters {
     }
     
     return { 
-             'SKIP' => 'Lycos test is not ready yet; gdw.2001.02.19'
-            ,'testNativeQuery' => 'search scraper'
+             'SKIP' => 'Encountered a new HTML format - I need to catch up on this!' #'Lycos test is not ready yet; gdw.2001.03.03'
+            ,'TODO' => 'Encountered a new HTML format - I need to catch up on this!'
+            ,'testNativeQuery' => 'turntable'
             ,'expectedOnePage' => 9
-            ,'expectedMultiPage' => 11
-            ,'expectedBogusPage' => 0
+            ,'expectedMultiPage' => 12
+            ,'expectedBogusPage' => 1
            };
 }
 
 # Access methods for the structural declarations of this Scraper engine.
-sub scraperQuery { $scraperQuery }
+sub scraperRequest { $scraperRequest }
 sub scraperFrame { $_[0]->SUPER::scraperFrame($scraperFrame); }
 
 1;

@@ -13,13 +13,14 @@ use WWW::Search::Scraper(qw(1.48 trimLFs trimLFLFs removeScriptsInHTML trimTags 
 
 # SAMPLE
 # http://bayareahelpwanted.com/Search/index.cfm?SN=194&S=Perl&A=all&D=short&RP=datedesc&M=25&R=1
-my $scraperQuery = 
+my $scraperRequest = 
    { 
       'type' => 'QUERY'
      # This is the basic URL on which to build the query.
      ,'url' => 'http://bayareahelpwanted.com/Search/index.cfm?'
      # This is the Scraper attributes => native input fields mapping
      ,'nativeQuery' => 'S'
+     ,'defaultRequestClass' => 'Job'
      ,'nativeDefaults' =>
                       {    
                           #'SN' => '1984' # unnecessary
@@ -90,7 +91,7 @@ sub testParameters {
 }
 
 # Access methods for the structural declarations of this Scraper engine.
-sub scraperQuery { $scraperQuery }
+sub scraperRequest { $scraperRequest }
 sub scraperFrame { $_[0]->SUPER::scraperFrame($scraperFrame); }
 sub scraperDetail{ undef }
 

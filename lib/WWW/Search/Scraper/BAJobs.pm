@@ -32,7 +32,7 @@ use HTTP::Cookies;
 #  <input type=text name="searchKeywords" value=" Perl " size=40> &nbsp; &nbsp; <input type=submit value="Search">
 #</form>
 
-my $scraperQuery = 
+my $scraperRequest = 
    { 
       'type' => 'POST'  # 'POST' - we used to use 'FORM', which works fine, too, but this way's a little faster.
      
@@ -54,6 +54,7 @@ my $scraperQuery =
                                 ,'jobPostingCategoryList' => ''
                                 ,'industryCategoryList' => ''
                             }
+     ,'defaultRequestClass' => 'Job'
      ,'fieldTranslations' =>
                       { '*' => 
                               {    'skills'    => 'searchKeywords'
@@ -119,7 +120,7 @@ sub testParameters {
     my $isNotTestable = WWW::Search::Scraper::isGlennWood()?'':'';
     return { 
              'SKIP' => $isNotTestable
-            ,'TODO' => 'Uses POST: certain versions of WWW::Search (2.25 to name one) fail with POSTs.'
+            ,'TODO' => 'Uses POST: certain versions of WWW::Search (2.25, aka 2.27, to name one) fail with POSTs.'
             ,'testNativeQuery' => 'Sales'
             ,'expectedOnePage' => 9
             ,'expectedMultiPage' => 51
@@ -129,7 +130,7 @@ sub testParameters {
 
 
 # Access methods for the structural declarations of this Scraper engine.
-sub scraperQuery { $scraperQuery }
+sub scraperRequest { $scraperRequest }
 sub scraperFrame { $_[0]->SUPER::scraperFrame($scraperFrame); }
 sub scraperDetail{ undef }
 
