@@ -98,7 +98,7 @@ See the EXAMPLES below for these two latter approaches.
 
 The back-end of Scraper.pm receives the response from the search engine, handling the multiple pages
 which it may be composed of, parses the results, and returns to the caller an appropriate Perl
-representation of these results ("appropriate" means an array of hash tables of type WWW::Search::SearchResults).
+representation of these results ("appropriate" means an array of hash tables of type WWW::Search::SearchResult).
 Scraper.pl (or some other Perl client) further processes this data, or presents in some human readable form.
 
 There are a few common ways in which search engines return their results in the HTML response.
@@ -487,19 +487,21 @@ modify it under the same terms as Perl itself.
 ####################################################################################
 package WWW::Search::Scraper;
 
+use strict;
 require Exporter;
+use vars qw($VERSION @ISA @EXPORT @EXPORT_OK);
 @EXPORT = qw();
 @EXPORT_OK = qw();
 @ISA = qw(WWW::Search Exporter);
-use vars qw($VERSION);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.36 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.40 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search( qw(strip_tags) );
 require WWW::SearchResult;
-@EXPORT_OK = qw(escape_query unescape_query generic_option strip_tags trimTags @ENGINES_WORKING addURL);
+@EXPORT_OK = qw(escape_query unescape_query generic_option 
+                strip_tags trimTags trimLFs trimLFLFs
+                @ENGINES_WORKING addURL);
 
-use strict;
 
 sub new {
     my ($class, $subclass) = @_;
@@ -553,15 +555,22 @@ sub native_setup_search_QUERY
     
     $self->user_agent('user');
     $self->{_next_to_retrieve} = 0;
-	$self->{'_base_url'} = $qType[1];
+    my $url = $qType[1];
+    if ( ref $url ) {
+        $self->{'_base_url'} = &$url($self, $native_query, $native_options_ref);
+    } else {
+        $self->{'_base_url'} = $url;
+    }
+    $self->{'_http_method'} = 'GET' unless $self->{'_http_method'};
+
     my %inputsHash = %{$qType[2]};
     my %optionHash = %{$qType[3]};
-    
+
     my($options_ref) = $self->{_options};
     if (defined($native_options_ref)) {
     	# Copy in new options.
     	foreach (keys %$native_options_ref) {
-    	    $options_ref->{$_} = $native_options_ref->{$_};
+    	    $options_ref->{$_} = $native_options_ref->{$_} if defined $native_options_ref->{$_};
     	};
     };
     $self->{_debug} = $options_ref->{'search_debug'};
@@ -569,7 +578,7 @@ sub native_setup_search_QUERY
     $self->{_debug} = 0 if (!defined($self->{_debug}));
     
     # Process the options.
-    $self->cookie_jar(HTTP::Cookies->new()) if $optionHash{'cookie'};
+    $self->cookie_jar(HTTP::Cookies->new()) if $optionHash{'cookies'};
     
     # Process the inputs.
     # (Now in sorted order for consistency regarless of hash ordering.)
@@ -766,9 +775,9 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
                     if ( $sub_content =~ m-$next_url_button-si )
                     {
                         $url =~ s-A\s+HREF=--si;
-                        $url =~ s-^"(.*)"$-$1-si;
+                        $url =~ s-^'(.*?)'\s*$-$1-si unless $url =~ s-^"(.*?)"\s*$-$1-si;
                         my $datParser = $$scaffold[3];
-                        $datParser = \&WWW::Search::Scraper::trimTags unless $datParser;
+                        $datParser = \&WWW::Search::Scraper::null unless $datParser;
                         my $url = new URI::URL(&$datParser($self, $hit, $url), $self->{_base_url});
                         $url = $url->abs;
                         $self->{'_next_url'} = $url;
@@ -815,7 +824,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
                 $next_scaffold = $$scaffold[2];
                 die "Element-name form of <$tag> is not implemented, yet.";
             }
-            next SCAFFOLD unless $sub_content = $self->getMarkedText($tag, $content); # and throw it away.
+            next SCAFFOLD unless $sub_content = $self->getMarkedText($tag, $content);
         }
     	elsif ( 'TD' eq $tag or 'DT' eq $tag or 'DD' eq $tag )
         {
@@ -979,9 +988,9 @@ sub getMarkedText {
             if ( $depth < 0 ) {
                 # . . . then somehow we've stumbled into the midst of a table whose end-tag
                 #   has just been encountered - let's be generous and start over.
-                my $eidx = 0;
-                my $sidx = 0;
-                my $depth = 0;
+                $eidx = 0;
+                $sidx = 0;
+                $depth = 0;
             }
             elsif ( $depth == 0 ) { # we've counted as many end-tags as start-tags; we're done!
                 $eidx = pos $$content;
@@ -1023,7 +1032,26 @@ sub addURL {
 sub trimTags { # Strip tag clutter from $_;
     my ($self, $hit, $dat) = @_;
    # This simply rearranges the parameter list from the datParser form.
+    $dat =~ s/\r//gsi;
     return strip_tags($dat);
+}
+
+sub trimLFs { # Strip LFs, then tag clutter from $_;
+    my ($self, $hit, $dat) = @_;
+    $dat = $self->trimTags($hit, $dat);
+    $dat =~ s/\s*\r?\n\s*//gs;
+   # This simply rearranges the parameter list from the datParser form.
+    return $dat;
+}
+
+sub trimLFLFs { # Strip double-LFs, then tag clutter from $_;
+    my ($self, $hit, $dat) = @_;
+    $dat = $self->trimTags($hit, $dat);
+#    while ( 
+        $dat =~ s/[\s]*\n([\s]*\n[\s]*)*/\n/gsi;
+#         ) {}; # Do several times, rather than /g, to handle triple, quadruple, quintuple, etc.
+   # This simply rearranges the parameter list from the datParser form.
+    return $dat;
 }
 
 # A null filter.
@@ -1032,62 +1060,7 @@ sub null { # Strip tag clutter from $_;
     return $dat;
 }
 
-
-{
-    package WWW::SearchResult::Scraper;
-no strict;
-@ISA = qw(WWW::SearchResult);
-$VERSION = '1.00';
-require WWW::SearchResult;
-use strict;
-
-sub new {
-    return new WWW::SearchResult;
-}
-
-# This gets the target document via HTTP GET, if needed.
-sub response {
-    my ($self) = @_;
-    my $request = HTTP::Request->new(GET => $self->url());
-    $self->{'_response'} = $self->{'searchObject'}->{'user_agent'}->request($request);
-    return $self->{'_response'};
-}
-
-
-sub content {
-    my ($self) = @_;
-
-    my $response = $self->response();
-    return $response->content() if $response->is_success;
-    return undef;
-}
-
-sub toHTML {
-    my ($self) = @_;
-    
-    my $title = $self->title();
-    my $description = $self->description();
-    my $company = $self->_elem('company');
-    my $location = $self->_elem('location');
-    my $filename = $self->_elem('filename');
-    my $relevance = $self->_elem('relevance');
-    my $engineName = $self->_elem('engine');
-    my $url = $self->url();
-    # might handle 'relatedurl' later.
-    $company .= '<BR>' if $company;
-    
-    return <<EOT;
-<TABLE border="1" cellpadding="2" cellspacing="1"><TR><TD>
-<A href="$url"><B>$title</B></A><BR>$description<BR>$company$location</TD>
-<TD>Relevance: $relevance<BR>Engine: $engineName</TD>
-</TR></TABLE>
-EOT
-
-}
-
-}
-
-
+use WWW::SearchResult::Scraper;
 sub newHit {
     my $self = new WWW::SearchResult::Scraper;
     return $self;

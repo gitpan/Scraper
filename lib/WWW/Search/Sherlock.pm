@@ -139,7 +139,7 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(1.31 addURL trimTags));
@@ -501,25 +501,9 @@ sub resultData {
 }
 
 
+use WWW::SearchResult::Sherlock;
 sub newHit {
     return new WWW::SearchResult::Sherlock;
-}
-
-{
-package WWW::SearchResult::Sherlock;
-no strict;
-@ISA = qw(WWW::SearchResult);
-use strict;
-
-sub relevance { return $_[0]->_elem('result_relevance'); }
-sub price { return $_[0]->_elem('result_price'); }
-sub avail { return $_[0]->_elem('result_avail'); }
-sub date { return $_[0]->_elem('result_date'); }
-sub name { return $_[0]->_elem('result_name'); }
-sub email { return $_[0]->_elem('result_email'); }
-sub detail { return $_[0]->_elem('result_detail'); }
-sub browserResultType { return $_[0]->{'browserResultType'}; }
-# sub url() is the same as for WWW::SearchResults.
 }
 
 1;

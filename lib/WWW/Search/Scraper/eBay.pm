@@ -20,10 +20,6 @@ This class is an eBay specialization of WWW::Search.
 It handles making and interpreting eBay searches
 F<http://www.eBay.com>.
 
-This class exports no public interface; all interaction should
-be done through WWW::Search objects.
-
-
 =head1 OPTIONS
 
 None at this time (2001.05.06)
@@ -48,10 +44,9 @@ C<WWW::Search::eBay> is written and maintained
 by Glenn Wood, <glenwood@dnai.com>.
 
 The best place to obtain C<WWW::Search::eBay>
-is from Martin Thurn's WWW::Search releases on CPAN.
-Because eBay sometimes changes its format
-in between his releases, sometimes more up-to-date versions
-can be found at
+is from Glenn's releases on CPAN. Because www.eBay.com
+sometimes changes its format in between his releases, 
+sometimes more up-to-date versions can be found at
 F<http://alumni.caltech.edu/~glenwood/SOFTWARE/index.html>.
 
 
@@ -71,7 +66,7 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(1.24 generic_option addURL trimTags));
@@ -218,4 +213,11 @@ sub findNextForm {
     }
     return undef;
 }
+
+
+use WWW::SearchResult::Auction;
+sub newHit {
+    return new WWW::SearchResult::Auction;
+}
+
 1;

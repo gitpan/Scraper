@@ -41,19 +41,17 @@ Specified at L<WWW::Search>.
 
 =back
 
-
-=head1 AUTHOR and CURRENT VERSION
+=head1 AUTHOR
 
 C<WWW::Search::BAJobs> is written and maintained
 by Glenn Wood, <glenwood@dnai.com>.
 
-The best place to obtain C<WWW::Search::BAJobs>
-is from Martin Thurn's WWW::Search releases on CPAN.
-Because BAJobs sometimes changes its format
-in between his releases, sometimes more up-to-date versions
-can be found at
-F<http://alumni.caltech.edu/~glenwood/SOFTWARE/index.html>.
 
+The best place to obtain C<WWW::Search::BAJobs>
+is from Glenn's releases on CPAN. Because www.BAJobs.com
+sometimes changes its format in between his releases, 
+sometimes more up-to-date versions can be found at
+F<http://alumni.caltech.edu/~glenwood/SOFTWARE/index.html>.
 
 =head1 COPYRIGHT
 
@@ -73,7 +71,7 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(1.24 generic_option addURL trimTags));
@@ -176,4 +174,34 @@ sub native_setup_search
 }
 
 
+use WWW::SearchResult::Job;
+sub newHit {
+    my $self = new WWW::SearchResult::Job;
+    return $self;
+}
+
+
+
+{
+    package LWP::UserAgent;
+
+# BAJobs frequently (but not always) redirects via 302 status code.
+# We need to tell LWP::UserAgent that it's ok to redirect on BAJobs.
+sub redirect_ok
+{
+    # draft-ietf-http-v10-spec-02.ps from www.ics.uci.edu, specify:
+    #
+    # If the 30[12] status code is received in response to a request using
+    # the POST method, the user agent must not automatically redirect the
+    # request unless it can be confirmed by the user, since this might change
+    # the conditions under which the request was issued.
+
+    my($self, $request) = @_;
+    return 1 if $request->uri() =~ m-www\.bajobs\.com/jobseeker/searchresults\.jsp-i;
+    return 0 if $request->method eq "POST";
+    1;
+}
+
+
+}
 1;

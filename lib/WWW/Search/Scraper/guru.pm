@@ -45,12 +45,10 @@ C<WWW::Search::guru> is written and maintained
 by Glenn Wood, <glenwood@dnai.com>.
 
 The best place to obtain C<WWW::Search::guru>
-is from Martin Thurn's WWW::Search releases on CPAN.
-Because guru sometimes changes its format
-in between his releases, sometimes more up-to-date versions
-can be found at
+is from Glenn's releases on CPAN. Because www.guru.com
+sometimes changes its format in between his releases, 
+sometimes more up-to-date versions can be found at
 F<http://alumni.caltech.edu/~glenwood/SOFTWARE/index.html>.
-
 
 =head1 COPYRIGHT
 
@@ -69,7 +67,7 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(1.33 generic_option addURL trimTags));

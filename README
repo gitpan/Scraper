@@ -2,14 +2,36 @@
 
 WWW::Search::Scraper
 WWW::Search::Sherlock
+WWW::Search::Scraper::*
+WWW::SearchResult::*
 
-For documentation, see the pod in WWW::Search::Scraper and WWW::Search::Sherlock.
+These modules scrape data from search engines on the WWW (much like Apple's 
+Sherlock, but these are more capable and accurate.) Complete documentation can
+be found in WWW::Search::Scraper and WWW::Search::Sherlock.
+
+Special options for each type of search engine are documented in their respective modules.
+
+Examples include:
+
+1. SearchApartments - illustrates how to easily set up and use one search engine.
+2. Sherlock    - illustrates the ease of adapting any Sherlock plugin.
+3. Scraper     - illustrates how SearchResult sub-classing can be used to build
+                 a more generalized search engine scraper. You can see how this
+		 can be extended to build a multi-engine scraper.
+		 
 
 Happy Hunting!
+
 
 AUTHOR: Glenn Wood, C<glenwood@alumni.caltech.edu>
 
 #---------------------------------------------------------------------#
-( $VERSION ) = sprintf("%d.%02d", q$Revision: 1.33 $ =~ /(\d+)\.(\d+)/)
+( $VERSION ) = sprintf("%d.%02d", q$Revision: 1.34 $ =~ /(\d+)\.(\d+)/)
 
+v1.34 - Introduced SearchResult sub-classing, with illustration in eg/Scraper.pl
+        Improved reliability of BAJobs.pm
+        Dice.com changed the result page format, again. I hope this version
+          of Dice.pm will be more adaptive to Dice.com's future changes.
+        Added www.computerjobs.com and www.techies.com (which still has a problem)
+	Added examples: eg/SearchApartments, improved eg/Scraper.
 v1.33 - Added www.apartments.com, and eg/Sherlock.pl

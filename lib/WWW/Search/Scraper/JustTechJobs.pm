@@ -70,18 +70,16 @@ it sets C<{_next_url}> to point to the page for the next
 set of results, otherwise it sets it to undef to indicate we're done.
 
 
-=head1 AUTHOR and CURRENT VERSION
+=head1 AUTHOR
 
 C<WWW::Search::JustTechJobs> is written and maintained
 by Glenn Wood, <glenwood@alumni.caltech.edu>.
 
 The best place to obtain C<WWW::Search::JustTechJobs>
-is from Martin Thurn's WWW::Search releases on CPAN.
-Because JustTechJobs sometimes changes its format
-in between his releases, sometimes more up-to-date versions
-can be found at
+is from Glenn's releases on CPAN. Because www.JustTechJobs.com
+sometimes changes its format in between his releases, 
+sometimes more up-to-date versions can be found at
 F<http://alumni.caltech.edu/~glenwood/SOFTWARE/index.html>.
-
 
 =head1 COPYRIGHT
 
@@ -121,7 +119,7 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(generic_option addURL trimTags));

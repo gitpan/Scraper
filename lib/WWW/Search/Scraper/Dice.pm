@@ -278,27 +278,25 @@ sub native_setup_search
 	  'num_per_page' => 50,     # (10, 20, 30, 40, 50) 
 	  'num_to_retrieve' => 2000 # (100, 200, 300, 400, 500, 600, 2000)
       };
-  } # if
+  }
+
   $self->{'_options'}{'scrapeFrame'} = 
       [ 'HTML', 
          [  
-            [ 'BODY', 'Return to the ', '' ,  # Make the parsing easier for scrapeTable() by stripping off the adminstrative clutter.
-            [  
-               [ 'NEXT', 1, '<img src="/images/rightarrow.gif" border=0>' ] , # meaning how to find the NEXT button.
-               [ 'COUNT', 'Jobs [-0123456789]+ of (\d+) matching your query' ] , # the total count can be found here.
-               [ 'HIT*' ,                          # meaning the content of this array element represents hits!
-                    [  
-                       [ 'DL',                       # meaning detail is in a definition list
-                          [
-                              [ 'DT', 'title', \&addURL ] # meaning that the job description link is here, in the definition term, 
-                             ,[ 'DD', 'location', \&touchupLocation ] # meaning the location is in the definition data.
-                             ,[ 'RESIDUE', 'residue' ]
-                          ]
-                       ]
-                    ]
-                 ]
-               ] 
-            ]  ]
+            [ 'NEXT', 1, '<img src="/images/rightarrow.gif" border=0>' ] , # meaning how to find the NEXT button.
+            [ 'COUNT', 'Jobs [-0123456789]+ of (\d+) matching your query' ] , # the total count can be found here.
+            [ 'HIT*' ,                          # meaning the content of this array element represents hits!
+               [  
+                  [ 'DL',                       # meaning detail is in a definition list
+                     [
+                        [ 'DT', 'title', \&addURL ] # meaning that the job description link is here, in the definition term, 
+                       ,[ 'DD', 'location', \&touchupLocation ] # meaning the location is in the definition data.
+                       ,[ 'RESIDUE', 'residue' ]
+                     ]
+                  ]
+               ]
+            ]
+         ] 
       ];
 
   my $options_ref = $self->{_options};
