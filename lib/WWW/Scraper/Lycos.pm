@@ -11,7 +11,7 @@ require Exporter;
 $VERSION = sprintf("%d.%02d", q$Revision: 1.0 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
-use WWW::Scraper(qw(2.12 generic_option addURL trimTags removeScriptsInHTML));
+use WWW::Scraper(qw(3.03 generic_option addURL trimTags trimLFs removeScriptsInHTML));
 
 use strict;
 
@@ -45,32 +45,40 @@ my $scraperRequest =
        };
 
 my $scraperFrame =
-       [ 'TidyXML', \&removeScriptsInHTML, \&removeDescriptionTags,
+       [ 'HTML', 
           [ 
-                  [ 'NEXT', 1, '<b>Next</b>' ]    #<b>Next</b>
+                  [ 'NEXT', '<b>Next</b>' ]    #<b>Next</b>
 
                  ,[ 'COUNT', 'Showing\s+Results\s+<b>[\d-]+</b>\s+of\s+([\d,]+)']
-                 ,[ 'FOR', 'allTables', '2..6',
-                    [
-                      [ 'XPath', '/html/body/table[2]/tr[3]/td[2]/table[for(allTables)]',
+                 ,[ 'BODY', '<!-- IL -->', '<!-- /IL -->',
+                  [
+                      [ 'TR' ]
+                     ,[ 'HIT*', # sponsored links
                         [
-                          [ 'HIT*' ,
-                            [
-                              [ 'XPath', 'tr[hit() * 2]',
-                                [
-                                     [ 'XPath', 'td[2]/font/a/text()', 'title' ]
-                                    ,[ 'XPath', 'td[2]/font/a/@href', 'url' ]
-                                    ,[ 'XPath', 'td[2]', 'description' ]
-#                                    ,[ 'XPath', 'td[2]/i/font', 'urls' ]
-#                                    ,[ 'A', 'url', 'description' ],
-                                ]
+                            [ 'TR',
+                              [
+                                #[ 'TD', 'number' ]
+                                [ 'A', 'url', 'title' ]
+                               ,[ 'FONT', 'sponsored' ]
+                               ,[ 'BR', 'description' ]
                               ]
                             ]
-                          ]
+                           ,[ 'TR' ]
                         ]
                       ]
-                    ]
-                  ]
+                     ,[ 'HIT*', # web results
+                            [
+                               [ 'BODY', '<!-- IS -->', '<!-- /IS -->',
+                                  [
+                                    [ 'REGEX', '<!-- REL (\d+%)-->', 'relevance' ]
+                                   ,[ 'A', 'url', 'title' ]
+                                   ,[ 'BR', 'description' ]
+                                  ]
+                               ]
+                            ]
+                      ]
+                   ]
+                ]
             ]
        ];
 
@@ -92,7 +100,7 @@ sub testParameters {
     }
     
     return { 
-             'TODO' => 'Lycos is not quite right . . .'
+             'TODO' => ''
             ,'testNativeQuery' => 'turntable'
             ,'expectedOnePage' => 9
             ,'expectedMultiPage' => 20

@@ -14,9 +14,7 @@ sub scrape {
     
     $sub_string =~ s{$rg1}{$rg2}gsi;
 
-    my $next_scaffold = $$scaffold[3];
-
-    return ($next_scaffold, $sub_string);
+    return ($self->_next_scaffold($scaffold), $sub_string, $attributes);
 }
 
 

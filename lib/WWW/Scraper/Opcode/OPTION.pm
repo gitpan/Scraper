@@ -30,7 +30,7 @@ sub scrape {
     
     $hit->value(\$attributes->{'value'});
 
-    return ($$scaffold[1], $sub_string);
+    return ($self->_next_scaffold($scaffold), $sub_string, $attributes);
 }
 
 

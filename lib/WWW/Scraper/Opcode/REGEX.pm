@@ -17,6 +17,7 @@ sub new {
     my $regex = shift @scfld;
     my @fields;
     map { push @fields, $_ unless !$_ || ref($_) || m{^#} } @scfld;
+
     $self->{'fieldsCaptured'} = \@fields;
     $self->{'fieldsDiscovered'} = \@fields;
     return $self;
@@ -34,16 +35,20 @@ sub scrape {
         @dts = ($1,$2,$3,$4,$5,$6,$7,$8,$9);
         for ( @ary ) 
         {
-            if ( ! $_ ) { # "if ( $_ eq '' )" reports "use of uninitialized variable" under diagnostics.
+            if ( ! defined $_ ) { # "if ( $_ eq '' )" reports "use of uninitialized variable" under diagnostics.
                 shift @dts;
             }
-            elsif ( $_ eq 'url' ) {
+            elsif ( ref($_) eq 'CODE' ) {
+                $dts[0] = &$_($scraper,$hit,$dts[0]);
+            }
+            elsif ( $_ eq 'url' )
+            {
                 my $url = new URI::URL(shift @dts, $scraper->{_base_url});
                 $url = $url->abs();
                 print "REGEX binding 'url' => $url\n" if ($scraper->ScraperTrace('d'));
                 $hit->plug_url($url);
             } 
-            else {
+            elsif ( $_ ) {
                 my $dt = $scraper->trimTags($hit, shift @dts);
                 print "REGEX binding '$_' => $dt\n" if ($scraper->ScraperTrace('d'));
                 $hit->plug_elem($_, $dt, $TidyXML) if defined $dt;

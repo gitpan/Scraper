@@ -35,7 +35,7 @@ sub scrape {
     my $dat = &$datParser($self, $hit, $sub_string);
     $hit->plug_elem($$scaffold[2], $dat) if defined $dat;
 
-    my ($url) = new URI::URL($attributes->{'href'}, $self->{_base_url});
+    my ($url) = new URI::URL($attributes->{'href'}, $scraper->{_base_url});
     $url = $url->abs();
     if ( $lbl eq 'url' ) {
        $url = WWW::Scraper::unescape_query($url) if $TidyXML->m_isTidyd();
@@ -45,7 +45,7 @@ sub scrape {
        $hit->plug_elem($lbl, $url) if defined $url;
     }
 
-    return ($$scaffold[3], $sub_string, $attributes);
+    return ($self->_next_scaffold($scaffold), $sub_string, $attributes);
 }
 
 

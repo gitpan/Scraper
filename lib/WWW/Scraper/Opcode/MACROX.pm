@@ -4,7 +4,8 @@ use strict;
 package WWW::Scraper::Opcode::MACROX; use base qw(WWW::Scraper::Opcode::MACRO);
 
 sub new {
-    return bless {'fieldsDiscovered' => undef};
+    return bless {'fieldsDiscovered
+    ' => undef};
 }
 
 sub scrape {

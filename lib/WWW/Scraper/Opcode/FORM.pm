@@ -19,7 +19,7 @@ sub scrape {
     my ($sub_string, $attributes) = $TidyXML->getMarkedTextAndAttributes('FORM');
     return undef unless $attributes;
 
-    return ($$scaffold[1], $sub_string, $attributes);
+    return ($self->_next_scaffold($scaffold), $sub_string, $attributes);
 }
 
 

@@ -218,6 +218,7 @@ sub Attributes {
     my (@attrs) = ($attrs =~ m{($AttributeGrabber)}gs);
     for ( @attrs ) {
         my ($name, $attr) = (m{\s*(\w[\w\d]*)=(.*)$});
+        $attr = '' if !defined $attr;
         $attr =~ s{^'(.*)'$}{$1} unless $attr =~ s{^"(.*)"$}{$1};
         $attributes->{lc $name} = $attr;
     }

@@ -730,7 +730,7 @@ produce a relatively simple Scraper script.
     [ 'HTML', 
        [   
           [ 'COUNT', '\d+ - \d+ of (\d+) matches' ] ,
-          [ 'NEXT', 1, '<b>Next ' ] ,
+          [ 'NEXT', '<b>Next ' ] ,
           [ 'HIT*' ,
              [
                 [ 'BODY', '<input type="checkbox" name="check_', '',
@@ -785,7 +785,7 @@ Ok, I know you all wanted to know what DICE.com looks like. Well, here it is:
        [  
           [ 'BODY', ' matching your query', '' ,
              [  
-                [ 'NEXT', 1, '<img src="/images/rightarrow.gif" border=0>' ]
+                [ 'NEXT', '<img src="/images/rightarrow.gif" border=0>' ]
                ,[ 'COUNT', 'Jobs [-0-9]+ of (\d+) matching your query' ]
                ,[ 'HIT*' ,
                    [  

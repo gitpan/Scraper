@@ -6,10 +6,10 @@ package WWW::Scraper::CraigsList;
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Scraper);
-use WWW::Scraper(qw(1.48 generic_option addURL trimTags));
+use WWW::Scraper(qw(3.02 generic_option addURL trimTags));
 use WWW::Scraper::FieldTranslation;
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.0 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.16 $ =~ /(\d+)\.(\d+)/);
 
 # Craigs List differs from other search engines in a few ways.
 # One of them is the results page is not tablulated, or data lined.
@@ -75,15 +75,16 @@ my $scraperRequest =
 my $scraperFrame =
 [ 'HTML', 
    [ 
-      [ 'NEXT', 1, 'Next ' ]
-     ,[ 'BODY', '</FORM>', '' ,
+       [ 'NEXT', 'Next ' ]
+      ,[ 'BODY', '</FORM>', '' ,
           [ 
              [ 'COUNT', 'Found: (\d+)']
             ,[ 'HIT*' ,
                 [  
 # NEW: by 2002.09.27
-# <p>&nbsp;Sep-26&nbsp;&nbsp;&nbsp;<a href=/sfo/pen/eng/5905447.html>Plugged In Enterprises Web Producer </a> (East Palo Alto)
-                   [ 'REGEX', '<p>\s*(&nbsp;)?(.*?-\d+)[^<]*<a\s+href=([^>]+)>(.*?)</a>[^<]*', 
+#<p>&nbsp;May-18&nbsp;&nbsp;&nbsp;<a href=/sfc/mcy/11439880.html>=====&gt;&gt;2001 Honda XR 650L  - $3500</a>  (vallejo) &lt;&lt;<i><a href=/mcy/>cycles</a></i>
+#<p>&nbsp;Sep-26&nbsp;&nbsp;&nbsp;<a href=/sfo/pen/eng/5905447.html>Plugged In Enterprises Web Producer </a> (East Palo Alto)
+                   [ 'REGEX', '<p>\s*(&nbsp;)*(\w*?-\d+)[^<]*<a\s+href=([^>]+)>(.*?)</a>([^<]*)', 
                                    undef,       'date',        'url',       'title', 'location'
                    ]
                 ]

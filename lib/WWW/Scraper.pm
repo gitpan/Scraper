@@ -9,9 +9,9 @@ use strict;
 require Exporter;
 use vars qw($VERSION $MAINTAINER @ISA @EXPORT @EXPORT_OK $PRINT_VERSION);
 
-$VERSION = '3.02';
+$VERSION = '3.03';
 
-my $CVS_VERSION = sprintf("%d.%02d", q$Revision: 1.0 $ =~ /(\d+)\.(\d+)/);
+my $CVS_VERSION = sprintf("%d.%02d", q$Revision: 1.1 $ =~ /(\d+)\.(\d+)/);
 $MAINTAINER = 'Glenn Wood http://search.cpan.org/search?mode=author&query=GLENNWOOD';
 $PRINT_VERSION = 0;
 
@@ -52,7 +52,7 @@ use WWW::Scraper::Response::generic;
 use WWW::Scraper::TidyXML;
 use WWW::Scraper::Opcode;
 
-@EXPORT_OK = qw( generic_option testParameters trimTags trimLFs trimLFLFs
+@EXPORT_OK = qw( generic_option testParameters trimTags trimLFs trimLFLFs trimComments
                 @ENGINES_WORKING addURL trimXPathAttr trimXPathHref
                 findNextForm findNextFormInXML removeScriptsInHTML cleanupHeadBody);
 
@@ -90,6 +90,7 @@ sub new {
     my ($class, $subclass, $native_query, $native_options) = @_;
     
     my ($self, $wantsNativeRequest);
+    $subclass = '' unless $subclass;
     $wantsNativeRequest = $subclass =~ s/^NativeRequest\:\:(.*)$/$1/;
     if ( $subclass =~ m-^\.\.[\/](.*)$- ) {  # Allow the form "../name" to indicate
        die "The '..\\backend' form is deprecated in favor of scraperFrame = 'WWW::Search::backend' - see HeadHunter.pm for an example.\n";
@@ -678,10 +679,8 @@ AGAIN:
     };
     
     # get some
-    if ( $debug ) {
-         my $obj = ref $self;
-         print STDERR "$obj::native_retrieve_some: fetching " . $self->{_next_url} . "\n"  if ($self->ScraperTrace('U'));
-     }
+    print STDERR ref($self)."::native_retrieve_some: fetching " . $self->{_next_url} . "\n"  if ($self->ScraperTrace('U') && $debug );
+
     my $method = $self->{'_http_method'};
     $method = 'POST' unless $method;
 
@@ -1078,8 +1077,8 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
     	
         elsif ( 'COUNT' eq $tag )
     	{
-            $self->approximate_result_count(0);
-    		if ( ${$TidyXML->asString()} =~ m/$$scaffold[1]/si )
+            #$self->approximate_result_count(0);
+    	    if ( ${$TidyXML->asString()} =~ m/$$scaffold[1]/si )
     		{
     			print STDERR  "approximate_result_count: '$1'\n" if ($self->ScraperTrace('d'));
     			$self->approximate_result_count ($1);
@@ -1089,73 +1088,6 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
             }
             next SCAFFOLD;
     	}
-
-        elsif ( 'NEXT' eq $tag )
-        {
-            # This accommodates a pre-1.41 method for specifying 'NEXT'
-            $$scaffold[1] = $$scaffold[2] 
-                if ( $$scaffold[1] eq 1 or $$scaffold[1] eq 2 );
-
-            if ( ref $$scaffold[1] )
-            {
-                my $datParser = $$scaffold[1];
-                my $url = ${$TidyXML->asString()};
-                $url = WWW::Scraper::unescape_query($url) if $TidyXML->m_isTidyd();
-                $self->{'_next_url'} = &$datParser($self, $hit, $url);                
-                print STDERR  "NEXT_URL: $self->{'_next_url'}\n" if ($self->ScraperTrace('U'));
-                next SCAFFOLD;
-            }
-            else
-            {
-                # A simple regex will not work here, since the "next" string may often
-                # appear even when there's no <A>...</A> surrounding it. The problem occurs
-                # when there is a <A>...</A> preceding it, *and* following it. Simple regex's
-                # will find the first anchor, even though it's not the HREF for the "next" string.
-                my $next_url_button = $$scaffold[2]; # accomodates some earlier versions of Scraper.pm modules.
-                $next_url_button = $$scaffold[1] unless $next_url_button;
-                print STDERR  "next_url_button: $next_url_button\n" if ($self->ScraperTrace('N'));
-                my $next_content = ${$TidyXML->asString()};
-                
-                while ( my ($sub_string, $url) = $self->getMarkedText('A', \$next_content) ) 
-                {
-                    last unless $sub_string;
-                    if ( $sub_string =~ m-$next_url_button-si )
-                    {
-                        $url =~ s-A\s+HREF=--si;
-                        if ( $url =~ m-^'([^']*)'\s*$- ) {
-                            $url = $1;
-                        }
-                        elsif ( $url =~ m-^"([^"]*)"\s*$- ) {
-                            $url = $1;
-                        }
-                        elsif ( $url =~ m-^([^ >]*)- ) {
-                            $url = $1;
-                        } else {
-                            $url = '';
-                        }
-                        if ( $url ) {
-                           # Well, you learn something every day!
-                           if ( my ($newName, $newValue) = ($url =~ m{&(.*?)=(.*)$}) and $url !~ m{\?} ) {
-                              $url = $self->{'_last_url'};
-                              $url =~ s{&$newName=[^&]*}{}g; # remove any earlier appearance of this parameter.
-                              $url .= "&$newName=$newValue";
-                           }
-                            my $datParser = $$scaffold[3];
-                            $datParser = \&WWW::Scraper::null unless $datParser;
-                            $self->{'_base_url'} =~ m-^(.*)/.*$-;
-                            my $baseURL = $1;
-                            $url = new URI::URL(&$datParser($self, $hit, $url), $self->{'_base_url'});
-                            $url = $url->abs();
-                        }
-                        $url = WWW::Scraper::unescape_query($url);# if $TidyXML->m_isTidyd();
-                        $self->{'_next_url'} = $url;
-                        print STDERR  "NEXT_URL: $url\n" if ($self->ScraperTrace('U'));
-                        next SCAFFOLD;
-                    }
-                }
-            }
-            next SCAFFOLD;
-        }
 
         elsif ( 'HTML' eq $tag )
         {
@@ -1333,46 +1265,6 @@ SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
                $total_hits_found = 1;
             }
             next SCAFFOLD;
-        }
-        elsif ( 'F' eq $tag ) # deprecated by WWW::Scraper::Opcodecode - gdw.2003.03.14
-        {
-            @ary = @$scaffold;
-            shift @ary;
-            my $datParser = shift @ary;
-            $datParser = \&WWW::Scraper::trimTags unless $datParser;
-            @dts = &$datParser($self, $hit, ${$TidyXML->asString()});
-            goto REGEX_F;
-        }
-        elsif ( 'REGEXX' eq $tag ) 
-        {
-            @ary = @$scaffold;
-            shift @ary;
-            my $regex = shift @ary;
-            if ( ${$TidyXML->asString()} =~ s/$regex//si )
-            {
-                @dts = ($1,$2,$3,$4,$5,$6,$7,$8,$9);
-            REGEX_F:    
-                for ( @ary ) 
-                {
-                    if ( ! $_ ) { # "if ( $_ eq '' )" reports "use of uninitialized variable" under diagnostics.
-                        shift @dts;
-                    }
-                    elsif ( $_ eq 'url' ) {
-                        my $url = new URI::URL(shift @dts, $self->{_base_url});
-                        $url = $url->abs();
-                        print "REGEX binding 'url' => $url\n" if ($self->ScraperTrace('d'));
-                        $hit->plug_url($url);
-                    } 
-                    else {
-                        my $dt = $self->trimTags($hit, shift @dts);
-                        print "REGEX binding '$_' => $dt\n" if ($self->ScraperTrace('d'));
-                        $hit->plug_elem($_, $dt, $TidyXML) if defined $dt;
-                    }
-                }
-                $total_hits_found = 1;
-            }
-            next SCAFFOLD;
-        
         } elsif ( $tag eq 'SNIP' ) { # another idea: 'CROP', the inverse of 'SNIP' - gdw.2003.01.16
             $sub_string = ${$TidyXML->asString()};
             my $matchString = $$scaffold[1];
@@ -1508,7 +1400,7 @@ sub newHit {
         }
     }
     unless ( $hit ) {
-        die "Can't instantiate your Response module '$resultType': $!";
+        die "Can't instantiate your Response module '$resultType': $@";
     }
     $hit->_ScraperEngine($self);
     $hit->_searchObject($self);
@@ -1687,6 +1579,13 @@ sub trimXPathHref {
     $url = WWW::Scraper::unescape_query($url);
     return $url;
 }
+
+sub trimComments { # Strip comments from $_.
+    my ($self, $hit, $dat) = @_;
+    $dat =~ s/<!--.*?-->//gs;
+    return $dat;
+}
+
 
 sub removeScriptsInHTML {
     my ($self, $hit, $xml) = @_;

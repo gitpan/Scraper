@@ -8,10 +8,10 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.0 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.23 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
-use WWW::Scraper(qw(2.27 generic_option addURL trimTags));
+use WWW::Scraper(qw(3.02 generic_option addURL trimTags));
 
 use strict;
 
@@ -24,7 +24,7 @@ my $scraperRequest =
              },
 #http://www.google.com/search?hl=en&lr=&ie=UTF-8&oe=utf-8&safe=active&q=turntable&btnG=Google+Search                 'SKIP' => '' 
      'nativeDefaults' => {
-            'q' => 'turntable',
+            'q' => '',
             #'as_eq' => 'turntable',
             #'oe' => 'utf-8',
             #'as_q' => '',
@@ -37,7 +37,7 @@ my $scraperRequest =
             #'as_oq' => '',
             'ie' => 'UTF-8'
                },
-     'nativeQuery' => undef,
+     'nativeQuery' => 'q',
      'url' => 'http://www.google.com/search?',
      'cookies' => 0,
      'type' => 'QUERY',
@@ -47,7 +47,7 @@ my $scraperRequest =
 my $scraperFrame =
 [ 'HTML', 
   [ 
-    [ 'NEXT', 1, '[^>]>Next<' ], # Google keeps changing their formatting, so watch out!
+    [ 'NEXT', '[^>]>Next<' ], # Google keeps changing their formatting, so watch out!
     [ 'COUNT', '[,0-9]+</b> of about <b>([,0-9]+)</b>'] ,
     [ 'TABLE', '#4' ],
     [ 'DIV',

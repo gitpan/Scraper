@@ -8,7 +8,7 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.00 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Scraper(qw(2.27 generic_option));
@@ -49,21 +49,19 @@ my $scraperRequest =
 my $scraperFrame = 
 [ 'HTML', 
   [ 
-    [ 'NEXT', 2, \&findNextForm ],
+    [ 'NEXT', \&findNextForm ],
     [ 'HIT*',
       [  
-        [ 'BODY', '<TD class="resultstxt" width=', '</tr>',
-          [
-            [ 'TAG', 'P', # focus on the <p> area.
-              [
-                 [ 'REGEX', '(\d+)\.', 'number' ]
-                ,[ 'A', 'go2netUrl', 'title' ]
-                ,[ 'SPAN', 'url' ]
-                ,[ 'RESIDUE', 'description', \&cleanUpLeadingTrailingBRs ]
-              ]
-            ]
-          ]
-        ]
+#<font face="verdana, sans-serif" size="2">3. <a href="http://clickit.go2net.com/search?site=srch&cid=239134&area=srch.comm.overture&shape=textlink&cp=info.dogpl&rawto=http://www9.overture.com/d/sr/?xargs=02u3hs9yoaj1UKsTDChBjFX5spp%2FCTf0O0mIZQpChwe6VrSYKFGqbBUxe3QVP1vLuO1u%2By%2F%2BrzwffmnZHlqXIRERDIJSVEo%2BQKgSkuND9EaQXW6q7qVVfbZ7G%2B8e2jB2a0LBZtL01lzCaDRoyJWeahwcZA6Mji%2FDLv4brtMhri4nxMzwVJnUVAg7iuTtjsfPwUdK5185CSMVTgdQEaiTQN9bDlXpxcb0M9Jg%3D%3D">Retro 
+#Radios, Turntables and Phones</a></font><br>
+#<font face="verdana, sans-serif" size="2">View our selection of brand name turn 
+#tables at discounted prices. Shop all the decorative and fun radios, record 
+#players and more. Purchase securely online. http://www.fun-radios.com<br>
+#</font>  <br>
+                 [ 'REGEX', '<font face="verdana, sans-serif" size="2">(\d+)\.\s+.*?href="([^"]*)"[^>]*>(.*?)</a>.*?<br>(.*?)<br>', 'number', 'url', 'title', 'description' ]
+#                ,[ 'A', 'go2netUrl', 'title' ]
+#                ,[ 'SPAN', 'url' ]
+#                ,[ 'RESIDUE', 'description', \&cleanUpLeadingTrailingBRs ]
       ]
     ]
   ]
@@ -84,7 +82,7 @@ use HTML::Form;
 sub findNextForm {
     my ($self, $hit, $dat) = @_;
     
-    if ( $dat =~ m{(<FORM\s+METHOD="GET"\s+ACTION="http://clickit.go2net.com/search">.*?</FORM>)}si ) {
+    if ( $dat =~ m{(<FORM\s+action.*?">.*?next 10 engines.*?</FORM>)}si ) {
         my $form = HTML::Form->parse($1, $self->{'_base_url'});
         my $req = $form->make_request;
         return $req->uri;

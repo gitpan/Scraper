@@ -42,7 +42,7 @@ my $scraperFrame =
            [ 
                #        </b> found <b>10,032,977 items</b>
                [ 'COUNT', 'found\s+<b>([0-9,]+)\s+items?</b>']
-              ,[ 'NEXT', 1, 'alt="Next Page"' ]
+              ,[ 'NEXT', 'alt="Next Page"' ]
               ,[ 'BODY', '<!--NLBannerStart-->', '<!--NLResultListEnd-->',
                   [  
                      [ 'HIT*',
@@ -104,7 +104,7 @@ sub testParameters {
     }
     
     return { 
-             'SKIP' => ''
+             'SKIP' => "NorthernLight's search engine seems to be down these days!?"
             ,'testNativeQuery' => 'search scraper'
             ,'expectedOnePage' => 9
             ,'expectedMultiPage' => 12

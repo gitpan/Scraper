@@ -2,7 +2,7 @@ package WWW::Scraper::Opcode;
 
 use strict;
 use vars qw($VERSION);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.0 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.1 $ =~ /(\d+)\.(\d+)/);
 
 # Default new() simply assumes each parameter of the operation is a field name,
 #  unless:
@@ -12,8 +12,7 @@ $VERSION = sprintf("%d.%02d", q$Revision: 1.0 $ =~ /(\d+)\.(\d+)/);
 
 sub new { 
     my ($cls, $scaffold, $params) = @_;
-
-    my $self = bless {};
+    my $self = bless {},$cls;
     my @scfld = @$scaffold;
     shift @scfld;
     my @fields;
@@ -23,10 +22,55 @@ sub new {
     return $self;
 }
 
+# Base scrape() method performs the following -
+#   1. getMarkedTextAndAttributes(OpcodeName)
+#   2. Walking along your Opcode scraper frame paramater . . .
+#   3. Executes any function you list there.
+#   4. Put attributes into same named fields in the list if they
+#      appear in your 'CaptureAttributes' array.
+#   5. Puts the (current) content of the element into any otherwise
+#      named field (by current meaning after previous processing by
+#      any functions you've put in the parameter list.)
+#
 sub scrape {
-    die "Method 'scrape()' has not been implemented in the sub-class '".ref($_[0])."'\n";
+    my ($self, $scraper, $scaffold, $TidyXML, $hit) = @_;
+    
+    my $tag = ref($self); $tag =~ s{^.*::(\w[\w\d]*)$}{$1};
+    
+    my ($sub_string, $attributes) = $TidyXML->getMarkedTextAndAttributes($tag);
+    return undef unless defined($sub_string);
+    my @ary = @$scaffold;
+    shift @ary;
+    for ( @ary ) 
+    {
+        if ( ! defined $_ ) { # "if ( $_ eq '' )" reports "use of uninitialized variable" under diagnostics.
+        }
+        elsif ( ref($_) eq 'CODE' ) {
+            $sub_string = &$_($scraper,$hit,$sub_string);
+        }
+        elsif ( $self->isCapturedField($_) ) {
+            $self->plug_elem($_, $attributes->{$_}, $TidyXML);
+        }
+        elsif ( $_ eq 'url' )
+        {
+            my $url = new URI::URL($sub_string, $scraper->{_base_url});
+            $url = $url->abs();
+            $hit->plug_url($url);
+        } 
+        else {
+            $hit->plug_elem($_, $sub_string, $TidyXML) if defined $sub_string;
+        }
+    }
+    return ($self->_next_scaffold($scaffold), $sub_string, $attributes);
 }
 
+sub isCapturedField {
+    my ($self, $parm) = @_;
+    for ( @{$self->{'CaptureAttributes'}} ) {
+        return 1 if ( uc $parm eq uc $_ );
+    }
+    return 0;
+}
 
 # Replace string Opcodes with their respective objects.
 sub InitiateScaffold {
@@ -36,24 +80,28 @@ sub InitiateScaffold {
 SCAFFOLD: for my $scaffold ( @$scaffold ) {
         
         my $tag = $$scaffold[0];
-        if ( $tag =~ m/^(HIT|HIT\*|HTML|TidyXML|TRX|DL|FOR|DATA|DL|DT|DD|DIV|SPAN|RESIDUE|TAG|AN|AQ|F|SNIP|CALLBACK|XPath|NEXT|COUNT|TRACE)$/ )
+        if ( $tag =~ m/^(HIT|HIT\*|HTML|TidyXML|TRX|DL|FOR|DATA|DL|DT|DD|DIV|SPAN|RESIDUE|TAG|AN|AQ|F|SNIP|CALLBACK|XPath|COUNT|TRACE)$/ )
         {
-            $next_scaffold = @$scaffold[$#$scaffold] if ref(@$scaffold->[$#$scaffold]) eq 'ARRAY';
+            my @scfld = @$scaffold;
+            $next_scaffold = $scfld[$#scfld] if ref($scfld[$#scfld]) eq 'ARRAY';
         } else
         {
             my @fieldsCaptured;
-            my ($op,$params);
+            my ($op,$params,$opmod);
             if ( ref($tag) ) {
                 $op = $tag;
             }
             else {
                 ($op,$params) = ($tag =~ m{^(\w+)(?:\((.*)\))?$});
                 my @params = split /\s*,\s*/, $params if $params;
-                eval "require WWW::Scraper::Opcode::$op; \$op = new WWW::Scraper::Opcode::$op(\$scaffold, \\\@params)";
-                die "WWW::Scraper::Response - - no $tag Scraper opcode class: $@" if $@ || !ref($op);
-                $$scaffold[0] = $op;
+                eval "\$opmod = new WWW::Scraper::Opcode::$op(\$scaffold, \\\@params)";
+                unless ( ref($opmod) ) {
+                    eval "require WWW::Scraper::Opcode::$op; \$opmod = new WWW::Scraper::Opcode::$op(\$scaffold, \\\@params)";
+                }
+                die "WWW::Scraper::Response - - no $tag Scraper opcode class: $@" if $@ || !ref($opmod);
+                $$scaffold[0] = $opmod;
             }
-            push @fields, @{$op->{'fieldsCaptured'}} if $op->{'fieldsCaptured'};
+            push @fields, @{$opmod->{'fieldsCaptured'}} if $opmod->{'fieldsCaptured'};
             my @scfld = @$scaffold;
             $next_scaffold = $scfld[$#scfld] if ref($scfld[$#scfld]) eq 'ARRAY';
         }
@@ -62,6 +110,12 @@ SCAFFOLD: for my $scaffold ( @$scaffold ) {
     return @fields;
 }
 
+# Calculate the next scaffold element of the give scaffold.
+sub _next_scaffold {
+    my $scaffold = $_[1];
+    return $scaffold->[$#$scaffold] if ref($scaffold->[$#$scaffold]) eq 'ARRAY';
+    return undef;
+}
 1;
 
 __END__

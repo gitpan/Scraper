@@ -6,7 +6,7 @@ package WWW::Scraper::Beaucoup;
 use strict;
 use vars qw(@ISA $VERSION);
 @ISA = qw(WWW::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.0 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Scraper(qw(1.48 trimLFs trimLFLFs));
 
@@ -14,19 +14,19 @@ use WWW::Scraper(qw(1.48 trimLFs trimLFLFs));
 # http://www.Beaucoup.com/js/jobsearch-results.html?loc=CA-San+Jose+Area&cat=Computing%2FMIS-Software+Development&srch=Perl&job=1
 my $scraperRequest = 
    { 
-      'type' => 'QUERY'       # Type of query generation is 'QUERY'
+      'type' => 'FORM'       # Type of query generation is 'QUERY'
      # This is the basic URL on which to build the query.
-     ,'url' => 'http://partners.mamma.com/Beaucoup?'
+     ,'url' => 'http://Beaucoup.com'
      # This is the Scraper attributes => native input fields mapping
-     ,'nativeQuery' => 'query'
+     ,'nativeQuery' => 'q'
      ,'nativeDefaults' =>
                       {    'query'   => undef
-                          ,'phrases' => 'off'
-                          ,'rpp'     => '10'
-                          ,'cb'      => 'Beaucoup'
-                          ,'qtype'   => '0'
-                          ,'lang'    => '1'
-                          ,'timeout' => '4'
+#                          ,'phrases' => 'off'
+#                          ,'rpp'     => '10'
+#                          ,'cb'      => 'Beaucoup'
+#                          ,'qtype'   => '0'
+#                          ,'lang'    => '1'
+#                          ,'timeout' => '4'
                           ,'Search.x' => 1
                           ,'Search.y' => 1
                       }
@@ -44,23 +44,18 @@ my $scraperFrame =
 [ 'HTML', 
     [ 
         # This page shows <B>1-10</B> out of a total of <B>20</B> results for:
-        [ 'COUNT', 'out of a total of <B>(\d+)</B> results for:' ]
-       ,[ 'NEXT', 'Next' ]
-       ,[ 'BODY', '<!-- START LIST -->', '<!-- END LIST -->',
-            [  
-                [ 'HIT*',
-                    [ 
-                       [ 'BODY', '<!-- START ITEM -->', '<!-- END ITEM -->',
-                            [
-                                [ 'A', 'url', 'title' ]
-                               ,[ 'TAG', 'STRONG', 'sourceSearchEngine' ]
-                               ,[ 'TAG', 'EM', 'visibleURL' ]
-                               ,[ 'BODY', '<BR>', '<BR>', 'description', \&trimLFs ]
-                            ]
-                        ]
-                    ]
-                ]
-            ]
+        [ 'COUNT', 'There are (\d+) results for:' ]
+       ,[ 'COUNT', '\d+-\d+ out of (\d+) for ' ]
+       ,[ 'COUNT', '\d+-\d+ out of a total of (\d+) results for' ]
+       ,[ 'NEXT', 'next' ]
+       ,[ 'HIT*',
+          [ 
+['REGEX','\d+\.\s<a href="([^"]*)"[^>]*>(.*?)<br>(.*?)<br>', 'url', 'title','description']
+
+#1. <a href="/j.php?rc=40&atag=2,,4,da&j=http%3A%2F%2Fgta.sky-scraper.net%2F&kw=scraper">sky-scraper.net: best sites for GRAND THEFT AUTO</a>
+#<br>sky-scraper.net,  Visit Casino On Net and receive up to $200 sign up bonus. Home. Sat,  12 Apr 2003 GMT. ...
+#<br><i>http://gta.sky-scraper.net/</i>  <b><font size=1>(Netscape)</font></b><br><small><a href="/j.php?rc=40&atag=2,,4,da&j=http%3A%2F%2Fgta.sky-scraper.net%2F&kw=scraper" target=_new>Open link in new window</a></small><br><br>
+          ]
         ]
     ]
 ];
@@ -75,9 +70,9 @@ sub testParameters {
     
     return {
                  'SKIP' => &WWW::Scraper::TidyXML::isNotTestable() 
-                ,'testNativeQuery' => 'turntable'
+                ,'testNativeQuery' => 'scraper'
                 ,'expectedOnePage' => 5
-                ,'expectedMultiPage' => 11
+                ,'expectedMultiPage' => 20
                 ,'expectedBogusPage' => 2000
            };
 }

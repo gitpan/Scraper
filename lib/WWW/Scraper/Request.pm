@@ -22,7 +22,7 @@ package WWW::Scraper::Request;
 
 use strict;
 use vars qw($VERSION @ISA);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.0 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
 
 my %AlreadyDeclared;
 my $VirtualCount;
@@ -84,7 +84,6 @@ sub new {
             $nativeQuery = $whatzit;
         }
     }
-
 
     unless ( $SubClass ) {
         $VirtualCount += 1;
@@ -252,7 +251,7 @@ sub prepare {
     
     # Set nativeQuery field value first; it may be overwritten by FieldTranslations later, which is what we'd want.
     $options_ref->{$scraperRequest->{'nativeQuery'}} = $self->_native_query() if $scraperRequest->{'nativeQuery'};
-    
+
     $scraper->cookie_jar(HTTP::Cookies->new()) if $scraperRequest->{'cookies'}; 
 
     my $fieldTranslationsTable = $scraper->fieldTranslations();

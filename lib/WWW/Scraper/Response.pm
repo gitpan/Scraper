@@ -96,7 +96,7 @@ modify it under the same terms as Perl itself.
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::SearchResult);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.02 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.13 $ =~ /(\d+)\.(\d+)/);
 require WWW::SearchResult;
 my (%AlreadyDeclared, $idCounter);
 
@@ -187,11 +187,10 @@ SCAFFOLD: for my $scaffold ( @$scaffold ) {
             push @fields, $$scaffold[3] if $$scaffold[3];
             next SCAFFOLD;
         }
-        elsif ( $tag =~ m{^(REGEXX|F|SNIP)$} ) # another idea: REGEX and F give their results to a sub-scraperFrame
+        elsif ( $tag =~ m{^(F|SNIP)$} ) # another idea: REGEX and F give their results to a sub-scraperFrame
         {                                     #  instead of to a field - gdw.2003.01.16
             my @ary = @$scaffold;
             shift @ary;
-            shift @ary if ($tag eq 'REGEX' || $tag eq 'F'); 
             shift @ary if (($tag eq 'SNIP') && $ary[0] && !ref($ary[0])); 
             map {
                 if ( 'ARRAY' eq ref($_) ) {
@@ -219,17 +218,12 @@ SCAFFOLD: for my $scaffold ( @$scaffold ) {
                 next SCAFFOLD;
             }
         }
+        elsif ( $tag eq 'TRACE' )
+        {
+            next SCAFFOLD;
+        }
         else {
-warn "Error in WWW::Scraper::Response";
-#            my @fieldsCaptured;
-#            my ($op,$params) = ($tag =~ m{^(\w+)(?:\((.*)\))?$});
-#            my @params = split /\s*,\s*/, $params if $params;
-#            eval "use WWW::Scraper::Opcode::$op; \$op = new WWW::Scraper::Opcode::$op(\$scaffold, \\\@params)";
-#            die "WWW::Scraper::Response - - no $tag Scraper opcode class: $@" if $@;
-#            $$scaffold[0] = $op;
-#            push @fields, @{$op->{'fieldsCaptured'}} if $op->{'fieldsCaptured'};
-#            my @scfld = @$scaffold;
-#            $next_scaffold = $scfld[$#scfld] if ref($scfld[$#scfld]) eq 'ARRAY';
+            die "Can't recognize Opcode '$tag' in scraper frame, from WWW::Scraper::Response::fieldCapture()";
         }
         push @fields, fieldCapture($next_scaffold) if $next_scaffold;
     }
@@ -280,6 +274,8 @@ sub new {
         my $baseClasses = '';
         $baseClasses = "WWW::Scraper::Response::$1" if ( $type =~ m{^(.*)::[^:]+$} );
         $baseClasses = "WWW::Scraper::Response$SubClass\::_struct_ $baseClasses WWW::Scraper::Response";
+        { 
+        no warnings 'redefine';
         eval <<EOT;
 { package WWW::Scraper::Response$SubClass\::_struct_;
 use Class::Struct;
@@ -309,10 +305,12 @@ package WWW::Scraper::Response$SubClass;
 use WWW::Scraper::Response;
 use vars qw(\@ISA);
 \@ISA = qw( $baseClasses );
+sub new { bless new WWW::Scraper::Response$SubClass\::_struct_ }
 sub type { return '$type' }
 sub typeLeaf { return '$typeLeaf' }
 1;
 EOT
+        }
         die $@ if $@;
         $AlreadyDeclared{$SubClass} = [(keys %subFields)+11, \%subFields];
     

@@ -42,8 +42,7 @@ sub scrape {
     }
     
     # Continuing for the legacy versions of the 'BODY' opcode.
-    my $next_scaffold = undef;
-    if ( 'ARRAY' ne ref $$scaffold[3]  ) # if next_scaffold is an array ref, then we'll recurse (below)
+    if ( $$scaffold[3] && ('ARRAY' ne ref $$scaffold[3]) ) # if next_scaffold is an array ref, then we'll recurse (below)
     {
         if ( $sub_string ) {
             my $binding = $$scaffold[3];
@@ -60,11 +59,9 @@ sub scrape {
                 $hit->plug_elem($binding, $dat) if defined $dat;
             }
         }
-    } else {
-        $next_scaffold = $$scaffold[3];
     }
 
-    return ($next_scaffold, $sub_string, undef);
+    return ($self->_next_scaffold($scaffold), $sub_string, undef);
 }
 
 

@@ -8,10 +8,10 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.0 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
-use WWW::Scraper(qw(2.12 generic_option addURL trimTags trimLFs));
+use WWW::Scraper(qw(3.03 generic_option addURL trimTags trimLFs trimComments));
 
 use strict;
 
@@ -62,23 +62,15 @@ my $scraperFrame =
                [ 
                   [ 'HIT*' ,
                      [
-                        ['TABLE',
-                            [
-                                ['TD', 'firm', \&cleanUpUsps]
-                               ,['TD', 'address', \&cleanUpUsps]
-                               ,['TD', 'city', \&parseCity]
-                            ]
-                        ]
-                       ,['TABLE',
-                            [
-                                ['TD', 'carrierRoute', \&cleanUpUsps]
-                               ,['TD', 'county', \&cleanUpUsps]
-                               ,['TD', 'deliveryPoint', \&cleanUpUsps]
-                               ,['TD', 'checkDigit', \&cleanUpUsps]
-                            ]
-                         ]
-                         # this regex never matches; just lets us declare fields.
-                        ,[ 'REGEX', 'neverMatch', 'state', 'zipcode' ]
+                        ['REGEX', '(<tr[\s>].*?<!--<Firm Line/>-->.*?</tr>)', \&trimComments, \&trimLFs, 'firm']
+                       ,['REGEX', '(<tr[\s>].*?<!--<Address Line/>-->.*?</tr>)', \&trimComments, \&trimLFs, 'address']
+                       ,['REGEX', '(<tr[\s>].*?<!--<City-State-ZIP/>-->.*?</tr>)', \&trimComments, \&trimLFs, \&parseCity, 'city']
+                       ,['REGEX', '(<tr[\s>].*?<!--<Carrier Route/>-->.*?</tr>)', \&trimComments, \&trimLFs, \&cleanUpUsps, 'carrierRoute']
+                       ,['REGEX', '(<tr[\s>].*?<!--<County/>-->.*?</tr>)', \&trimComments, \&trimLFs, 'county']
+                       ,['REGEX', '(<tr[\s>].*?<!--<Delivery Point/>-->.*?</tr>)', \&trimComments, \&trimLFs, \&cleanUpUsps, 'deliveryPoint']
+                       ,['REGEX', '(<tr[\s>].*?<!--<Check Digit/>-->.*?</tr>)', \&trimComments, \&trimLFs, \&cleanUpUsps, 'checkDigit']
+                        # this regex never matches; just lets us declare fields.
+                       ,[ 'REGEX', 'neverMatch', 'state', 'zipcode' ]
                      ]
                   ]
                ]

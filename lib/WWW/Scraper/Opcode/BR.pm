@@ -9,7 +9,7 @@ use vars qw($VERSION);
 #  $cls - Op class
 #  $scaffold - current scaffold
 #  $params - ref to array of parames in the 'OP()' portion of the scaffold.
-sub new {
+sub newX {
     my ($cls, $scaffold, $params) = @_;
     my $self = bless {};
     $self->{'fieldsDiscovered'} = ['content'];
@@ -19,11 +19,12 @@ sub new {
 sub scrape {
     my ($self, $scraper, $scaffold, $TidyXML, $hit) = @_;
     
-    my ($sub_string, $attributes) = $TidyXML->getMarkedTextAndAttributes('BR');
-    return undef unless defined($sub_string);
-    $hit->content(\$sub_string);
+    my $sub_string = ${$TidyXML->asString()};
+    return undef unless $sub_string =~ s{(<BR>(.*?))<BR>}{}gsi;
+    my $dat = $2;
+    $hit->description(\$dat);
 
-    return ($$scaffold[1], $sub_string);
+    return ($self->_next_scaffold($scaffold), $sub_string, undef);
 }
 
 

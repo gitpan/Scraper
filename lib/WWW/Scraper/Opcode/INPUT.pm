@@ -12,6 +12,11 @@ use vars qw($VERSION);
 sub new {
     my ($cls, $scaffold, $params) = @_;
     my $self = bless {};
+    my @scfld = @$scaffold;
+    shift @scfld;
+    my @fields;
+    map { push @fields, $_ unless !$_ || ref($_) || m{^#} } @scfld;
+    $self->{'fieldsCaptured'} = \@fields;
     $self->{'fieldsDiscovered'} = ['name','type','value','caption'];
     return $self;
 }

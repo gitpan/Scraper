@@ -36,7 +36,7 @@ WriteMakefile(
     'NAME'	=> 'Scraper',
     'VERSION_FROM' => "lib/WWW/Scraper.pm", # finds $VERSION
     # test.pl uses this hash, also, to poll all modules we depend on
-    'PREREQ_PM' => { 'WWW::Search' => 2.28
+    'PREREQ_PM' => { 'WWW::Search' => 2.35
                     ,'LWP' => 5.48
                     ,'URI' => 0.0
                     ,'URI::URL' => 0.0
