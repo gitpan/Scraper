@@ -500,7 +500,7 @@ use vars qw($VERSION @ISA @EXPORT @EXPORT_OK);
 @EXPORT = qw();
 @EXPORT_OK = qw();
 @ISA = qw(WWW::Search Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.41 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.42 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search( qw(strip_tags) );
@@ -579,6 +579,11 @@ sub native_setup_search_QUERY
         $self->{'_base_url'} = &$url($self, $native_query, $native_options_ref);
     } else {
         $self->{'_base_url'} = $url;
+    }
+    unless ( $self->{'_base_url'} ) {
+        print STDERR "No base url was specified by ".ref($self).".pm, so no search is possible.\n";
+        undef $self->{'_next_url'};
+        return undef;
     }
     $self->{'_http_method'} = 'GET' unless $self->{'_http_method'};
 
@@ -681,6 +686,7 @@ sub native_retrieve_some
     my $response = $self->http_request($method, $self->{_next_url});
     $self->{'_last_url'} = $self->{'_next_url'}; $self->{'_next_url'} = undef;
     $self->{response} = $response;
+    
     return undef unless $response->is_success;
 
     my $hits_found = $self->scrape($response->content(), $self->{_debug});
@@ -1127,4 +1133,33 @@ sub getName {
 }
 
 }
+
+
+
+{
+    package LWP::UserAgent;
+
+# Dice always redirects the first query page via 302 status code.
+# BAJobs frequently (but not always) redirects via 302 status code.
+# We need to tell LWP::UserAgent that it's ok to redirect on Dice and BAJobs.
+sub redirect_ok
+{
+    # draft-ietf-http-v10-spec-02.ps from www.ics.uci.edu, specify:
+    #
+    # If the 30[12] status code is received in response to a request using
+    # the POST method, the user agent must not automatically redirect the
+    # request unless it can be confirmed by the user, since this might change
+    # the conditions under which the request was issued.
+
+    my($self, $request) = @_;
+    return 1 if $request->uri() =~ m-jobsearch\.dice\.com/jobsearch/jobsearch\.cgi-i;
+    return 1 if $request->uri() =~ m-www\.bajobs\.com/jobseeker/searchresults\.jsp-i;
+    return 1 if $request->uri() =~ m-\.techies\.com/Common-i;
+    return 0 if $request->method eq "POST";
+    1;
+}
+}
+
+
+
 1;

@@ -55,8 +55,8 @@ modify it under the same terms as Perl itself.
 
 use strict;
 use vars qw($VERSION @ISA);
-@ISA = qw(WWW::Search::Scraper::Response);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/);
+@ISA = qw(WWW::Search::Scraper);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
 use WWW::Search::Scraper::Response;
 
 use WWW::Search::Scraper(qw(1.34));
@@ -83,14 +83,19 @@ sub native_setup_search
       }
     ];
 
+    # Set the default field values.
+    $self->{'_options'}{'numbeds'} = 0;
+    $self->{'_options'}{'minrnt'}  = 0;
+    $self->{'_options'}{'maxrnt'}  = 9999;
+
     # scraperFrame describes the format of the result page.
     $self->{'_options'}{'scrapeFrame'} = 
 [ 'HTML', 
   [ 
       [ 'COUNT', '<strong>Matches: (\d+)</strong>' ]
      ,[ 'NEXT', 2, \&getNextPage ]
-     ,[ 'BODY', '<form action="oasis.dll" method="GET" name="Form1">', undef,   # There are two forms in this
-         [ [ 'BODY', '<form action="oasis.dll" method="GET" name="Form1">', undef, # result, by the same name!
+     ,[ 'BODY', '<form action="oasis.dll" method="GET" name="Form1">', undef,      # There are two forms in this
+         [ [ 'BODY', '<form action="oasis.dll" method="GET" name="Form1">', undef, #  result, by the same name!
               [  
                 [ 'TABLE', '#0',
                    [
@@ -155,7 +160,8 @@ sub native_setup_search
 #       value="Last 7 &gt;&gt;">
 sub getNextPage {
     my ($self, $hit, $dat) = @_;
-    $dat =~ m-onclick="javascript:document\.location='(/search/oasis\.dll\?page=Results.*?)'[^>]*?&gt;&gt;">-s;
+    return undef unless
+        $dat =~ m-value="Modify Search Criteria".*onclick="javascript:document\.location='(/search/oasis\.dll\?page=Results[^']*?)'[^>]*?&gt;&gt;">-s;
     my $nxt = $1;
     my $url = URI::URL->new($1, $self->{'_base_url'});
     $url = $url->abs;
@@ -165,7 +171,7 @@ sub getNextPage {
 
 use WWW::Search::Scraper::Response;
 sub newHit {
-    my $self = new WWW::SearchResult::Scraper;
+    my $self = new WWW::Search::Scraper::Response;
     return $self;
 }
 

@@ -63,11 +63,10 @@ modify it under the same terms as Perl itself.
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/);
-use WWW::Search::Scraper;
+$VERSION = sprintf("%d.%02d", q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
-use WWW::Search::Scraper(qw(1.24 generic_option addURL trimTags));
+use WWW::Search::Scraper(qw(1.42 generic_option addURL trimTags));
 
 use LWP::UserAgent;
 use HTML::Form;
@@ -170,27 +169,4 @@ sub newHit {
     return $self;
 }
 
-
-{
-    package LWP::UserAgent;
-
-# BAJobs frequently (but not always) redirects via 302 status code.
-# We need to tell LWP::UserAgent that it's ok to redirect on BAJobs.
-sub redirect_ok
-{
-    # draft-ietf-http-v10-spec-02.ps from www.ics.uci.edu, specify:
-    #
-    # If the 30[12] status code is received in response to a request using
-    # the POST method, the user agent must not automatically redirect the
-    # request unless it can be confirmed by the user, since this might change
-    # the conditions under which the request was issued.
-
-    my($self, $request) = @_;
-    return 1 if $request->uri() =~ m-www\.bajobs\.com/jobseeker/searchresults\.jsp-i;
-    return 0 if $request->method eq "POST";
-    1;
-}
-
-
-}
 1;

@@ -19,9 +19,9 @@ by Glenn Wood, <glenwood@alumni.caltech.edu>.
 
 use strict;
 use vars qw($VERSION @ISA);
-@ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.1 $ =~ /(\d+)\.(\d+)/);
-use WWW::Search::Scraper;
+@ISA = qw(WWW::Search::Scraper::Response);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/);
+use WWW::Search::Scraper::Response;
 
 sub resultTitles {
     return {

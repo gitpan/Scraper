@@ -242,11 +242,10 @@ require HTML::TokeParser;
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/);
-use WWW::Search::Scraper;
+$VERSION = sprintf("%d.%02d", q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
-use WWW::Search::Scraper(qw(generic_option trimTags addURL));
+use WWW::Search::Scraper(qw(1.42 generic_option trimTags addURL));
 
 sub native_setup_search
   {
@@ -328,14 +327,15 @@ sub native_retrieve_some
   
   # fast exit if already done
   return undef if (!defined($self->{_next_url}));
-  
+
   my $dicesBogusErrorMessage = 'Please wait a moment and click \<b\>Reload\<\/b\> to retry your search';
   my $bogus;
   my ($response,$tag,$url);
     my $still_getting_bogus_response = 0;
 	do
 	{
-		if ($self->{_first_call})
+		# Dice always redirects the first query to the first result page (via HTTP code 302)
+        if ($self->{_first_call})
 		{
 			print STDERR "Sending POST request to " . $self->{_next_url} .
 			"\tPOST options: " . $self->{_to_post} . "\n" 
@@ -356,9 +356,9 @@ sub native_retrieve_some
 					next;
 				} else
 				{
-					print STDERR "Recieved '$dicesBogusErrorMessage' $bogus times. Can't get response from Dice.com\n"; 
+					print STDERR "Recieved '$dicesBogusErrorMessage' $bogus times. Can't get response from Dice.com\n" if $debug; 
 					$self->{'_next_url'} = undef;
-					return 0;
+					return undef;
 				}
 			}
 			$still_getting_bogus_response = 0;
@@ -367,9 +367,9 @@ sub native_retrieve_some
 			if ($response->content() =~ 
 				m/Sorry, no documents matched your search criteria/)
 			{
-				print STDERR "Sorry, no hits found\n"; 
+				print STDERR "Sorry, no hits found\n" if $debug; 
 				$self->{'_next_url'} = undef;
-				return 0;
+				return undef;
 			}
 
 			my $p = new HTML::TokeParser(\$response->content());
@@ -378,38 +378,35 @@ sub native_retrieve_some
 			$url =~ s/\;/\&/g;
 			$self->{'_next_url'} = $url;
 			print STDERR "Next url is " . $self->{'_next_url'} . "\n" if ($debug);
-			return 0;
-		} else
-		{
-
-			print STDERR " *   sending request (",$self->{_next_url},")\n" if ($debug);
-			$response = $self->http_request('GET', $self->{_next_url});  
-			$self->{'_response'} = $response;
-			if ( $response->content() =~ m/$dicesBogusErrorMessage/ )
-			{
-				$still_getting_bogus_response += 1;
-				if ( $still_getting_bogus_response < 20 )
-				{
-					print STDERR "Got '$dicesBogusErrorMessage'; will reload in three seconds.\n" if ($debug);
-					sleep 3;
-					next;
-				} else
-				{
-					print STDERR "Received '$dicesBogusErrorMessage' $bogus times. Can't get response from Dice.com\n"; 
-					$self->{'_next_url'} = undef;
-					return 0;
-				}
-			}
-			$still_getting_bogus_response = 0;
-
-			print STDERR " *   got response\n" if ($debug);
-			$self->{'_next_url'} = undef;
-			if (!$response->is_success)
-			{
-				print STDERR $response->error_as_HTML;
-				return undef;
-			}
 		}
+
+        print STDERR " *   sending request (",$self->{_next_url},")\n" if ($debug);
+        $response = $self->http_request('GET', $self->{_next_url});  
+        $self->{'_response'} = $response;
+        if ( $response->content() =~ m/$dicesBogusErrorMessage/ )
+        {
+            $still_getting_bogus_response += 1;
+            if ( $still_getting_bogus_response < 20 )
+            {
+                print STDERR "Got '$dicesBogusErrorMessage'; will reload in three seconds.\n" if ($debug);
+                sleep 3;
+                next;
+            } else
+            {
+                print STDERR "Received '$dicesBogusErrorMessage' $bogus times. Can't get response from Dice.com\n" if $debug; 
+                $self->{'_next_url'} = undef;
+                return undef;
+            }
+        }
+        $still_getting_bogus_response = 0;
+
+        print STDERR " *   got response\n" if ($debug);
+        $self->{'_next_url'} = undef;
+        if (!$response->is_success)
+        {
+            print STDERR $response->error_as_HTML;
+            return undef;
+        }
 	} while ( $still_getting_bogus_response );
   
       my $hits_found = $self->scrape($response->content(), $self->{_debug});
@@ -484,6 +481,18 @@ sub getMoreInfo {
     return ($company,$title,$date,$location);
 }
 
+sub newHit {
+    my $self = new WWW::Search::Scraper::Response::Job::Dice;
+    return $self;
+}
+    
+{
+package WWW::Search::Scraper::Response::Job::Dice;
+
+use WWW::Search::Scraper::Response::Job;
+use vars qw(@ISA);
+@ISA = qw(WWW::Search::Scraper::Response::Job);
+
 sub resultTitles {
     my $self = shift;
     my $resultT = $self->SUPER::resultTitles();
@@ -494,6 +503,7 @@ sub resultTitles {
 sub results {
     my $self = shift;
     my $results = $self->SUPER::results();
+    return undef unless $results;
     $$results{'jobID'} = $self->jobID();
     return $results;
 }
@@ -501,10 +511,7 @@ sub results {
 sub jobID { return $_[0]->_elem('jobID'); }
 
 
-use WWW::Search::Scraper::Response::Job;
-sub newHit {
-    my $self = new WWW::Search::Scraper::Response::Job;
-    return $self;
 }
+
 
 1;

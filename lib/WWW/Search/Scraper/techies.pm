@@ -119,10 +119,9 @@ modify it under the same terms as Perl itself.
 #####################################################################
 
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/);
 
-use WWW::Search::Scraper(qw(1.38));
-require WWW::SearchResult;
+use WWW::Search::Scraper(qw(1.42));
 
 use strict;
 
@@ -146,11 +145,12 @@ sub native_setup_search
       }
     ];
 
+    $self->cookie_jar(HTTP::Cookies->new()); # AND TECHIES STILL ASKS FOR COOKIES! gdw 2001.06.05
+    
     # scraperFrame describes the format of the result page.
     $self->{'_options'}{'scrapeFrame'} = 
 [ 'HTML', 
   [ 
-[ 'TRACE' ],
       [ 'COUNT', '<strong>Matches: (\d+)</strong>' ]
      ,[ 'NEXT', 1, '<img src="/Common/Graphics/Buttons/Next\.gif" border="0">' ]
      # The content is framed by two NEW SEARCH buttons . . .
@@ -184,6 +184,10 @@ sub native_setup_search
 
 sub makeURL {
     my ($self, $native_query, $native_options_ref) = @_;
+    unless ( defined $native_options_ref->{'Location'} ) {
+        print STDERR "www.techies.com requires that you set a value for 'Location'.\nSee http://www.techies.com, or ".ref($self).".pm\n";
+        return undef;
+    }
     my $url = "http://$native_options_ref->{'Location'}.techies.com/Common/Includes/Main/Search_Session_include_m.jsp?";
     undef $native_options_ref->{'Location'}; # This is already in the URL, don't let Scraper.pm add it again.
     $self->{'_http_method'} = 'POST';

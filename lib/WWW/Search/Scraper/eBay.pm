@@ -66,15 +66,12 @@ require Exporter;
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/);
-use WWW::Search::Scraper;
+$VERSION = sprintf("%d.%02d", q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(1.24 generic_option addURL trimTags));
-require WWW::SearchResult;
 
 use HTML::Form;
-use HTTP::Cookies;
 
 sub native_setup_search
 {
@@ -86,8 +83,6 @@ sub native_setup_search
 	    'scraperForm_url' => ['http://pages.ebay.com/search/items/search.html', 0, 'query', undef]
         };
     };
-    
-#    $self->cookie_jar(HTTP::Cookies->new());
     
     my $response = $self->http_request('GET', $self->{_options}{'scraperForm_url'}[0]);
     unless ( $response->is_success ) {
@@ -126,6 +121,7 @@ sub native_setup_search
                                    ]
                                 ] 
                              ] 
+                            ,[ 'BOGUS', -1 ] # eBay's last hit is bogus (a spacer gif).
                            ] 
                        ] 
                      ]
@@ -169,19 +165,6 @@ sub native_setup_search
     $self->{_base_url} = 
 	$self->{_next_url} = $url;
     print STDERR $self->{_base_url} . "\n" if ($self->{_debug});
-}
-
-
-# eBay is special because the last hit Scraper finds is bogus (a spacer gif).
-sub native_retrieve_some
-{
-    my ($self) = @_;
-
-    my $hits_found = $self->SUPER::native_retrieve_some();
-    $hits_found -= 1;
-    return undef unless $hits_found > 0;
-    pop @{$self->{cache}};
-    return $hits_found;
 }
 
 

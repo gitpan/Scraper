@@ -46,7 +46,7 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(generic_option addURL trimTags));
@@ -129,7 +129,7 @@ sub native_setup_search
     my $req = $submit_button->click($form);
     $self->{_base_url} = 
 	$self->{_next_url} = $req->uri();
-    print STDERR $self->{_base_url} . "\n";# if ($self->{_debug});
+    print STDERR $self->{_base_url} . "\n" if ($self->{_debug});
 }
 
 use WWW::Search::Scraper::Response::Job;

@@ -29,7 +29,9 @@ modify it under the same terms as Perl itself.
 use WWW::Search::Scraper;
 use strict;
 use vars qw($VERSION);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/);
+
+    select STDERR; $| = 1; select STDOUT; $| = 1; 
 
     my ($engine, $query, $debug);
     $engine = 'eBay'      unless $engine = $ARGV[0];
@@ -39,7 +41,7 @@ $VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
     my $scraper = new WWW::Search::Scraper( $engine );
     
     my %resultTitles;
-    $scraper->setup_query($query, {'search_debug'=>$debug});
+    $scraper->setup_query($query, {'search_debug'=>$debug} );
     my $resultCount = 0;
     while ( my $result = $scraper->next_response() ) {
         $resultCount += 1;

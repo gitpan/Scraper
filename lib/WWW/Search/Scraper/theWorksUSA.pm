@@ -5,43 +5,30 @@ package WWW::Search::Scraper::theWorksUSA;
 
 =head1 NAME
 
-WWW::Search::Scraper::guru - class for searching guru
+WWW::Search::Scraper::guru - class for searching theWorksUSA
 
 
 =head1 SYNOPSIS
 
     require WWW::Search::Scraper;
-    $search = new WWW::Search::Scraper('guru');
+    $search = new WWW::Search::Scraper('theWorksUSA');
 
 
 =head1 DESCRIPTION
 
-This class is an guru specialization of WWW::Search.
-It handles making and interpreting guru searches
-F<http://www.guru.com>.
+This class is an extends WWW::Search::Scraper to www.theWorksUSA.com.
+It handles making and interpreting theWorksUSA searches
+F<http://www.theWorksUSA.com>.
 
+THIS ONE IS NOT DEBUGGED - IT GOES INTO LOOPS AND DOESN'T COME BACK.
 
 =head1 OPTIONS
 
-None at this time (2001.05.06)
+None at this time (2001.06.06)
 
-=over 8
+=head1 AUTHOR
 
-=item search_url=URL
-
-Specifies who to query with the guru protocol.
-The default is at
-C<http://www.guru.com/guru.jhtml>.
-
-=item search_debug, search_parse_debug, search_ref
-Specified at L<WWW::Search>.
-
-=back
-
-
-=head1 AUTHOR and CURRENT VERSION
-
-C<WWW::Search::guru> is written and maintained
+C<WWW::Search::Scraper::theWorksUSA> is written and maintained
 by Glenn Wood, <glenwood@alumni.caltech.edu>.
 
 =head1 COPYRIGHT
@@ -62,11 +49,10 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(1.34 generic_option addURL trimTags));
-require WWW::SearchResult;
 
 use HTML::Form;
 use HTTP::Cookies;

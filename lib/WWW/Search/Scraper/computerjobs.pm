@@ -101,8 +101,8 @@ modify it under the same terms as Perl itself.
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
-use WWW::Search::Scraper(1.41);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/);
+use WWW::Search::Scraper(qw(1.41 trimLFs));
 
 use strict;
 

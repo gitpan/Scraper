@@ -29,8 +29,9 @@ Happy Hunting!
 AUTHOR: Glenn Wood, glenwood@alumni.caltech.edu
 
 #---------------------------------------------------------------------#
-( $VERSION ) = sprintf("%d.%02d", q$Revision: 1.35 $ =~ /(\d+)\.(\d+)/)
+( $VERSION ) = sprintf("%d.%02d", q$Revision: 1.36 $ =~ /(\d+)\.(\d+)/)
 
+v1.36 - Added test.pl; fixed bugs discovered thereby in Dice, apartments, eBay, etc.
 v1.35 - Added FlipDog.com, and a few features to Scraper.pm (e.g. 'BOGUS', etc).
 v1.34 - Introduced SearchResult sub-classing, with illustration in eg/Scraper.pl
         Improved reliability of BAJobs.pm
@@ -39,3 +40,8 @@ v1.34 - Introduced SearchResult sub-classing, with illustration in eg/Scraper.pl
         Added www.computerjobs.com and www.techies.com (which still has a problem)
 	Added examples: eg/SearchApartments, improved eg/Scraper.
 v1.33 - Added www.apartments.com, and eg/Sherlock.pl
+
+KNOWN PROBLEMS
+
+theWorksUSA.pm more often than not goes into a loop.
+techies.pm keeps saying "Please enable your cookies", so it doesn't work at all.
