@@ -8,10 +8,10 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.21 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.22 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
-use WWW::Search::Scraper(qw(2.12 generic_option addURL trimTags));
+use WWW::Search::Scraper(qw(2.27 generic_option addURL trimTags));
 
 use strict;
 
@@ -19,7 +19,7 @@ my $scraperRequest =
         { 
             # This engine is driven from it's <form> page
             'type' => 'FORM'
-            ,'formNameOrNumber' => undef
+            ,'formNameOrNumber' => 0 # name=f, without quotes - Scraper needs a little work to make that ok.
             ,'submitButton' => 'btnG'
             
             # This is the basic URL on which to get the form to build the query.

@@ -33,7 +33,7 @@ use WWW::Search::Scraper::Request;
 use vars qw($VERSION);
 use diagnostics;
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/);
 
     select STDERR; $| = 1; select STDOUT; $| = 1; 
 
@@ -65,7 +65,7 @@ $VERSION = sprintf("%d.%02d", q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/);
     my $request = new WWW::Search::Scraper::Request($scraper,$query,$options);
     $scraper->setScraperTrace($debug);
     
-#    $scraper->native_query($query); # This let's us test pre-v2.00 modules from here, too.
+#    $scraper->native_query($query,$options); # This let's us test pre-v2.00 modules from here, too.
 
 #    $request->locations([ 'CA-San Jose'
 #                         ,'CA-Mountain View'

@@ -6,7 +6,7 @@ package WWW::Search::Scraper::Monster;
 use strict;
 use vars qw(@ISA $VERSION);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.16 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.17 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Search::Scraper(qw(1.48 generic_option findNextForm trimLFs));
 use WWW::Search::Scraper::Response::Job;

@@ -54,7 +54,7 @@ Happy Hunting!
 AUTHOR: Glenn Wood, glenwood@alumni.caltech.edu
 
 #---------------------------------------------------------------------#
-$VERSION = '2.12'
+$VERSION = '2.27'
 
 See "Changes" file for history of changes.
 

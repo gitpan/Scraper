@@ -119,7 +119,7 @@ modify it under the same terms as Perl itself.
 #####################################################################
 
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.12 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Search::Scraper(qw(1.48 trimTags));
 
@@ -189,8 +189,8 @@ sub testParameters {
     }
 
     return {
-                 'SKIP' => "'Please enable your cookies' comes up even though cookies are enabled!"
-                ,'TODO' => "'Please enable your cookies' comes up even though cookies are enabled!"
+                 'SKIP' => "techies - 'Please enable your cookies' comes up even though cookies are enabled!"
+                ,'TODO' => "techies - 'Please enable your cookies' comes up even though cookies are enabled!"
                 ,'testNativeQuery' => 'Java'
                 ,'expectedOnePage' => 9
                 ,'expectedMultiPage' => 11

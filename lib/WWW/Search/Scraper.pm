@@ -1,6 +1,6 @@
 
 ####################################################################################
-#########################################dsf###########################################
+####################################################################################
 ####################################################################################
 ####################################################################################
 package WWW::Search::Scraper;
@@ -9,9 +9,9 @@ use strict;
 require Exporter;
 use vars qw($VERSION $MAINTAINER @ISA @EXPORT @EXPORT_OK);
 
-$VERSION = '2.26';
+$VERSION = '2.27';
 
-my $CVS_VERSION = sprintf("%d.%02d", q$Revision: 1.66 $ =~ /(\d+)\.(\d+)/);
+my $CVS_VERSION = sprintf("%d.%02d", q$Revision: 1.68 $ =~ /(\d+)\.(\d+)/);
 $MAINTAINER = 'Glenn Wood http://search.cpan.org/search?mode=author&query=GLENNWOOD';
 
 use Carp ();
@@ -54,7 +54,7 @@ use base qw( WWW::Search::Scraper::_struct_ WWW::Search Exporter );
 #------------------------------------------------------------------#
 
 sub new {
-    my ($class, $subclass, $searchName) = @_;
+    my ($class, $subclass, $native_query, $native_options) = @_;
     
     my ($self, $wantsNativeRequest);
     $wantsNativeRequest = $subclass =~ s/^NativeRequest\:\:(.*)$/$1/;
@@ -77,28 +77,39 @@ sub new {
     $self->{'agent_e_mail'} = 'glenwood@alumni.caltech.edu;MartinThurn@iname.com';
 
     $self->{'scraperQF'} = 0; # Explicitly declare 'scraperQF' as the deprecated mode.
-    $searchName = $subclass unless $searchName;
-    $self->{'scraperName'} = $searchName;
+    $self->{'scraperName'} = $subclass;
 
-    # These eliminate some useless "warnings" from WWW::Search(lines 544-549) during make test, and elsewhere.
-    $self->{cache} = [];
+    $self->_init(); # Some property initializations, mostly to eliminate useless diagnostic warnings.
 
     # Finally, call the sub-scraper's init() method.
-    return $self->init($subclass, $searchName);
+    return $self->init($subclass, $native_query, $native_options);
 }
+
+sub _init {
+    my $self = shift;
+    $self->{cache} = [];  # Eliminate some useless "warnings" from WWW::Search(lines 544-549) during make test, and elsewhere.
+    $self->pageNumber(0); # Use of uninitialized value in addition (+) at lib/WWW/Search/Scraper.pm line 609
+}
+
 
 # The Scraper module should override this.
 sub init {
-   my ($self, $subclass, $searchName) = @_;
+   my ($self, $subclass, $native_query, $native_options) = @_;
    my $scraperFrame = $self->scraperFrame();
    if ( ${$scraperFrame}[0] =~ m{^WWW::Search::(.*)$} ) {
-      $self->_wwwSearchBackend(new WWW::Search($1)); # Uses a WWW::Search backend.
+      $self->_wwwSearchBackend(new WWW::Search($1, $native_query, $native_options)); # Uses a WWW::Search backend.
+   } else {
+       if ( ref($native_query) && !$native_options ) {
+           $native_options = $native_query;
+           $native_query = undef;
+       }
+       $self->native_query($native_query, $native_options);
    }
    return $self;
 }
 
 
-# To help avoid embarrassment when Glenn releases test, debug or tracing code to CPAN, Glenn uses this.
+# To help avoid embarrassment when he inadvertently releases test, debug or tracing code to CPAN, Glenn uses this.
 sub isGlennWood { return $ENV{'VSROOT'} and ($ENV{'USERNAME'} eq 'Glenn') and ($ENV{'USERDOMAIN'} eq 'ORCHID'); }
 
 # Return empty testFrame for sub-scrapers that choose not to provide one.
@@ -301,15 +312,29 @@ sub native_setup_search_FORM
         print STDERR "Request for FORM failed in Scraper.pm: ".$response->message() if $self->ScraperTrace();
         return undef ;
     }
-    
-    my @forms = HTML::Form->parse($response->content(), $response->base());
-    my $form = $forms[$self->scraperRequest()->{'formNameOrNumber'} or 0];
 
-    # Finally figure out the url.
+    my @forms = HTML::Form->parse($response->content(), $response->base());
+    return undef unless @forms;
+    my $formNameOrNumber = $self->scraperRequest->{'formNameOrNumber'};
+    my $form;
+    if ( $formNameOrNumber =~ m{^\d+$} ) { # is formNameOrNumber a number?
+        $form = $forms[$self->scraperRequest->{'formNameOrNumber'} or 0];
+    } else { # it is a name, not a number.
+        # Unfortunately, HTML::Form->parse() does not stash the forms' names, so we use
+        # this inperfect method to get to them (inperfect? what if "<form" is in a comment?)
+        my (@formNames) = ($response->content =~ m{<form\s[^>]*name=['"]?([^'" >]+)['"> ]}gsi);
+        for my $tmp (@forms) {
+            if ( $formNameOrNumber eq shift @formNames ) {
+                $form = $tmp;
+                last;
+            }
+        }
+    }
     return undef unless $form;
 
     $self->{'_http_method'} = $self->{'search_method'} = uc $form->method() || 'POST';
     
+    # Finally figure out the url.
     # Process the inputs.
     # Fill in the defaults, first
     my %optsHash = %{$self->queryDefaults()};
@@ -665,7 +690,7 @@ sub postSelect {
 
 
 { package WWW::Search;
-sub getName {
+sub scraperName {
    return $_[0]->{'scraperName'};
 }
 
@@ -1113,7 +1138,7 @@ TRYAGAIN: my $tag = $$scaffold[0];
 #            }
 #        }
     	
-        elsif ( $tag =~ m/^(TD|DT|DD|DIV)$/ )
+        elsif ( $tag =~ m/^(TD|DT|DD|DIV|SPAN)$/ )
         {
             next SCAFFOLD unless $sub_string = $TidyXML->getMarkedText($tag); # and throw it away.
     		$next_scaffold = $$scaffold[1];
@@ -1151,14 +1176,14 @@ TRYAGAIN: my $tag = $$scaffold[0];
             my $anchor;
             next SCAFFOLD unless ($sub_string, $anchor) = $TidyXML->getMarkedText('A'); # and throw it away.
             next SCAFFOLD unless $anchor;
-            if ( ( $anchor =~ s-A\s.*?HREF=(["'])([^"']+?)\1--si) or
+            if ( ( $anchor =~ s-A\s.*?HREF=(["'])([^"']+)\1--si) or
                  ( $anchor =~ s-A\s.*?HREF(=)([^> ]+)--si) 
                )
             {
                 print "<A> binding: $$scaffold[2]: '$sub_string', $$scaffold[1]: '$2'\n" if ($self->ScraperTrace('d'));
                 my $datParser = $$scaffold[3];
                 $datParser = \&WWW::Search::Scraper::trimTags unless $datParser;
-                my $dat = &$datParser($self, $hit, $2);
+                my $dat = &$datParser($self, $hit, $sub_string);
                 $hit->plug_elem($$scaffold[2], $dat) if defined $dat;
 
                my ($url) = new URI::URL($2, $self->{_base_url});
@@ -1187,6 +1212,35 @@ TRYAGAIN: my $tag = $$scaffold[0];
                 $hit->plug_elem($$scaffold[2], $dat) if defined $dat;
 
                my ($url) = new URI::URL($1, $self->{_base_url});
+               $url = $url->abs();
+               if ( $lbl eq 'url' ) {
+                   $url = WWW::Search::Scraper::unescape_query($url) if $TidyXML->m_isTidyd();
+                   $hit->plug_url($url);
+               }
+               else {
+                   $hit->plug_elem($lbl, $url) if defined $url;
+               }
+               $total_hits_found = 1;
+            }
+            next SCAFFOLD;
+        }
+        elsif ( 'AQ' eq $tag ) 
+        {
+            my $lbl = $$scaffold[2];
+            my $anchor;
+            next SCAFFOLD unless ($sub_string, $anchor) = $TidyXML->getMarkedText('A',$$scaffold[1]); # and throw it away.
+            next SCAFFOLD unless $anchor;
+            if ( ( $anchor =~ s-A\s.*?HREF=(["'])([^"']+)\1--si) or
+                 ( $anchor =~ s-A\s.*?HREF(=)([^> ]+)--si) 
+               )
+            {
+                print "<AQ> binding: $$scaffold[3]: '$sub_string', $$scaffold[2]: '$2'\n" if ($self->ScraperTrace('d'));
+                my $datParser = $$scaffold[4];
+                $datParser = \&WWW::Search::Scraper::trimTags unless $datParser;
+                my $dat = &$datParser($self, $hit, $sub_string);
+                $hit->plug_elem($$scaffold[3], $dat) if defined $dat;
+
+               my ($url) = new URI::URL($2, $self->{_base_url});
                $url = $url->abs();
                if ( $lbl eq 'url' ) {
                    $url = WWW::Search::Scraper::unescape_query($url) if $TidyXML->m_isTidyd();
@@ -1237,6 +1291,18 @@ TRYAGAIN: my $tag = $$scaffold[0];
                 $total_hits_found = 1;
             }
             next SCAFFOLD;
+        
+        } elsif ( $tag eq 'SNIP' ) { # another idea: 'CROP', the inverse of 'SNIP' - gdw.2003.01.16
+            $sub_string = ${$TidyXML->asString()};
+            my $matchString = $$scaffold[1];
+            if ( 'ARRAY' eq ref $matchString ) {
+                $next_scaffold = $matchString;
+                $matchString = '';
+            } else {
+                $next_scaffold = $$scaffold[2];
+            }
+            $sub_string =~ s{$matchString}{}gsi;
+
         } elsif ( $tag eq 'RESIDUE' )
         {
             $sub_string = ${$TidyXML->asString()};
@@ -1384,7 +1450,7 @@ sub touchUp {
 # (if wantarray, will return result and first tag, with brackets removed)
 #
 sub getMarkedText {
-    my ($self, $tag, $content) = @_;
+    my ($self, $tag, $content, $withContent) = @_;
     
     my $eidx = 0;
     my $sidx = -1;
@@ -1403,6 +1469,16 @@ sub getMarkedText {
             }
             elsif ( $depth == 0 ) { # we've counted as many end-tags as start-tags; we're done!
                 $eidx = pos $$content;
+                if ( $withContent ) {
+                    my $rslt = substr $$content, $sidx, $eidx - $sidx;
+                    my (undef, undef, $txt) = ($rslt =~ m-^<($tag(\s[^>]*?)?)>(.*?)</$tag\s*[^>]*?>$-si);
+                    unless ($txt =~ m{$withContent}si) {
+                        $eidx = 0;
+                        $sidx = -1;
+                        $depth = 0;
+                        next;
+                    }
+                }
                 last;
             }
         } else # we encountered a start-tag
@@ -1491,6 +1567,8 @@ sub addURL {
 #   if string, trimLFLFs() returns string, if ref, trimLFLFs() uses and returns ref.
 sub trimTags {
     my ($self, $hit, $dat) = @_;
+    return undef unless defined $dat;
+    return $dat unless $dat;
     my $dt;
     my $isRef=0;
     if ( ref($dat) ) {
@@ -1624,6 +1702,7 @@ sub findNextForm {
     my $next_content = $dat;
     while ( my ($sub_content, $frm) = $self->getMarkedText('FORM', \$next_content) ) {
         last unless $sub_content;
+warn "\n\n\n\nFORM:\n$sub_content";
         # Reconstruct the form that contains the NEXT data.
         my @forms = HTML::Form->parse("<form $frm>$sub_content</form>", $self->{'_base_url'});
         my $form = $forms[0];
@@ -1708,7 +1787,7 @@ B<NOTE: You can find a full description of the Scraper framework in F<WWW::Searc
 =head1 SYNOPSIS
 
     use WWW::Search::Scraper;
-    $scraper = new WWW::Search::Scraper('engineName', { 'query' => $queryString });
+    $scraper = new WWW::Search::Scraper('engineName', $queryString);
     $scraper->GetRequest->$fieldName($fieldValue);    
     $response = $scraper->next_response();
     print $response->$fieldName();

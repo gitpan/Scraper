@@ -3,7 +3,7 @@ package WWW::Search::Scraper::Request::Job;
 use strict;
 
 use vars qw($VERSION @ISA);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.1 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/);
 use WWW::Search::Scraper::Request;
 @ISA = qw(WWW::Search::Scraper::Request);
 

@@ -6,7 +6,7 @@ package WWW::Search::Scraper::BAJobs;
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.19 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.20 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(1.48 generic_option addURL trimTags));
@@ -46,7 +46,7 @@ my $scraperRequest =
                             {
                                  'searchKeywordsMethod' => 1
                                 ,'wholeWord' => 'true'
-                                ,'displayResultsPerPage' => '50' #'100' we can do 100, but test.pl frequently can't test multipage, then.
+                                ,'displayResultsPerPage' => '100'
                                 ,'displaySortOrder' => 1
                                 ,'postingAge' => '7'
                                 ,'countyList' => ''
@@ -123,7 +123,8 @@ sub testParameters {
              'SKIP' => $isNotTestable
             ,'testNativeQuery' => 'Sales'
             ,'expectedOnePage' => 9
-            ,'expectedMultiPage' => 51
+            ,'displayResultsPerPage' => 10
+            ,'expectedMultiPage' => 11
             ,'expectedBogusPage' => 0
            };
 }

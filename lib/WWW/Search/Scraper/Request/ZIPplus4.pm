@@ -3,7 +3,7 @@ package WWW::Search::Scraper::Request::ZIPplus4;
 use strict;
 
 use vars qw($VERSION @ISA);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Search::Scraper::Request;
 use base qw( WWW::Search::Scraper::Request );
@@ -12,13 +12,13 @@ sub new {
     my $self = WWW::Search::Scraper::Request::new(
          'ZIPplus4'
         ,{
-             'firm' => ''
-            ,'urbanization' => ''
-            ,'address1' => '' # required
+             'Firm' => ''
+            ,'Urbanization' => ''
+            ,'DeliveryAddress' => '' # required
             ,'address2' => '' # optional
-            ,'city' => ''     # required unless Zip is provided
-            ,'state' => ''    # required unless Zip is provided
-            ,'zipcode' => ''  # recommended, else City and State are required
+            ,'City' => ''     # required unless Zip is provided
+            ,'State' => ''    # required unless Zip is provided
+            ,'ZipCode' => ''  # recommended, else City and State are required
          }
         ,@_);
     return $self;
@@ -28,17 +28,17 @@ sub GetFieldNames {
     return {
              'Firm' => 'Firm'
             ,'Urbanization' => 'Urbanization'
-            ,'Delivery Address' => 'Delivery Address'
+            ,'DeliveryAddress' => 'Delivery Address'
             ,'City' => 'City'
             ,'State' => 'State'
-            ,'Zip Code' => 'Zip Code'
+            ,'ZipCode' => 'Zip Code'
            }
 }
 sub FieldTitles {
     return {
              'Firm' => 'Firm'
             ,'Urbanization' => 'Urbanization'
-            ,'Delivery_Address' => 'Delivery Address'
+            ,'DeliveryAddress' => 'Delivery Address'
             ,'City' => 'City'
             ,'State' => 'State'
             ,'Zip_Code' => 'Zip Code'
@@ -59,9 +59,9 @@ WWW::Search::Scraper::Request::ZIPplus4 - Canonical form for Scraper::ZIPplus4 r
     use WWW::Search::Scraper::Request::ZIPplus4;
 
     $rqst = new WWW::Search::Scraper::Request::ZIPplus4;
-    $rqst->address1('1600 Pennsylvania Ave');
-    $rqst->city('Washington');
-    $rqst->state('DC');
+    $rqst->DeliveryAddress('1600 Pennsylvania Ave');
+    $rqst->City('Washington');
+    $rqst->State('DC');
 
 =head1 DESCRIPTION
 

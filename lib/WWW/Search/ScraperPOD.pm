@@ -26,7 +26,7 @@ ScraperPOD - A Framework for scraping results from search engines.
      print $scraper->{'sellerPhoneNumber'};
  }
 
-=item Canonical Request/Response mode
+=item Canonical Request/Response mode (not yet implemented)
 
  $scraper = new WWW::Search::Scraper('carsforsale', 'Request' => 'Autos', 'Response' => 'Autos');
  # or, since 'carsforsale.pm' defaults to the Request and Response classes of 'Autos'
@@ -472,14 +472,39 @@ A second parameter provides a reference to optional subroutine for further proce
 DATA is like BODY in that it specifies a specific area of the document according to start and end strings.
 It's different in that it will take that text and store it as result data rather than further processing it.
 
-=item A and AN
+=item A, AN and AQ
 
-Often, data and a hyperlink (to a detail page, for instance) are presented simultaneously in an "anchor" element.
+Often, data and a hyperlink (to a detail page, for instance) are presented simultaneously in an "anchor", <A></A>, element.
 Two parameters on the A command name the fields into which the garnered link and data will be placed.
 
 There are two forms of the C<A> command since some loosely coded HTML will supply the hyperlink without the quote marks.
 This creates some disturbing results sometimes, so if your data is in an anchor where the HREF is
 provided without quotes, then the C<AN> operation will parse it more reliably.
+
+The AQ option is an 'A' option, plus the stipulation that the content of the anchor should match the given regex.
+For example:
+
+    [ 'AQ', 'more', 'url', 'title' ]
+    
+will assign 'url' and 'title' fields if it can find an <A> element that contains the word "more" in its text.
+(The match is case-insensitive.)
+
+=item SNIP
+
+This command will remove all regions that match the given regex from the content.
+This is useful for those cases, for instance, where a search engine will put HTML tags inside of comments,
+thus confusing the HTML scanning process. Since Scraper matches both HTML and any text simultaneously,
+it is impossible to assume that HTML in a comment is not relevant to the scrape. SNIP is the way you
+can tell it so by either removing all comments, or only those comments that match the regex. SNIP, of course,
+can be used to snip out any kind of text, not just comments.
+
+For instance, to remove all comments, code
+
+    [ 'SNIP', '<!--.*?-->', [next scraper frame] ]
+    
+To remove only comments that contain an embedded '<td>' string (as appears in NorthernLight.com), code
+
+    [ 'SNIP', '<!--[^>]*?<td>.*?-->', [next scraper frame] ]
 
 =item XPath
 

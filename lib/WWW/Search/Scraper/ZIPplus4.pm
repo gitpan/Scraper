@@ -8,7 +8,7 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(2.12 generic_option addURL trimTags trimLFs));
@@ -17,7 +17,7 @@ use strict;
 
 my $scraperRequest = 
         { 
-            'type' => 'POST'
+            'type' => 'GET'
             ,'formNameOrNumber' => '1'
             ,'submitButton' => 'Submit'
             
@@ -44,7 +44,8 @@ my $scraperRequest =
                            {     
                                  'City' => 'city'
                                 ,'State' => 'state'
-                                ,'Zip_Code' => 'zipcode'
+                                ,'ZipCode' => 'zipcode'
+                                ,'DeliveryAddress' => 'address'
                                 ,'address1' => 'address' # Weird but true!
                                 ,'*' => '*'              # Thanks to Klemens Schmid (klemens.schmid@gmx.de)!
                            }                             # See FormSniffer at http://www.wap2web.de/formsniffer2.aspx
@@ -73,6 +74,7 @@ my $scraperFrame =
                                 ['TD', 'carrierRoute', \&cleanUpUsps]
                                ,['TD', 'county', \&cleanUpUsps]
                                ,['TD', 'deliveryPoint', \&cleanUpUsps]
+                               ,['TD', 'checkDigit', \&cleanUpUsps]
                             ]
                          ]
                          # this regex never matches; just lets us declare fields.
@@ -119,10 +121,10 @@ sub testParameters {
                  'SKIP' => ''#'ZIPplus4 test parameters have not yet been fixed' 
                 ,'testNativeQuery' => '20500'
                 ,'testNativeOptions' => {
-                                             'address1' => '1600 Pennsylvannia Ave'
+                                             'address' => '1600 Pennsylvannia Ave'
                                             ,'city' => 'Washington'
                                             ,'state' => 'DC'
-                                            ,'zipcode' => '20500'
+                                            ,'zipcode' => ''
                                         }
                 ,'expectedOnePage' => 1
                 ,'expectedMultiPage' => 1
@@ -142,6 +144,7 @@ sub cleanUpUsps {
     $dat =~ s/^County://gs;
     $dat =~ s/^Carrier Route://gs;
     $dat =~ s/^Delivery Point://gs;
+    $dat =~ s/^Check Digit://gs;
     $dat =~ s/\s*-->//gs;
     return $dat;
 }
@@ -149,7 +152,7 @@ sub cleanUpUsps {
 sub parseCity {
     my ($self, $hit, $dat) = @_;
     $dat = $self->cleanUpUsps($hit, $dat);
-    $dat =~ s/^(.*)\s+(\w+)\s+(\d\d\d\d\d)\s(-\d\d\d\d)$/$1/s;
+    $dat =~ s/^(.*)\s+(\w+)\s+(\d\d\d\d\d)\s?(-\d\d\d\d)$/$1/s;
     $hit->plug_elem('state', $2);
     $hit->plug_elem('zipcode', "$3$4");
     return $dat;

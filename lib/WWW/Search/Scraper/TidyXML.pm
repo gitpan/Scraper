@@ -10,7 +10,7 @@
 
 
 package WWW::Search::Scraper::TidyXML;
-$VERSION = sprintf("%d.%02d", q$Revision: 1.14 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.15 $ =~ /(\d+)\.(\d+)/);
 
 use strict;
 my $DaveRaggettVersion = 0; # Different versions of tidy.exe require different processing.
@@ -188,9 +188,9 @@ sub asXML {
 # (if wantarray, will return result and first tag, with brackets removed)
 #
 sub getMarkedText {
-    my ($self, $tag) = @_;
+    my ($self, $tag, $withContent) = @_;
 
-    my ($sub_string, $theRest) = WWW::Search::Scraper::getMarkedText(undef, $tag, $self->asString());
+    my ($sub_string, $theRest) = WWW::Search::Scraper::getMarkedText(undef, $tag, $self->asString(), $withContent);
 
     $self->m_asXML(''); # By calling getMarkedText(), we lost any pre-parsing XPath may have set up.
     $self->m_context('');

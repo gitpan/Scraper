@@ -4,14 +4,14 @@ package WWW::Search::Scraper::eBay;
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.20 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.21 $ =~ /(\d+)\.(\d+)/);
 
-use WWW::Search::Scraper(qw(1.24 generic_option addURL trimTags trimLFs));
+use WWW::Search::Scraper(qw(2.27 generic_option addURL trimTags trimLFs));
 
 my $scraperRequest = 
    { 
       'type' => 'FORM'
-     ,'formNameOrNumber' => undef
+     ,'formNameOrNumber' => 'search_form'
      ,'submitButton' => undef
 
      # This is the basic URL on which to build the query.
@@ -49,13 +49,15 @@ my $scraperFrame =
                                    [  
                                       [ 'TR',
                                          [
-                                            [ 'TD' ]
-                                           ,[ 'TD', 'url', \&parseItemTitle ] #[ [ 'A', 'url', 'title' ] ] ] 
+                                            # <img height="15" width="64" border="0" alt="Pic" src="http://pics.ebay.com/aw/pics/lst/_p__64x15.gif">
+                                            #[ 'TD',[ [ 'REGEX', '<img\s+.*?src=([^ >)', 'thumbNailUrl'] ] ]
+                                            [ 'TD' ] # The thumbnail url is in there somewhere!
+                                           ,[ 'TD',[ [ 'A', 'url', 'title' ] ] ]
                                            ,[ 'TD', 'price', \&parsePrice ]
                                            ,[ 'TD', 'bids', \&trimLFs ]
                                            ,[ 'TD', 'endsPDT', \&trimLFs ]
                                             # this regex never matches; just lets us declare fields.
-                                           ,[ 'REGEX', 'neverMatch', 'title', 'isNew', 'itemNumber' ] #, 'isBillpoint']
+                                           #,[ 'REGEX', 'neverMatch', 'isNew', 'itemNumber' ] #, 'isBillpoint']
                                          ]
                                       ]
                                    ]
@@ -71,12 +73,15 @@ my $scraperFrame =
                                    [  
                                       [ 'TR',
                                          [
-                                            [ 'TD', 'url', \&parseItemTitle ] #[ [ 'A', 'url', 'title' ] ] ] 
+                                            # <img height="15" width="64" border="0" alt="Pic" src="http://pics.ebay.com/aw/pics/lst/_p__64x15.gif">
+                                            #[ 'TD',[ [ 'REGEX', '<img\s+.*?src=([^ >)', 'thumbNailUrl'] ] ]
+                                            [ 'TD' ] # The thumbnail url is in there somewhere!
+                                           ,[ 'TD',[ [ 'A', 'url', 'title' ] ] ]
                                            ,[ 'TD', 'price', \&parsePrice ]
                                            ,[ 'TD', 'bids', \&trimLFs ]
                                            ,[ 'TD', 'endsPDT', \&trimLFs ]
                                             # this regex never matches; just lets us declare fields.
-                                           ,[ 'REGEX', 'neverMatch', 'title', 'isNew', 'itemNumber' ] #, 'isBillpoint']
+                                           #,[ 'REGEX', 'neverMatch', 'isNew', 'itemNumber' ] #, 'isBillpoint']
                                          ]
                                       ]
                                    ]
@@ -100,7 +105,7 @@ sub testParameters {
                 ,'TODO' => "Implement 'TRYUNTIL' Scraper frame option - helps for skipping 'hits' that aren't actually hits."
                 ,'testNativeQuery' => 'turntable'
                 ,'expectedOnePage' => 9
-                ,'expectedMultiPage' => 60
+                ,'expectedMultiPage' => 25
                 ,'expectedBogusPage' => 0
            };
 }
@@ -164,7 +169,7 @@ sub findNextForm {
 # eBay's title sometimes includes other things, such as "new" link and "billpoint" link
 #<td valign=top width=52%><font size=3><a href="http://cgi.ebay.com/ws/eBayISAPI.dll?ViewItem&item=1383008995">UNITED AUDIO TURNTABLE DUAL 1209 MODEL</a></font>
 #<BR><img height=1 width=200 border=0 alt="" src="http://pics.ebay.com/aw/pics/s.gif"></td>
-    sub parseItemTitle {
+sub parseItemTitle {
    my ($self, $hit, $dat) = @_;
    my $next_content = $dat;
    my ($sub_content, $frm);
@@ -179,8 +184,8 @@ sub findNextForm {
    $hit->plug_elem('isNew', $isNew);
 #   $hit->plug_elem('isBillpoint', $isBillpoint); # need to match Billpoint *after* matching title.
    my $url = $frm;
-   $url =~ s{a\s+href="(.*)"}{$1};
-   $url =~ m{=(\d+)$};
+   $url =~ s{a\s+href=(['"])(.*)$1}{$2};
+   $url =~ m{item=(\d+)$};
    $hit->plug_elem('itemNumber', $1);
    return $url;
 }

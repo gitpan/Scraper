@@ -5,7 +5,7 @@ package WWW::Search::Scraper::Brainpower;
 use strict;
 use vars qw(@ISA $VERSION);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.13 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.14 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Search::Scraper(qw(2.18 trimTags trimLFs removeScriptsInHTML cleanupHeadBody));
 use WWW::Search::Scraper::FieldTranslation(1.00);
@@ -126,7 +126,9 @@ sub testParameters {
     }
     
     return {
-                 'SKIP' => &WWW::Search::Scraper::TidyXML::isNotTestable('Brainpower') #'Man, this one takes a long time!' #  
+                 #'SKIP' => &WWW::Search::Scraper::TidyXML::isNotTestable('Brainpower') #'Man, this one takes a long time!' #  
+                 'SKIP' => "Brainpower has gone the login route: Scraper's not up to that yet, but here's the framework if you want to do it yourself."
+                            # EVEN CAME UP WITH "3709Operation is not allowed on an object referencing a closed or invalid connection"! gdw.2003.01.16
                 ,'TODO' => ''
                 ,'testNativeQuery' => 'Perl'
                 ,'expectedOnePage' => 9

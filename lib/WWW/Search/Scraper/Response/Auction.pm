@@ -20,7 +20,7 @@ by Glenn Wood, http://search.cpan.org/search?mode=author&query=GLENNWOOD.
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper::Response);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
 use WWW::Search::Scraper::Response;
 
 sub new {

@@ -3,7 +3,7 @@ package WWW::Search::Scraper::Dice;
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.18 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.19 $ =~ /(\d+)\.(\d+)/);
 
 use WWW::Search::Scraper(qw(1.48 generic_option trimTags addURL));
 use WWW::Search::Scraper::FieldTranslation;

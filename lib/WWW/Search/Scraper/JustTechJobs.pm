@@ -46,7 +46,7 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.15 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.16 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
 use WWW::Search::Scraper(qw(1.48 generic_option addURL trimTags));
@@ -736,7 +736,7 @@ sub testParameters {
         $self->whichTech('Perl');
     }
     return {
-                 'TODO' => 'JustTechJobs.pm has gone the way of "user/password" - or something about session/cookies, anyway.'
+                 'SKIP' => 'JustTechJobs.pm has gone the way of "user/password" - or something about session/cookies, anyway.'
                 ,'testNativeOptions' => { 'whichTech' => 'Perl' }                                         
            };
 }

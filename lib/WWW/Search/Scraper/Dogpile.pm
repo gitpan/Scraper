@@ -8,10 +8,10 @@ require Exporter;
 @EXPORT = qw();
 @EXPORT_OK = qw(trimTags);
 @ISA = qw(WWW::Search::Scraper Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
-use WWW::Search::Scraper(qw(2.14 generic_option addURL trimLFs trimTags findNextFormInXML removeScriptsInHTML trimXPathHref));
+use WWW::Search::Scraper(qw(2.27 generic_option));
 
 use strict;
 
@@ -46,49 +46,51 @@ my $scraperRequest =
            ,'retry' => 1
        };
 
-my $scraperFrame =
-       [ 'TidyXML', \&removeScriptsInHTML, \&removeEmptyPs, \&removeDuplicateAttributes,
-          [ 
-            [ 'XPath', '/html/body',
+my $scraperFrame = 
+[ 'HTML', 
+  [ 
+    [ 'NEXT', 2, \&findNextForm ],
+    [ 'HIT*',
+      [  
+        [ 'BODY', '<TD class="resultstxt" width=', '</tr>',
+          [
+            [ 'TAG', 'P', # focus on the <p> area.
               [
-                [ 'HIT*' ,
-                  [
-                    [ 'XPath', 'p[hit()]',
-                      [
-                         [ 'XPath', 'a/@href', 'url', \&trimXPathHref ]
-                        ,[ 'XPath', 'a/text()', 'title', \&trimLFs ]
-                        ,[ 'XPath', 'i', 'company', \&trimTags ]
-                      ]
-                    ],
-                  ]
-                ]
+                 [ 'REGEX', '(\d+)\.', 'number' ]
+                ,[ 'A', 'go2netUrl', 'title' ]
+                ,[ 'SPAN', 'url' ]
+                ,[ 'RESIDUE', 'description', \&cleanUpLeadingTrailingBRs ]
               ]
             ]
-           ,[ 'BODY', '<table border="0">\s*<TR>\s*<TD>', '</TD>\s*</TR>\s*</TABLE>', 
-                [
-                   [ 'NEXT', 2, \&findNextFormInXML ]
-                ]
-             ]
-
           ]
-       ];
-
-
-sub removeDuplicateAttributes {
-    my ($self, $hit, $xml) = @_;
-    $$xml =~ s-alt=""--gs; # this one appears from Dogpile.com
-    return $xml;
+        ]
+      ]
+    ]
+  ]
+];
+ 
+sub cleanUpLeadingTrailingBRs {
+    my ($self, $hit, $dat) = @_;
+    $dat =~ s{^\s*<br>}{}si;
+    $dat =~ s{<br><br>\s*$}{}si;
+    return $dat;
 }
 
-sub removeEmptyPs {
-    my ($self, $hit, $xml) = @_;
+
+# #######################################################################################
+# Get the Next URL from a <form> on the page.
+# Sometimes there's just a NEXT form, sometimes there's a PREV form and a NEXT form . . .
+use HTML::Form;
+sub findNextForm {
+    my ($self, $hit, $dat) = @_;
     
-    # remove empty <P/> tags
-    $$xml =~ s-<p>\s*?</p>--gsi;
-    $$xml =~ s-<p/>--gsi;
-    return $xml;
+    if ( $dat =~ m{(<FORM\s+METHOD="GET"\s+ACTION="http://clickit.go2net.com/search">.*?</FORM>)}si ) {
+        my $form = HTML::Form->parse($1, $self->{'_base_url'});
+        my $req = $form->make_request;
+        return $req->uri;
+    }
+    return '';
 }
-
 
 
 sub testParameters {
@@ -98,7 +100,7 @@ sub testParameters {
                  'SKIP' => &WWW::Search::Scraper::TidyXML::isNotTestable('Dogpile')
                 ,'testNativeQuery' => 'turntable'
                 ,'expectedOnePage' => 9
-                ,'expectedMultiPage' => 20
+                ,'expectedMultiPage' => 60
                 ,'expectedBogusPage' => 1
            };
 }

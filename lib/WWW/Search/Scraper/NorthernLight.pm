@@ -6,10 +6,10 @@ package WWW::Search::Scraper::NorthernLight;
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.1 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
 
 use Carp ();
-use WWW::Search::Scraper(qw(1.48 generic_option addURL trimTags testParameters));
+use WWW::Search::Scraper(qw(2.27 generic_option addURL trimTags));
 use WWW::Search::Scraper::FieldTranslation;
 
 my $scraperRequest = 
@@ -40,7 +40,8 @@ my $scraperRequest =
 my $scraperFrame =
         [ 'HTML', 
            [ 
-               [ 'COUNT', '<b>[0-9,]+ items?</b>']
+               #        </b> found <b>10,032,977 items</b>
+               [ 'COUNT', 'found\s+<b>([0-9,]+)\s+items?</b>']
               ,[ 'NEXT', 1, 'alt="Next Page"' ]
               ,[ 'BODY', '<!--NLBannerStart-->', '<!--NLResultListEnd-->',
                   [  
@@ -50,13 +51,32 @@ my $scraperFrame =
                              [
                                [ 'TR',
                                   [
-                                     [ 'TD' ]
-                                    ,[ 'TD', 
-                                        [
-                                           [ 'A', 'url', 'title' ]
-                                          ,['REGEX', '<!--NLResultRelevanceStart-->(\d+)% -<!--NLResultRelevanceEnd-->', 'relevance']
-                                          ,['REGEX', '&nbsp;</b>(.*?)<br>', 'description']
-                                        ]
+                                    # <!--  --><!-- <td>&nbsp;</td> -->
+                                     [ 'SNIP', '<!--[^>]*?<td>.*?-->',
+                                       [
+                                         [ 'TD',
+                                              [['SPAN', 'number']]
+                                         ]
+                                        ,[ 'TD', 
+                                            [
+                                               [ 'A', 'url', 'title' ]
+                                              ,['REGEX', '<!--NLResultRelevanceStart-->(\d+)% -', 'relevance']
+                                              ,['REGEX', '<!--NLResultRelevanceEnd-->(.*?)&nbsp;', 'source']
+                                              ,['REGEX', '</b>(.*?)<br>', 'description']
+                                              ,['REGEX', '<!-- Misc Block --><!-- \d+ -->(.*?)<!-- Misc Block --><!-- \d+ -->', 'miscBlock']
+                                              ,[ 'TABLE',
+                                                 [
+                                                   ['TR']
+                                                  ,['REGEX', '(\d+)%:', 'secondRelevance']
+                                                  ,[ 'A', 'secondUrl', 'secondTitle' ]
+                                                 ]
+                                               ]
+                                              #,['SPAN', 'avail'] #needs better treatment of the <SPAN> at the top of this <TD> for this to work.
+                                              ,[ 'AQ', 'more\s+results', 'moreResultsUrl', undef ]
+                                              # <!-- Inline Clustering -->
+                                            ]
+                                         ]
+                                       ]
                                      ]
                                   ]
                                ]
@@ -64,7 +84,6 @@ my $scraperFrame =
                            ]
                         ]
                      ] 
-#                    ,[ 'BOGUS', -1 ] # NorthernLight's last hit is bogus.
                   ]
               ]
            ]
@@ -86,10 +105,9 @@ sub testParameters {
     
     return { 
              'SKIP' => ''
-            ,'TODO' => 'NorthernLights works, sometimes . . .'
             ,'testNativeQuery' => 'search scraper'
             ,'expectedOnePage' => 9
-            ,'expectedMultiPage' => 11
+            ,'expectedMultiPage' => 12
             ,'expectedBogusPage' => 0
            };
 }

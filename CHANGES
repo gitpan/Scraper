@@ -1,6 +1,13 @@
 
 Revision history for WWW::Search::Scraper (::*).
 
+v2.27 - A major correction in the way Scraper discovers the content with the 'A' option.
+        Significant improvements to NortherLight interface.
+        Dogpile - now gets all client search engines' results, plus "Search the next 10 engines"!
+        Added 'SNIP' and 'AQ' scraper frame options.
+        Several minor fixes to ZIPplus4, finally making it usable again.
+        Fixed backwardly compatible "new Scraper(engine_name, query, {options})" interface mode.
+        Fixed documentation of the above, that was causing some confusion out there!
 v2.26 - Adapted CraigsList.pm to their new format.
 	Improvements to Response sub-classing makes it more broadly useful.
 v2.25 - Fixed to make compatible with new versions of TidyHTML 

@@ -96,9 +96,9 @@ modify it under the same terms as Perl itself.
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::SearchResult);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.12 $ =~ /(\d+)\.(\d+)/);
 require WWW::SearchResult;
-my %AlreadyDeclared;
+my (%AlreadyDeclared, $idCounter);
 
 sub fieldCapture {
     my ($scaffold) = @_;
@@ -159,7 +159,7 @@ SCAFFOLD: for my $scaffold ( @$scaffold ) {
                 next SCAFFOLD;
             }
         }
-    	elsif ( $tag =~ m/^(TD|DT|DD|DIV|RESIDUE)$/ )
+    	elsif ( $tag =~ m/^(TD|DT|DD|DIV|SPAN|RESIDUE)$/ )
         {
     		$next_scaffold = $$scaffold[1];
             if ( 'ARRAY' ne ref $next_scaffold  ) # if next_scaffold is an array ref, then we'll recurse (below)
@@ -175,12 +175,26 @@ SCAFFOLD: for my $scaffold ( @$scaffold ) {
             push @fields, $$scaffold[2] if $$scaffold[2];
             next SCAFFOLD;
         }
-        elsif ( 'REGEX' eq $tag or 'F' eq $tag ) 
+        elsif ( 'AQ' eq $tag ) 
         {
-            my @ary = @$scaffold;
-            shift @ary; shift @ary;
-            map { push @fields, $_ if defined $_ } @ary;
+            #my $lbl = $$scaffold[1];
+            push @fields, $$scaffold[2] if $$scaffold[2];
+            push @fields, $$scaffold[3] if $$scaffold[3];
             next SCAFFOLD;
+        }
+        elsif ( $tag =~ m{^(REGEX|F|SNIP)$} ) # another idea: REGEX and F give their results to a sub-scraperFrame
+        {                                     #  instead of to a field - gdw.2003.01.16
+            my @ary = @$scaffold;
+            shift @ary;
+            shift @ary if ($tag eq 'REGEX' || $tag eq 'F'); 
+            shift @ary if (($tag eq 'SNIP') && $ary[0] && !ref($ary[0])); 
+            map {
+                if ( 'ARRAY' eq ref($_) ) {
+                    push @$next_scaffold, @$_;
+                } else {
+                    push @fields, $_;
+                }
+            } @ary;
         }
         elsif ( 'CALLBACK' eq $tag ) 
         {
@@ -283,20 +297,14 @@ use vars qw(\@ISA);
 EOT
         die $@ if $@;
         $AlreadyDeclared{$SubClass} = [(keys %subFields)+11, \%subFields];
-    }
     
-    eval "\$self = new WWW::Search::Scraper::Response$SubClass\::_struct_";
-    bless $self, "WWW::Search::Scraper::Response$SubClass";
-    
-    $self->_fieldCount(${AlreadyDeclared{$SubClass}}[0]);
-    $self->_fieldNames(${AlreadyDeclared{$SubClass}}[1]);
-
     # Build 'wantarray' context sensitive accessors for all fields
     # Build lazy-accessors for fields available from the Details page.
-    my $fieldNames = $self->_fieldNames();
-    my $accessors = '';
-    for ( keys %$fieldNames ) {
-        if ( $fieldNames->{$_} == 1 ) {
+#    my $fieldNames = ${AlreadyDeclared{$SubClass}}[1];
+    
+        my $accessors = '';
+        for ( keys %subFields ) {
+        if ( $subFields{$_} == 1 ) {
             $accessors .= <<EOT;
 sub $_ {
     my \$slf = shift;
@@ -317,7 +325,7 @@ sub $_ {
 }
 EOT
         }
-        if ( $fieldNames->{$_} == 2 ) {
+        if ( $subFields{$_} == 2 ) {
             $accessors .= <<EOT;
 sub $_ {
     my \$slf = shift;
@@ -339,7 +347,7 @@ sub $_ {
 }
 EOT
         }
-        elsif ( $fieldNames->{$_} == 3 ) {
+        elsif ( $subFields{$_} == 3 ) {
             $accessors .= <<EOT;
 sub $_ {
     my \$slf = shift;
@@ -363,12 +371,19 @@ EOT
         }
     }
 
-    my $warn = $^W;
-    $^W = 0; # Eliminates useless "warnings" during make test.
-    eval "{package WWW::Search::Scraper::Response$SubClass; $accessors } 1";
-    $^W = $warn;
-    die $@ if $@;
+        my $warn = $^W;
+        $^W = 0; # Eliminates useless "warnings" during make test.
+        eval "{package WWW::Search::Scraper::Response$SubClass; $accessors } 1";
+        $^W = $warn;
+        die $@ if $@;
+    }
+
+    eval "\$self = new WWW::Search::Scraper::Response$SubClass\::_struct_";
+    bless $self, "WWW::Search::Scraper::Response$SubClass";
     
+    $self->_fieldCount(${AlreadyDeclared{$SubClass}}[0]);
+    $self->_fieldNames(${AlreadyDeclared{$SubClass}}[1]);
+
     return $self;
 }
 
@@ -446,9 +461,8 @@ sub toString {
 #        for ( keys %resultTitles ) {
     my $fieldNames = $self->GetFieldNames();
     for ( keys %$fieldNames ) {
-        #next unless $fieldNames->{$_} == 1;
         if ( 1 ) {
-            my @value = $self->$_();
+            my @value = $self->$_;
             print "$resultTitles{$_}: (";
             my $comma = '';
             for ( @value ) {
@@ -458,7 +472,7 @@ sub toString {
             }
             print ")\n";
         } else {
-            my $value = $self->$_();
+            my $value = $self->$_;
 #                print "$resultTitles{$_}:= '$results{$_}'\n";# if $results{$_};
             if ( defined $value ) {
                 print "$_: '$$value'\n";# if $results{$_};
@@ -474,7 +488,7 @@ sub toString {
 sub toHTML {
     my ($self, $anchors) = @_;
     
-    my $result = "<TABLE BORDER='4'>"; #<DT>from:</DT><DD>".$self->{'searchObject'}->getName()."</DD>\n";
+    my $result = "<TABLE BORDER='4'>"; #<DT>from:</DT><DD>".$self->{'searchObject'}->scraperName()."</DD>\n";
     my %results = %{$self->GetFieldValues()};
     my %resultTitles = %{$self->GetFieldTitles()};
     
@@ -510,7 +524,8 @@ sub toHTML {
         }
         $result .= ')';
     }
-    $result .= "</TD><TD COLSPAN='2'>$resultTitles{'title'}: <A HREF='#' onclick='window.open(\"$url\",\"detailWindow\");detailWindow.focus()'>$title</A></TD></TR>\n";
+    $idCounter += 1;
+    $result .= "</TD><TD COLSPAN='2'>$resultTitles{'title'}: <A NAME='a_$idCounter' HREF='a_$idCounter' onclick='window.open(\"$url\",\"detailWindow\");detailWindow.focus()'>$title</A></TD></TR>\n";
     
     $result .= "<TR><TD COLSPAN='3'>$resultTitles{'company'}: <A HREF='$results{'companyProfileURL'}'>$results{'company'}</A></TD></TR>\n"
         if ($results{'companyProfileURL'});

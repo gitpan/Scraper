@@ -221,8 +221,13 @@ sub TestThisEngine {
         TRACE(0, " + got $iResults results for '$sQuery'\n");
         if ( $maximum_to_retrieve > $iResults )
         {
-            my $message = $oSearch->response()->status_line();
-            my $bytes = length $oSearch->response()->content();
+            my ($message, $bytes);
+            if (my $response = $oSearch->response) {
+                $message = $response->status_line();
+                $bytes = length $response->content();
+            } else {
+                ($message,$bytes) = ('(no response object)', '(no response object)');
+            }
             TRACE(1, <<EOT);
  --- got $iResults results for $sEngine '$sQuery', but expected $maximum_to_retrieve
  --- base URL: $oSearch->{'_base_url'}
