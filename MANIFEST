@@ -1,0 +1,14 @@
+MANIFEST
+Makefile.PL
+README
+lib/WWW/Search/Scraper.pm
+lib/WWW/Search/Sherlock.pm
+lib/WWW/Search/Scraper/BAJobs.pm
+lib/WWW/Search/Scraper/CraigsList.pm
+lib/WWW/Search/Scraper/Dice.pm
+lib/WWW/Search/Scraper/eBay.pm
+lib/WWW/Search/Scraper/Google.pm
+lib/WWW/Search/Scraper/HotJobs.pm
+lib/WWW/Search/Scraper/JustTechJobs.pm
+lib/WWW/Search/Scraper/Monster.pm
+eg/Scraper.pl

@@ -1,0 +1,13 @@
+
+
+WWW::Search::Scraper
+WWW::Search::Sherlock
+
+For documentation, see the pod in WWW::Search::Scraper and WWW::Search::Sherlock.
+
+Happy Hunting!
+
+AUTHOR: Glenn Wood, C<glenwood@alumni.caltech.edu>
+
+#---------------------------------------------------------------------#
+( $VERSION ) = sprintf("%d.%02d", q$Revision: 1.30 $ =~ /(\d+)\.(\d+)/)
