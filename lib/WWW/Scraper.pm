@@ -9,7 +9,7 @@ use strict;
 require Exporter;
 use vars qw($VERSION $MAINTAINER @ISA @EXPORT @EXPORT_OK $PRINT_VERSION);
 
-$VERSION = '3.01';
+$VERSION = '3.02';
 
 my $CVS_VERSION = sprintf("%d.%02d", q$Revision: 1.0 $ =~ /(\d+)\.(\d+)/);
 $MAINTAINER = 'Glenn Wood http://search.cpan.org/search?mode=author&query=GLENNWOOD';
@@ -1741,11 +1741,11 @@ sub setup_query {
     my $self = shift;
     $self->native_query(@_);
 }
-# Alternative name for the native_query() method for Scraper.
 sub native_query {
-    my $self = shift;
-    $self->{'_scraperRequest'} = undef;
-    $self->SUPER::native_query(@_);
+  my $self = shift;
+  delete $self->{'_scraperRequest'};
+  $self->{'native_query'} = '' unless defined($self->{'native_query'}); # Prevent "search not yet specified" in WWW::Search::next_result().
+  $self->SUPER::native_query(@_);
 }
 
 
