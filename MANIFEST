@@ -2,9 +2,9 @@ MANIFEST
 Makefile.PL
 README
 lib/WWW/Search/Scraper.pm
-lib/WWW/Search/Scraper/Sherlock.pm
 lib/WWW/Search/Scraper/apartments.pm
 lib/WWW/Search/Scraper/BAJobs.pm
+lib/WWW/Search/Scraper/Brainpower.pm
 lib/WWW/Search/Scraper/computerjobs.pm
 lib/WWW/Search/Scraper/CraigsList.pm
 lib/WWW/Search/Scraper/Dice.pm
@@ -14,9 +14,12 @@ lib/WWW/Search/Scraper/Google.pm
 lib/WWW/Search/Scraper/guru.pm
 lib/WWW/Search/Scraper/HotJobs.pm
 lib/WWW/Search/Scraper/JustTechJobs.pm
+lib/WWW/Search/Scraper/Monster.pm
+lib/WWW/Search/Scraper/Sherlock.pm
 lib/WWW/Search/Scraper/techies.pm
 lib/WWW/Search/Scraper/theWorksUSA.pm
 lib/WWW/Search/Scraper/Response.pm
+lib/WWW/Search/Scraper/Request.pm
 lib/WWW/Search/Scraper/Response/Auction.pm
 lib/WWW/Search/Scraper/Response/Job.pm
 lib/WWW/Search/Scraper/Response/Sherlock.pm

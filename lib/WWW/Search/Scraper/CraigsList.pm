@@ -1,6 +1,75 @@
 
 package WWW::Search::Scraper::CraigsList;
 
+#####################################################################
+
+use strict;
+use vars qw($VERSION @ISA);
+@ISA = qw(WWW::Search::Scraper);
+use WWW::Search::Scraper(qw(1.41 generic_option addURL trimTags));
+$VERSION = sprintf("%d.%02d", q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/);
+
+# Craigs List differs from other search engines in a few ways.
+# One of them is the results page is not tablulated, or data lined.
+# It returns each job listing on a single line.
+# This line can be parsed with a single regular expression, which is what we do.
+#
+# SAMPLE :
+#
+# <br>Apr&nbsp;24&nbsp;-&nbsp;<a href=/sfo/eng/959347.html>Senior&nbsp;Software&nbsp;Engineer</a>&nbsp(San&nbsp;Francisco)<font size=-1>&nbsp;(internet&nbsp;engineering&nbsp;jobs)</font></br>
+#
+#
+# private
+sub native_setup_search
+{
+   my $self = shift;
+    
+   $self->{'_options'}{'scraperQuery'} =
+    [ 'POST'       # Type of query generation is 'QUERY', http_method = 'POST'
+      # This is the basic URL on which to build the query.
+     ,'http://www.craigslist.org/cgi-bin/search.cgi?'
+      # This is the Scraper attributes => native input fields mapping
+     ,{'scraperQuery' => 'query'
+      }
+      # Some more options for the Scraper operation.
+     ,{'cookies' => 0
+      }
+    ];
+
+   # Set up the default input field values.
+   $self->{_options}{'areaID'}   = '1';
+   $self->{_options}{'subAreaID'}= '0';
+   $self->{_options}{'group'}    = 'J';
+   $self->{_options}{'catAbb'}   =  '';
+   $self->{_options}{'areaAbbrev'}= '';
+    
+    $self->{'_options'}{'scrapeFrame'} = 
+       [ 'HTML', 
+         [ [ 'BODY', '</FORM>', '' ,
+           [ [ 'COUNT', 'found (\d+) entries'] ,
+             [ 'HIT*' ,
+                 [  [ 'REGEX', '(.*?)-.*?<a href=([^>]+)>(.*?)</a>(.*?)<.*?>(.*?)<', 
+                        'date', 'url', 'title', 'location', 'description'
+                 ]
+             ]   ]
+         ] ]
+       ] ];
+
+ 
+    # WWW::Search::Scraper understands all that and will setup the search.
+    return $self->SUPER::native_setup_search(@_);
+}
+
+use WWW::Search::Scraper::Response;
+sub newHit {
+    my $self = new WWW::Search::Scraper::Response;
+    return $self;
+}
+
+
+1;
+__END__
+
 =pod
 
 =head1 NAME
@@ -83,33 +152,10 @@ To make new back-ends, see L<WWW::Search>,
 or the specialized CraigsList searches described in options.
 
 
-=head1 HOW DOES IT WORK?
-
-C<native_setup_search> is called before we do anything.
-It initializes our private variables (which all begin with underscores)
-and sets up a URL to the first results page in C<{_next_url}>.
-
-C<native_retrieve_some> is called (from C<WWW::Search::retrieve_some>)
-whenever more hits are needed.  It calls the LWP library
-to fetch the page specified by C<{_next_url}>.
-It parses this page, appending any search hits it finds to 
-C<{cache}>.  If it finds a ``next'' button in the text,
-it sets C<{_next_url}> to point to the page for the next
-set of results, otherwise it sets it to undef to indicate we're done.
-
-
-=head1 AUTHOR and CURRENT VERSION
+=head1 AUTHOR
 
 C<WWW::Search::CraigsList> is written and maintained
 by Glenn Wood, <glenwood@alumni.caltech.edu>.
-
-The best place to obtain C<WWW::Search::CraigsList>
-is from Martin Thurn's WWW::Search releases on CPAN.
-Because CraigsList sometimes changes its format
-in between his releases, sometimes more up-to-date versions
-can be found at
-F<http://alumni.caltech.edu/~glenwood/SOFTWARE/index.html>.
-
 
 =head1 COPYRIGHT
 
@@ -141,71 +187,3 @@ MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 
 =cut
 
-
-#####################################################################
-
-use strict;
-use vars qw($VERSION @ISA);
-@ISA = qw(WWW::Search::Scraper);
-use WWW::Search::Scraper(qw(1.41 generic_option addURL trimTags));
-$VERSION = sprintf("%d.%02d", q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/);
-
-# Craigs List differs from other search engines in a few ways.
-# One of them is the results page is not tablulated, or data lined.
-# It returns each job listing on a single line.
-# This line can be parsed with a single regular expression, which is what we do.
-#
-# SAMPLE :
-#
-# <br>Apr&nbsp;24&nbsp;-&nbsp;<a href=/sfo/eng/959347.html>Senior&nbsp;Software&nbsp;Engineer</a>&nbsp(San&nbsp;Francisco)<font size=-1>&nbsp;(internet&nbsp;engineering&nbsp;jobs)</font></br>
-#
-#
-# private
-sub native_setup_search
-{
-   my $self = shift;
-    
-   $self->{'_options'}{'scraperQuery'} =
-    [ 'POST'       # Type of query generation is 'QUERY', http_method = 'POST'
-      # This is the basic URL on which to build the query.
-     ,'http://www.craigslist.org/cgi-bin/search.cgi?'
-      # This is the Scraper attributes => native input fields mapping
-     ,{'scraperQuery' => 'query'
-      }
-      # Some more options for the Scraper operation.
-     ,{'cookies' => 0
-      }
-    ];
-
-   # Set up the default input field values.
-   $self->{_options}{'areaID'}   = '1';
-   $self->{_options}{'subAreaID'}= '0';
-   $self->{_options}{'group'}    = 'J';
-   $self->{_options}{'catAbb'}   =  '';
-   $self->{_options}{'areaAbbrev'}= '';
-    
-    $self->{'_options'}{'scrapeFrame'} = 
-       [ 'HTML', 
-         [ [ 'BODY', '</FORM>', '' ,
-           [ [ 'COUNT', 'found (\d+) entries'] ,
-             [ 'HIT*' ,
-                 [  [ 'REGEX', '(.*?)-.*?<a href=([^>]+)>(.*?)</a>(.*?)<.*?>(.*?)<', 
-                        'date', 'url', 'title', 'location', 'description'
-                 ]
-             ]   ]
-         ] ]
-       ] ];
-
- 
-    # WWW::Search::Scraper understands all that and will setup the search.
-    return $self->SUPER::native_setup_search(@_);
-}
-
-use WWW::Search::Scraper::Response;
-sub newHit {
-    my $self = new WWW::Search::Scraper::Response;
-    return $self;
-}
-
-
-1;

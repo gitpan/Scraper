@@ -2,7 +2,7 @@
 # `make test'. After `make install' it should work as `perl test.pl'
 
 use ExtUtils::testlib;
-$VERSION = sprintf("%d.%02d", q$Revision: 1.1 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/);
 
 ######################### We start with some black magic to print on failure.
 
@@ -18,7 +18,9 @@ open TMP, "<MANIFEST";
 my @modules;
 while (<TMP>) {
     if ( m-^lib/WWW/Search/Scraper/(\w+)\.pm$- ) {
+        next if $1 eq 'Request';     # This one's not an engine.
         next if $1 eq 'Response';    # This one's not an engine.
+#       next if $1 eq 'Sherlock';    # We're not smart enough to test Sherlock, yet!
         next if $1 eq 'techies';     # This one doesn't work, anyway.
         next if $1 eq 'theWorksUSA'; # This one still has a problem (looping).
         push @modules, $1;
@@ -74,12 +76,15 @@ my %specialOptions = (
                         ,'JustTechJobs' => { 'whichTech' => 'Perl' }                                         
                         ,'Dice' => {'method'=>'bool', 'acode'=>'650', 'daysback'=>'30', 'search_debug' => $debug}
                      );
+$oSearch->sherlockPlugin('http://sherlock.mozdev.org/yahoo.src') if $sEngine eq 'Sherlock'; # Sherlock is extra special.
+
 my %specialQuery = (
                          'apartments' => 'Los Angeles'
                         ,'eBay'    => 'turntable'
                         ,'Dice'    => 'Perl NOT Java'
                         ,'HotJobs' => 'Java'
                         ,'BAJobs'  => 'Service'
+                        ,'Sherlock' => 'Greeting Cards'
                    ); 
 my $sQuery = 'Perl';
 my $options = $specialOptions{$sEngine};
@@ -113,7 +118,7 @@ if (($iResults < 41))
   {
     # We make an exception for these jobsites, since
     #  they often turn up few Perl jobs, anyway.
-     unless ( $sEngine =~ m/guru|HotJobs/ ) {
+     unless ( $sEngine =~ m/guru|HotJobs|Brainpower|Sherlock/ ) {
         print STDERR " --- got $iResults results for multi-page $sEngine ($sQuery), but expected 41..\n";
         print STDOUT 'not ';
     }

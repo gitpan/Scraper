@@ -81,7 +81,7 @@ require Exporter;
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(WWW::Search::Scraper);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/);
 use WWW::Search::Scraper(qw(generic_option addURL trimTags));
 
 # HotJobs JobSearch submission form . . . 
@@ -249,10 +249,10 @@ sub native_setup_search
  
     my($options_ref) = $self->{_options};
     if (defined($native_options_ref)) {
-	# Copy in new options.
-	foreach (keys %$native_options_ref) {
-	    $options_ref->{$_} = $native_options_ref->{$_};
-	};
+    	# Copy in new options.
+	    foreach (keys %$native_options_ref) {
+	        $options_ref->{$_} = $native_options_ref->{$_};
+    	};
     };
     # Process the options.
     # (Now in sorted order for consistency regarless of hash ordering.)
@@ -260,7 +260,7 @@ sub native_setup_search
     foreach (sort keys %$options_ref) {
 	# printf STDERR "option: $_ is " . $options_ref->{$_} . "\n";
 	next if (generic_option($_));
-	$options .= $_ . '=' . $options_ref->{$_} . '&';
+    	$options .= $_ . '=' . $options_ref->{$_} . '&';
     };
     $self->{_debug} = $options_ref->{'search_debug'};
     $self->{_debug} = 2 if ($options_ref->{'search_parse_debug'});

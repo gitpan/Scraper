@@ -29,8 +29,12 @@ Happy Hunting!
 AUTHOR: Glenn Wood, glenwood@alumni.caltech.edu
 
 #---------------------------------------------------------------------#
-( $VERSION ) = sprintf("%d.%02d", q$Revision: 1.37 $ =~ /(\d+)\.(\d+)/)
+( $VERSION ) = sprintf("%d.%02d", q$Revision: 1.38 $ =~ /(\d+)\.(\d+)/)
 
+v1.38 - Fix itsy-bitsy boo-boo in Scraper.pm (was not escaping input strings).
+        Improved documentation in several of the modules.
+	Added Scraper::Request module for later abstraction of "requests".
+	Added Brainpower.com.
 v1.37 - Moved Sherlock.pm to WWW::Search::Scraper to avoid namespace collision.
         Improved some of the documentation layout (I think).
 v1.36 - Added test.pl; fixed bugs discovered thereby in Dice, apartments, eBay, etc.

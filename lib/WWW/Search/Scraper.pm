@@ -1,3 +1,749 @@
+
+####################################################################################
+####################################################################################
+####################################################################################
+####################################################################################
+package WWW::Search::Scraper;
+
+use strict;
+require Exporter;
+use vars qw($VERSION @ISA @EXPORT @EXPORT_OK);
+@EXPORT = qw(findNextForm);
+@EXPORT_OK = qw(findNextForm);
+@ISA = qw(WWW::Search Exporter);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.44 $ =~ /(\d+)\.(\d+)/);
+
+use Carp ();
+use WWW::Search( qw(strip_tags) );
+use WWW::Search::Scraper::Request;
+use WWW::Search::Scraper::Response;
+
+@EXPORT_OK = qw(escape_query unescape_query generic_option 
+                strip_tags trimTags trimLFs trimLFLFs
+                @ENGINES_WORKING addURL);
+
+
+sub new {
+    my ($class, $subclass, $searchName) = @_;
+    
+    my $self;
+    if ( $subclass =~ m-^\.\.[\/](.*)$- ) { # Allow the form "../name" to indicate
+       $self = new WWW::Search($1);       # a WWW::Search backend. Also see "Some 
+    } else {                                #  searchers are not scrapers", below.
+        $self = new WWW::Search("Scraper::$subclass");
+    }
+
+    $self->{'scraperQF'} = 0; # Explicitly declare 'scraperQF' as the deprecated mode.
+    $searchName = $subclass unless $searchName;
+    $self->{'scraperName'} = $searchName;
+    return $self;
+}
+
+
+
+sub generic_option 
+{
+    my ($option) = @_;
+    return 1 if $option =~ /^scrape/;
+    return WWW::Search::generic_option($option);
+}
+
+sub native_setup_search
+{
+    my $self = shift;
+    $_[0] = WWW::Search::unescape_query($_[0]); # Thanks, but no thanks, Search.pm!
+    
+    # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## 
+    # This pecular set of code translates old interface mode into 'scraperRequest' mode,
+    #  (unless 'scraperRequest' mode is active already).
+    unless ( $self->{'_scraperRequest'} ) {
+        my $options = {};
+        for ( keys %{$self->{_options}} ) {
+            next if (generic_option($_));
+            $options->{$_} = $self->{_options}->{$_};
+        }
+        if ( defined($_[1]) ) {
+         	# Copy new options, unless generic_option().
+            my $nOpt = $_[1];
+    	    foreach ( keys %$nOpt ) {
+                next if (generic_option($_));
+    	        $options->{$_} = $nOpt->{$_};
+        	};
+        };
+        my $rqst = new WWW::Search::Scraper::Request($_[0], $options);
+        $self->{'_scraperRequest'} = $rqst;
+        $rqst->{'_base_url'} = $self->{'_base_url'};
+    }
+    # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## # ## 
+
+    my @qType = @{$self->{'_options'}{'scraperQuery'}};
+    return $self->native_setup_search_NULL(@_) unless @qType;
+
+    for ( $qType[0] ) {
+        m/SHERLOCK/ && do { $self->native_setup_search_SHERLOCK(@_); last };
+        m/FORM/     && do { $self->native_setup_search_FORM(@_); last };
+        m/QUERY/    && do { $self->native_setup_search_QUERY(@_); last };
+        m/POST/     && do { $self->{'_http_method'} = 'POST';
+                            $self->native_setup_search_QUERY(@_); last };
+        die "Invalid mode in WWW::Search::Scraper - '$_'\n";
+    }
+}
+
+
+
+sub native_setup_search_SHERLOCK
+{
+    die "Unimplemented mode in WWW::Search::Scraper - 'SHERLOCK'\n";
+}
+
+
+sub native_setup_search_FORM
+{
+    die "Unimplemented mode in WWW::Search::Scraper - 'FORM'\n";
+}
+
+
+sub native_setup_search_QUERY
+{
+    my($self, $native_query, $native_options_ref) = @_;
+    my @qType = @{$self->{'_options'}{'scraperQuery'}};
+    
+    $self->user_agent('user');
+    $self->{_next_to_retrieve} = 0;
+    
+    my $url = $qType[1];
+    if ( ref $url ) {
+        $self->{'_base_url'} = &$url($self, $native_query, $native_options_ref);
+    } else {
+        $self->{'_base_url'} = $url;
+    }
+    unless ( $self->{'_base_url'} ) {
+        print STDERR "No base url was specified by ".ref($self).".pm, so no search is possible.\n";
+        undef $self->{'_next_url'};
+        return undef;
+    }
+    $self->{'_http_method'} = 'GET' unless $self->{'_http_method'};
+    my $rqst = $self->{'_scraperRequest'};
+    $rqst->{'_base_url'} = $self->{'_base_url'};
+
+    my %inputsHash = %{$qType[2]};
+    my %optionHash = %{$qType[3]};
+
+    my $options_ref = $self->{_options};
+    if (defined($native_options_ref)) {
+    	# Copy in new options.
+    	foreach (keys %$native_options_ref) {
+    	    $options_ref->{$_} = $native_options_ref->{$_} if defined $native_options_ref->{$_};
+    	};
+    };
+    $self->{_debug} = $options_ref->{'search_debug'};
+    $self->{_debug} = 2 if ($options_ref->{'search_parse_debug'});
+    $self->{_debug} = 0 if (!defined($self->{_debug}));
+    
+    # Process the options.
+    $self->cookie_jar(HTTP::Cookies->new()) if $optionHash{'cookies'};
+    foreach (sort keys %optionHash) {
+        $self->{'_scraperOptions'}{$_} = $optionHash{$_};
+    };
+    
+    my $rqst = $self->{'_scraperRequest'};
+    $rqst->{'queryFieldName'} = $inputsHash{'scraperQuery'} unless $rqst->{'queryFieldName'};
+    $rqst->{'optionsRef'} = $options_ref;
+    $self->{'_next_url'} = $rqst->generateQuery($native_query);
+
+    # Process the inputs.
+    # (Now in sorted order for consistency regardless of hash ordering.)
+#    my $options = "$inputsHash{'scraperQuery'}=".WWW::Search::escape_query($native_query);
+#    foreach (sort keys %$options_ref) {
+#    	# printf STDERR "option: $_ is " . $options_ref->{$_} . "\n";
+#    	next if (generic_option($_));
+#        
+#        $options_ref->{$_} =~ s/\+/\,/g if($_ eq 'st');
+#        $options_ref->{$_} =~ s/\+/\&$_=/g unless($_ eq 'q');
+#
+#        $options .= "&$_=".WWW::Search::escape_query($options_ref->{$_});
+#    };
+#   $self->{'_next_url'} = $self->{'_base_url'}.$options;
+
+    print STDERR $self->{_next_url} . "\n" if ($self->{_debug});
+}
+
+
+# This one handles the deprecated Scraper::native_setup_search()
+sub native_setup_search_NULL
+{
+    my($self, $native_query, $native_options_ref) = @_;
+    
+    my $subJob = 'Perl';
+    $self->user_agent('user');
+    $self->{_next_to_retrieve} = 0;
+    if (!defined($self->{_options})) {
+	$self->{_options} = {
+#	    'search_url' => 'http://www.defaultdomain.com/plus-cgi-bin/and-cgi-program-name'  SHOULD BE PASSED IN AS AN OPTION.
+        };
+    };
+    $self->{'_http_method'} = 'GET';        # SHOULD BE PASSED IN AS AN OPTION; this is the default.
+#    $self->{'_options'}{'scrapeFrame'} =  []; SHOULD BE PASSED IN AS AN OPTION.
+ 
+    my($options_ref) = $self->{_options};
+    if (defined($native_options_ref)) {
+	# Copy in new options.
+	foreach (keys %$native_options_ref) {
+	    $options_ref->{$_} = $native_options_ref->{$_};
+	};
+    };
+    # Process the options.
+    # (Now in sorted order for consistency regarless of hash ordering.)
+    my($options) = '';
+    foreach (sort keys %$options_ref) {
+	# printf STDERR "option: $_ is " . $options_ref->{$_} . "\n";
+	next if (generic_option($_));
+	$options .= $_ . '=' . $options_ref->{$_} . '&';
+    };
+    $self->{_debug} = $options_ref->{'search_debug'};
+    $self->{_debug} = 2 if ($options_ref->{'search_parse_debug'});
+    $self->{_debug} = 0 if (!defined($self->{_debug}));
+    
+    # Finally figure out the url.
+    $self->{_base_url} = 
+	$self->{_next_url} =
+            	$self->{_options}{'search_url'} .
+        	    "?" . $options .
+            	"KEYWORDS=" . $native_query;
+
+    print STDERR $self->{_base_url} . "\n" if ($self->{_debug});
+}
+
+
+
+sub native_retrieve_some
+{
+    my ($self) = @_;
+    
+    # fast exit if already done
+    return undef if ( !defined($self->{_next_url}) );
+    
+    # get some
+     if ( $self->{_debug} ) {
+         my $obj = ref $self;
+         print STDERR "$obj::native_retrieve_some: fetching " . $self->{_next_url} . "\n";
+     }
+    my $method = $self->{'_http_method'};
+    $method = 'GET' unless $method;
+    my $response = $self->http_request($method, $self->{_next_url});
+    $self->{'_last_url'} = $self->{'_next_url'}; $self->{'_next_url'} = undef;
+    $self->{response} = $response;
+    
+    return undef unless $response->is_success;
+
+    my $hits_found = $self->scrape($response->content(), $self->{_debug});
+
+    # sleep so as to not overload the engine
+    $self->user_agent_delay if ( defined($self->{_next_url}) );
+    
+    return $hits_found;
+}
+
+
+
+# Public
+sub scrape { my ($self, $content, $debug) = @_;
+   return scraper($self, $self->{'_options'}{'scrapeFrame'}[1], \$content, undef, $debug);
+}
+
+# private
+sub scraper { my ($self, $scaffold_array, $content, $hit, $debug) = @_;
+	# Here are some variables that we use frequently done here.
+    my $total_hits_found = 0;
+    
+    my ($sub_content, $next_scaffold);
+
+
+SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
+        my $tag = $$scaffold[0];
+
+       print "TAG: $tag\n" if $debug > 1;
+
+        # 'HIT*' is special since it has pre- and post- processing (adding the hits to the hit-list).
+        # All other tokens simply process data as it moves along, then they're done,
+        #  so they will do a set up, then pass along to recurse on scraper() . . .
+        if ( 'HIT*' eq $tag )
+        {
+            my $hit;
+            do 
+            {
+                if ( $hit )
+                {
+                    push @{$self->{cache}}, $hit;
+                    $total_hits_found += 1;
+                }
+                $hit = $self->newHit();
+                $hit->{'searchObject'} = $self;
+            } while ( $self->scraper($$scaffold[1], $content, $hit, $debug) );
+            next SCAFFOLD;
+        }
+    
+        elsif ( 'BODY' eq $tag )
+        {  
+            $sub_content = '';
+            if ( $$scaffold[1] and $$scaffold[2] ) {
+                $$content =~ s-$$scaffold[1](.*?)$$scaffold[2]--si; # Strip off the adminstrative clutter at the beginning and end.
+                $sub_content = $1;
+            } elsif ( $$scaffold[1] ) {
+                $$content =~ s-$$scaffold[1](.*)$-$1-si; # Strip off the adminstrative clutter at the beginning.
+                $sub_content = $1;
+            } elsif ( $$scaffold[2] ) {
+                $$content =~ s-^(.*?)$$scaffold[2]-$1-si; # Strip off the adminstrative clutter at the end.
+                $sub_content = $1;
+            } else {
+                next SCAFFOLD;
+            }
+            $next_scaffold = $$scaffold[3];
+        }
+    	
+        elsif ( 'CALLBACK' eq $tag ) {
+            ($sub_content, $next_scaffold) = &{$$scaffold[1]}($self, $hit, $content, $scaffold, \$total_hits_found);
+            next SCAFFOLD unless $next_scaffold;
+        }
+    	
+        elsif ( 'DATA' eq $tag )
+        {
+            $sub_content = '';
+            if ( $$scaffold[1] and $$scaffold[2] ) {
+                $$content =~ s-$$scaffold[1](.*?)$$scaffold[2]--si;
+                $sub_content = $1;
+            } else {
+                next SCAFFOLD;
+            }
+            my $binding = $$scaffold[3];
+            $hit->_elem($binding, $sub_content);
+            $total_hits_found = 1;
+            next SCAFFOLD;
+        }
+    	
+        elsif ( 'COUNT' eq $tag )
+    	{
+            $self->approximate_result_count(0);
+    		if ( $$content =~ m/$$scaffold[1]/si )
+    		{
+    			print STDERR  "approximate_result_count: '$1'\n" if $debug;
+    			$self->approximate_result_count ($1);
+                next SCAFFOLD;
+    		}
+            else {
+                print STDERR "Can't find COUNT: '$$scaffold[1]'\n" if $debug;
+            }
+    	}
+
+        elsif ( 'NEXT' eq $tag )
+        {
+            # This accommodates a pre-1.41 method for specifying 'NEXT'
+            $$scaffold[1] = $$scaffold[2] 
+                if ( $$scaffold[1] eq 1 or $$scaffold[1] eq 2 );
+
+            if ( ref $$scaffold[1] )
+            {
+                my $datParser = $$scaffold[1];
+                $self->{'_next_url'} = &$datParser($self, $hit, $$content);                
+                print STDERR  "NEXT_URL: $self->{'_next_url'}\n" if $debug;
+                next SCAFFOLD;
+            }
+            else
+            {
+                # A simple regex will not work here, since the "next" string may often
+                # appear even when there's no <A>...</A> surrounding it. The problem occurs
+                # when there is a <A>...</A> preceding it, *and* following it. Simple regex's
+                # will find the first anchor, even though it's not the HREF for the "next" string.
+                my $next_url_button = $$scaffold[2]; # accomodates some earlier versions of Scraper.pm modules.
+                $next_url_button = $$scaffold[1] unless $next_url_button;
+                print STDERR  "next_url_button: $next_url_button\n" if $debug;
+                my $next_content = $$content;
+                while ( my ($sub_content, $url) = $self->getMarkedText('A', \$next_content) ) 
+                {
+                    last unless $sub_content;
+                    if ( $sub_content =~ m-$next_url_button-si )
+                    {
+                        $url =~ s-A\s+HREF=--si;
+                        $url =~ s-^'(.*?)'\s*$-$1-si unless $url =~ s-^"(.*?)"\s*$-$1-si;
+                        my $datParser = $$scaffold[3];
+                        $datParser = \&WWW::Search::Scraper::null unless $datParser;
+                        my $url = new URI::URL(&$datParser($self, $hit, $url), $self->{_base_url});
+                        $url = $url->abs;
+                        $self->{'_next_url'} = $url;
+                        print STDERR  "NEXT_URL: $url\n" if $debug;
+                        next SCAFFOLD;
+                    }
+                }
+            }
+            next SCAFFOLD;
+        }
+
+        elsif ( 'HTML' eq $tag )
+        {
+            $$content =~ m-<HTML>(.*)</HTML>-si;
+            $sub_content = $1;
+            $next_scaffold = $$scaffold[1];
+        }
+
+    	elsif ( $tag =~ m/^(TABLE|TR|DL|FORM)$/ )
+    	{
+            my $tagLength = length $tag + 2;
+            my $elmName = $$scaffold[1];
+            $elmName = '#0' unless $elmName;
+            if ( 'ARRAY' eq ref $$scaffold[1] )
+            {
+                $next_scaffold = $$scaffold[1];
+            }
+            elsif ( $elmName =~ /^#(\d*)$/ )
+    		{
+                for (1..$1)
+    			{
+                    my $x = $self->getMarkedText($tag, $content); # and throw it away.
+    			}
+                $next_scaffold = $$scaffold[2];
+            }
+            else {
+                print STDERR  "elmName: $elmName\n" if $debug;
+                $next_scaffold = $$scaffold[2];
+                die "Element-name form of <$tag> is not implemented, yet.";
+            }
+            next SCAFFOLD unless $sub_content = $self->getMarkedText($tag, $content);
+        }
+    	elsif ( $tag =~ m/^(TD|DT|DD|DIV)$/ )
+        {
+            next SCAFFOLD unless $sub_content = $self->getMarkedText($tag, $content); # and throw it away.
+#    		next SCAFFOLD unless ( $$content =~ s-(<$tag\s*[^>]*>(.*?)</$tag\s*[^>]*>)--si );  $sub_content = $2;
+    		$next_scaffold = $$scaffold[1];
+            if ( 'ARRAY' ne ref $next_scaffold  ) # if next_scaffold is an array ref, then we'll recurse (below)
+            {
+               my $binding = $next_scaffold;
+               my $datParser = $$scaffold[2];
+               print STDERR  "raw dat: '$sub_content'\n" if $debug;
+               if ( $debug ) { # print ref $ aways does something screwy
+                  print STDERR  "datParser: ";
+                  print STDERR  ref $datParser;
+                  print STDERR  "\n";
+               };
+               $datParser = \&WWW::Search::Scraper::trimTags unless $datParser;
+               print STDERR  "binding: '$binding', " if $debug;
+               print STDERR  "parsed dat: '".&$datParser($self, $hit, $sub_content)."'\n" if $debug;
+                if ( $binding eq 'url' )
+                {
+                    my $url = new URI::URL(&$datParser($self, $hit, $sub_content), $self->{_base_url});
+                    $url = $url->abs;
+                    $hit->add_url($url);
+                } 
+                elsif ( $binding) {
+                    $hit->_elem($binding, &$datParser($self, $hit, $sub_content));
+                }
+                $total_hits_found = 1;
+                next SCAFFOLD;
+            }
+        }
+        elsif ( 'A' eq $tag ) 
+        {
+            my $lbl = $$scaffold[1];
+            if ( $$content =~ s-<A\s+HREF="([^"]+)"[^>]*>(.*?)</A>--si )
+            {
+                print "<A> binding: $$scaffold[2]: '$2', $$scaffold[1]: '$1'\n" if $debug;
+                my $datParser = $$scaffold[3];
+                $datParser = \&WWW::Search::Scraper::trimTags unless $datParser;
+                $hit->_elem($$scaffold[2], &$datParser($self, $hit, $2));
+
+               my ($url) = new URI::URL($1, $self->{_base_url});
+               $url = $url->abs;
+               if ( $lbl eq 'url' ) {
+                    $hit->add_url($url);
+               }
+               else {
+                   $hit->_elem($lbl, $url);
+               }
+               $total_hits_found = 1;
+            }
+            next SCAFFOLD;
+        }
+        elsif ( 'AN' eq $tag ) 
+        {
+            my $lbl = $$scaffold[1];
+            if ( $$content =~ s-<A\s+HREF=([^>]+)>(.*?)</A>--si )
+            {
+                print "<A> binding: $$scaffold[2]: '$2', $$scaffold[1]: '$1'\n" if $debug;
+                
+                my $datParser = $$scaffold[3];
+                $datParser = \&WWW::Search::Scraper::trimTags unless $datParser;
+                $hit->_elem($$scaffold[2], &$datParser($self, $hit, $2));
+
+               my ($url) = new URI::URL($1, $self->{_base_url});
+               $url = $url->abs;
+               if ( $lbl eq 'url' ) {
+                    $hit->add_url($url);
+               }
+               else {
+                   $hit->_elem($lbl, $url);
+               }
+               $total_hits_found = 1;
+            }
+            next SCAFFOLD;
+        }
+        elsif ( 'REGEX' eq $tag ) 
+        {
+            my @ary = @$scaffold;
+            shift @ary;
+            my $regex = shift @ary;
+            if ( $$content =~ s/$regex//si )
+            {
+                my @dts = ($1,$2,$3,$4,$5,$6,$7,$8,$9);
+                for ( @ary ) 
+                {
+                    if ( $_ eq '' ) {
+                        shift @dts;
+                    }
+                    elsif ( $_ eq 'url' ) {
+                        my $url = new URI::URL(shift @dts, $self->{_base_url});
+                        $url = $url->abs;
+                        $hit->add_url($url);
+                    } 
+                    else {
+                        $hit->_elem($_, $self->trimTags($hit, shift @dts));
+                    }
+                }
+                $total_hits_found = 1;
+            }
+            next SCAFFOLD;
+        } elsif ( $tag eq 'RESIDUE' )
+        {
+            $sub_content = $$content;
+            my $binding = $$scaffold[1];
+            my $datParser = $$scaffold[2];
+            $datParser = \&WWW::Search::Scraper::null unless $datParser;
+            $hit->_elem($binding, &$datParser($self, $hit, $sub_content));
+            next SCAFFOLD;
+        }
+        elsif ( $tag eq 'BOGUS' )
+        {
+            # Take back any hits at the header that are declared to be "bogus".
+            my $bogusCount = $$scaffold[1];
+            do { for ( 1..$bogusCount ) {
+                last unless $total_hits_found > 0;
+                $total_hits_found -= 1;
+                shift @{$self->{cache}};
+               }
+            } if $bogusCount > 0;
+            # Take back any hits at the footer that are declared to be "bogus".
+            do { for ( 1..(-$bogusCount) ) {
+                last unless $total_hits_found > 0;
+                $total_hits_found -= 1;
+                pop @{$self->{cache}};
+               }
+            } if $bogusCount < 0;
+            next SCAFFOLD;
+        }
+        elsif ( $tag eq 'TRACE' )
+        {
+            my $x = $$content;
+            $x =~ s/\r//gs;
+            print "TRACE:\n'$x'\n";
+            $total_hits_found += $$scaffold[1];
+        } elsif ( $tag eq 'CALLBACK' ) {
+            &{$$scaffold[1]}($self, $hit, $content, $debug);
+        } else {
+            die "Unrecognized tag: '$tag'";
+        }
+
+        # So it's all set up to recurse to the next layer - - -
+        $total_hits_found += $self->scraper($next_scaffold, \$sub_content, $hit, $debug);
+    }
+    return $total_hits_found;
+}
+
+
+
+sub touchUp {
+    my ($self, $hit, $dat, $datParser) = @_;
+}
+
+
+# Returns the marked up text from the referenced string, as designated by the given tag.
+# This algorithm extracts the contents of the first <$tag> element it encounters,
+#   taking into consideration that it may contain <$tag> elements within it.
+# It removes the marked text from the original string, strips off the markup tags,
+#   and returns that result.
+# (if wantarray, will return result and first tag, with brackets removed)
+#
+sub getMarkedText {
+    my ($self, $tag, $content) = @_;
+    
+    my $eidx = 0;
+    my $sidx = 0;
+    my $depth = 0;
+
+    while ( $$content =~ m-<(/)?$tag[^>]*?>-gsi ) {
+        if ( $1 ) { # then we encountered an end-tag
+            $depth -= 1;
+            if ( $depth < 0 ) {
+                # . . . then somehow we've stumbled into the midst of a table whose end-tag
+                #   has just been encountered - let's be generous and start over.
+                $eidx = 0;
+                $sidx = 0;
+                $depth = 0;
+            }
+            elsif ( $depth == 0 ) { # we've counted as many end-tags as start-tags; we're done!
+                $eidx = pos $$content;
+                last;
+            }
+        } else # we encountered a start-tag
+        {
+            $depth += 1;
+            $sidx = length $` unless $sidx; 
+        }
+    }
+    
+
+    my $rslt = substr $$content, $sidx, $eidx - $sidx, '';
+    $$content =~ m/./;
+    $rslt =~ m-^<($tag[^>]*?)>(.*?)</$tag\s*[^>]*?>$-si;
+    return ($2, $1) if wantarray;
+    return $2;
+}
+
+
+sub addURL {
+   my ($self, $hit, $dat) = @_;
+   
+   if ( $dat =~ m-<A\s+HREF="([^"]+)"[^>]*>-si )
+   {
+      my ($url) = new URI::URL($1, $self->{_base_url});
+      $url = $url->abs;
+      $hit->add_url($url);
+   } else
+   {
+      $hit->add_url("Can't find HREF in '$dat'");
+   }
+
+   return trimTags($self, $hit, $dat);
+}
+
+
+sub trimTags { # Strip tag clutter from $_;
+    my ($self, $hit, $dat) = @_;
+   # This simply rearranges the parameter list from the datParser form.
+    $dat =~ s/\r//gsi;
+    return strip_tags($dat);
+}
+
+sub trimLFs { # Strip LFs, then tag clutter from $_;
+    my ($self, $hit, $dat) = @_;
+    $dat = $self->trimTags($hit, $dat);
+    $dat =~ s/\s*\r?\n\s*//gs;
+   # This simply rearranges the parameter list from the datParser form.
+    return $dat;
+}
+
+sub trimLFLFs { # Strip double-LFs, then tag clutter from $_;
+    my ($self, $hit, $dat) = @_;
+    $dat = $self->trimTags($hit, $dat);
+#    while ( 
+        $dat =~ s/[\s]*\n([\s]*\n[\s]*)*/\n/gsi;
+#         ) {}; # Do several times, rather than /g, to handle triple, quadruple, quintuple, etc.
+   # This simply rearranges the parameter list from the datParser form.
+    return $dat;
+}
+
+# A null filter.
+sub null { # Strip tag clutter from $_;
+    my ($self, $hit, $dat) = @_;
+    return $dat;
+}
+
+# Alternative name for the next_result() method for Scraper.
+sub next_response {
+    my $self = shift;
+    $self->next_result(@_);
+}
+
+# Alternative name for the native_query() method for Scraper.
+sub setup_query {
+    my $self = shift;
+    $self->native_query(@_);
+}
+
+
+
+# #######################################################################################
+# Get the Next URL from a <form> on the page.
+# Sometimes there's just a NEXT form, sometimes there's a PREV form and a NEXT form . . .
+use HTML::Form;
+sub findNextForm {
+    my ($self, $hit, $dat) = @_;
+    
+    my $next_content = $dat;
+    while ( my ($sub_content, $frm) = $self->getMarkedText('FORM', \$next_content) ) {
+        last unless $sub_content;
+        # Reconstruct the form that contains the NEXT data.
+        my @forms = HTML::Form->parse("<form $frm>$sub_content</form>", $self->{'_base_url'});
+        my $form = $forms[0];
+
+        my $submit_button;
+        for ( $form->inputs() ) {
+            if ( $_->value() =~ m/Next/ ) {
+                $submit_button = $_;
+                last;
+            }
+        }
+        if ( $submit_button ) {
+            my $req = $submit_button->click($form); #
+            return $req->uri();
+        }
+    }
+    return undef;
+}
+
+
+
+use WWW::Search::Scraper::Response;
+sub newHit {
+    my $self = new WWW::Search::Scraper::Response;
+    return $self;
+}
+
+{ package WWW::Search;
+sub getName {
+   return $_[0]->{'scraperName'};
+}
+
+}
+
+
+
+{
+    package LWP::UserAgent;
+
+# Dice always redirects the first query page via 302 status code.
+# BAJobs frequently (but not always) redirects via 302 status code.
+# We need to tell LWP::UserAgent that it's ok to redirect on Dice and BAJobs.
+sub redirect_ok
+{
+    # draft-ietf-http-v10-spec-02.ps from www.ics.uci.edu, specify:
+    #
+    # If the 30[12] status code is received in response to a request using
+    # the POST method, the user agent must not automatically redirect the
+    # request unless it can be confirmed by the user, since this might change
+    # the conditions under which the request was issued.
+
+    my($self, $request) = @_;
+    return 1 if $request->uri() =~ m-jobsearch\.dice\.com/jobsearch/jobsearch\.cgi-i;
+    return 1 if $request->uri() =~ m-www\.bajobs\.com/jobseeker/searchresults\.jsp-i;
+    return 1 if $request->uri() =~ m-\.techies\.com/Common-i;
+    return 0 if $request->method eq "POST";
+    1;
+}
+}
+
+
+
+1;
+
+__END__
 =pod
 
 =head1 NAME
@@ -487,679 +1233,3 @@ modify it under the same terms as Perl itself.
 
 =cut
 
-
-####################################################################################
-####################################################################################
-####################################################################################
-####################################################################################
-package WWW::Search::Scraper;
-
-use strict;
-require Exporter;
-use vars qw($VERSION @ISA @EXPORT @EXPORT_OK);
-@EXPORT = qw();
-@EXPORT_OK = qw();
-@ISA = qw(WWW::Search Exporter);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.43 $ =~ /(\d+)\.(\d+)/);
-
-use Carp ();
-use WWW::Search( qw(strip_tags) );
-require WWW::SearchResult;
-@EXPORT_OK = qw(escape_query unescape_query generic_option 
-                strip_tags trimTags trimLFs trimLFLFs
-                @ENGINES_WORKING addURL);
-
-
-sub new {
-    my ($class, $subclass, $searchName) = @_;
-    
-    my $self;
-    if ( $subclass =~ m-^\.\.[\/](.*)$- ) { # Allow the form "../name" to indicate
-       $self = new WWW::Search($1);       # a WWW::Search backend. Also see "Some 
-    } else {                                #  searchers are not scrapers", below.
-        $self = new WWW::Search("Scraper::$subclass");
-    }
-
-    $self->{'scraperQF'} = 0; # Explicitly declare 'scraperQF' as the deprecated mode.
-    $searchName = $subclass unless $searchName;
-    $self->{'scraperName'} = $searchName;
-    return $self;
-}
-
-
-
-sub generic_option 
-{
-    my ($option) = @_;
-    return 1 if $option =~ /^scrape/;
-    return WWW::Search::generic_option($option);
-}
-
-sub native_setup_search
-{
-    my $self = shift;
-    
-    my @qType = @{$self->{'_options'}{'scraperQuery'}};
-    return $self->native_setup_search_NULL(@_) unless @qType;
-
-    for ( $qType[0] ) {
-        m/SHERLOCK/ && do { $self->native_setup_search_SHERLOCK(@_); last };
-        m/FORM/     && do { $self->native_setup_search_FORM(@_); last };
-        m/QUERY/    && do { $self->native_setup_search_QUERY(@_); last };
-        m/POST/     && do { $self->{'_http_method'} = 'POST';
-                            $self->native_setup_search_QUERY(@_); last };
-        die "Invalid mode in WWW::Search::Scraper - '$_'\n";
-    }
-}
-
-
-
-sub native_setup_search_SHERLOCK
-{
-    die "Unimplemented mode in WWW::Search::Scraper - 'SHERLOCK'\n";
-}
-
-
-sub native_setup_search_FORM
-{
-    die "Unimplemented mode in WWW::Search::Scraper - 'FORM'\n";
-}
-
-
-sub native_setup_search_QUERY
-{
-    my($self, $native_query, $native_options_ref) = @_;
-    my @qType = @{$self->{'_options'}{'scraperQuery'}};
-    
-    $self->user_agent('user');
-    $self->{_next_to_retrieve} = 0;
-    
-    my $url = $qType[1];
-    if ( ref $url ) {
-        $self->{'_base_url'} = &$url($self, $native_query, $native_options_ref);
-    } else {
-        $self->{'_base_url'} = $url;
-    }
-    unless ( $self->{'_base_url'} ) {
-        print STDERR "No base url was specified by ".ref($self).".pm, so no search is possible.\n";
-        undef $self->{'_next_url'};
-        return undef;
-    }
-    $self->{'_http_method'} = 'GET' unless $self->{'_http_method'};
-
-    my %inputsHash = %{$qType[2]};
-    my %optionHash = %{$qType[3]};
-
-    my($options_ref) = $self->{_options};
-    if (defined($native_options_ref)) {
-    	# Copy in new options.
-    	foreach (keys %$native_options_ref) {
-    	    $options_ref->{$_} = $native_options_ref->{$_} if defined $native_options_ref->{$_};
-    	};
-    };
-    $self->{_debug} = $options_ref->{'search_debug'};
-    $self->{_debug} = 2 if ($options_ref->{'search_parse_debug'});
-    $self->{_debug} = 0 if (!defined($self->{_debug}));
-    
-    # Process the options.
-    $self->cookie_jar(HTTP::Cookies->new()) if $optionHash{'cookies'};
-    foreach (sort keys %optionHash) {
-        $self->{'_scraperOptions'}{$_} = $optionHash{$_};
-    };
-    
-    
-    # Process the inputs.
-    # (Now in sorted order for consistency regarless of hash ordering.)
-    my $options = "$inputsHash{'scraperQuery'}=$native_query";
-    foreach (sort keys %$options_ref) {
-    	# printf STDERR "option: $_ is " . $options_ref->{$_} . "\n";
-    	next if (generic_option($_));
-        $options .= "&$_=$options_ref->{$_}";
-    };
-    
-    $self->{'_next_url'} = $self->{'_base_url'}.$options;
-    print STDERR $self->{_base_url} . "\n" if ($self->{_debug});
-}
-
-
-# This one handles the deprecated Scraper::native_setup_search()
-sub native_setup_search_NULL
-{
-    my($self, $native_query, $native_options_ref) = @_;
-    
-    my $subJob = 'Perl';
-    $self->user_agent('user');
-    $self->{_next_to_retrieve} = 0;
-    if (!defined($self->{_options})) {
-	$self->{_options} = {
-#	    'search_url' => 'http://www.defaultdomain.com/plus-cgi-bin/and-cgi-program-name'  SHOULD BE PASSED IN AS AN OPTION.
-        };
-    };
-    $self->{'_http_method'} = 'GET';        # SHOULD BE PASSED IN AS AN OPTION; this is the default.
-#    $self->{'_options'}{'scrapeFrame'} =  []; SHOULD BE PASSED IN AS AN OPTION.
- 
-    my($options_ref) = $self->{_options};
-    if (defined($native_options_ref)) {
-	# Copy in new options.
-	foreach (keys %$native_options_ref) {
-	    $options_ref->{$_} = $native_options_ref->{$_};
-	};
-    };
-    # Process the options.
-    # (Now in sorted order for consistency regarless of hash ordering.)
-    my($options) = '';
-    foreach (sort keys %$options_ref) {
-	# printf STDERR "option: $_ is " . $options_ref->{$_} . "\n";
-	next if (generic_option($_));
-	$options .= $_ . '=' . $options_ref->{$_} . '&';
-    };
-    $self->{_debug} = $options_ref->{'search_debug'};
-    $self->{_debug} = 2 if ($options_ref->{'search_parse_debug'});
-    $self->{_debug} = 0 if (!defined($self->{_debug}));
-    
-    # Finally figure out the url.
-    $self->{_base_url} = 
-	$self->{_next_url} =
-            	$self->{_options}{'search_url'} .
-        	    "?" . $options .
-            	"KEYWORDS=" . $native_query;
-
-    print STDERR $self->{_base_url} . "\n" if ($self->{_debug});
-}
-
-
-
-sub native_retrieve_some
-{
-    my ($self) = @_;
-    
-    # fast exit if already done
-    return undef if ( !defined($self->{_next_url}) );
-    
-    # get some
-     if ( $self->{_debug} ) {
-         my $obj = ref $self;
-         print STDERR "$obj::native_retrieve_some: fetching " . $self->{_next_url} . "\n";
-     }
-    my $method = $self->{'_http_method'};
-    $method = 'GET' unless $method;
-    my $response = $self->http_request($method, $self->{_next_url});
-    $self->{'_last_url'} = $self->{'_next_url'}; $self->{'_next_url'} = undef;
-    $self->{response} = $response;
-    
-    return undef unless $response->is_success;
-
-    my $hits_found = $self->scrape($response->content(), $self->{_debug});
-
-    # sleep so as to not overload the engine
-    $self->user_agent_delay if ( defined($self->{_next_url}) );
-    
-    return $hits_found;
-}
-
-
-
-# Public
-sub scrape { my ($self, $content, $debug) = @_;
-   return scraper($self, $self->{'_options'}{'scrapeFrame'}[1], \$content, undef, $debug);
-}
-
-# private
-sub scraper { my ($self, $scaffold_array, $content, $hit, $debug) = @_;
-	# Here are some variables that we use frequently done here.
-    my $total_hits_found = 0;
-    
-    my ($sub_content, $next_scaffold);
-
-
-SCAFFOLD: for my $scaffold ( @$scaffold_array ) {
-        my $tag = $$scaffold[0];
-
-       print "TAG: $tag\n" if $debug > 1;
-
-        # 'HIT*' is special since it has pre- and post- processing (adding the hits to the hit-list).
-        # All other tokens simply process data as it moves along, then they're done,
-        #  so they will do a set up, then pass along to recurse on scraper() . . .
-        if ( 'HIT*' eq $tag )
-        {
-            my $hit;
-            do 
-            {
-                if ( $hit )
-                {
-                    push @{$self->{cache}}, $hit;
-                    $total_hits_found += 1;
-                }
-                $hit = $self->newHit();
-                $hit->{'searchObject'} = $self;
-            } while ( $self->scraper($$scaffold[1], $content, $hit, $debug) );
-            next SCAFFOLD;
-        }
-    
-        elsif ( 'BODY' eq $tag )
-        {  
-            $sub_content = '';
-            if ( $$scaffold[1] and $$scaffold[2] ) {
-                $$content =~ s-$$scaffold[1](.*?)$$scaffold[2]--si; # Strip off the adminstrative clutter at the beginning and end.
-                $sub_content = $1;
-            } elsif ( $$scaffold[1] ) {
-                $$content =~ s-$$scaffold[1](.*)$-$1-si; # Strip off the adminstrative clutter at the beginning.
-                $sub_content = $1;
-            } elsif ( $$scaffold[2] ) {
-                $$content =~ s-^(.*?)$$scaffold[2]-$1-si; # Strip off the adminstrative clutter at the end.
-                $sub_content = $1;
-            } else {
-                next SCAFFOLD;
-            }
-            $next_scaffold = $$scaffold[3];
-        }
-    	
-        elsif ( 'CALLBACK' eq $tag ) {
-            ($sub_content, $next_scaffold) = &{$$scaffold[1]}($self, $hit, $content, $scaffold, \$total_hits_found);
-            next SCAFFOLD unless $next_scaffold;
-        }
-    	
-        elsif ( 'DATA' eq $tag )
-        {
-            $sub_content = '';
-            if ( $$scaffold[1] and $$scaffold[2] ) {
-                $$content =~ s-$$scaffold[1](.*?)$$scaffold[2]--si;
-                $sub_content = $1;
-            } else {
-                next SCAFFOLD;
-            }
-            my $binding = $$scaffold[3];
-            $hit->_elem($binding, $sub_content);
-            $total_hits_found = 1;
-            next SCAFFOLD;
-        }
-    	
-        elsif ( 'COUNT' eq $tag )
-    	{
-            $self->approximate_result_count(0);
-    		if ( $$content =~ m/$$scaffold[1]/si )
-    		{
-    			print STDERR  "approximate_result_count: '$1'\n" if $debug;
-    			$self->approximate_result_count ($1);
-                next SCAFFOLD;
-    		}
-            else {
-                print STDERR "Can't find COUNT: '$$scaffold[1]'\n" if $debug;
-            }
-    	}
-
-        elsif ( 'NEXT' eq $tag )
-        {
-            # This accommodates a pre-1.41 method for specifying 'NEXT'
-            $$scaffold[1] = $$scaffold[2] 
-                if ( $$scaffold[1] eq 1 or $$scaffold[1] eq 2 );
-
-            if ( ref $$scaffold[1] )
-            {
-                my $datParser = $$scaffold[1];
-                $self->{'_next_url'} = &$datParser($self, $hit, $$content);                
-                print STDERR  "NEXT_URL: $self->{'_next_url'}\n" if $debug;
-                next SCAFFOLD;
-            }
-            else
-            {
-                # A simple regex will not work here, since the "next" string may often
-                # appear even when there's no <A>...</A> surrounding it. The problem occurs
-                # when there is a <A>...</A> preceding it, *and* following it. Simple regex's
-                # will find the first anchor, even though it's not the HREF for the "next" string.
-                my $next_url_button = $$scaffold[2];
-                print STDERR  "next_url_button: $next_url_button\n" if $debug;
-                my $next_content = $$content;
-                while ( my ($sub_content, $url) = $self->getMarkedText('A', \$next_content) ) 
-                {
-                    last unless $sub_content;
-                    if ( $sub_content =~ m-$next_url_button-si )
-                    {
-                        $url =~ s-A\s+HREF=--si;
-                        $url =~ s-^'(.*?)'\s*$-$1-si unless $url =~ s-^"(.*?)"\s*$-$1-si;
-                        my $datParser = $$scaffold[3];
-                        $datParser = \&WWW::Search::Scraper::null unless $datParser;
-                        my $url = new URI::URL(&$datParser($self, $hit, $url), $self->{_base_url});
-                        $url = $url->abs;
-                        $self->{'_next_url'} = $url;
-                        print STDERR  "NEXT_URL: $url\n" if $debug;
-                        next SCAFFOLD;
-                    }
-                }
-            }
-            next SCAFFOLD;
-        }
-
-        elsif ( 'HTML' eq $tag )
-        {
-            $$content =~ m-<HTML>(.*)</HTML>-si;
-            $sub_content = $1;
-            $next_scaffold = $$scaffold[1];
-        }
-
-    	elsif ( $tag =~ m/^(TABLE|TR|DL|FORM)$/ )
-    	{
-            my $tagLength = length $tag + 2;
-            my $elmName = $$scaffold[1];
-            $elmName = '#0' unless $elmName;
-            if ( 'ARRAY' eq ref $$scaffold[1] )
-            {
-                $next_scaffold = $$scaffold[1];
-            }
-            elsif ( $elmName =~ /^#(\d*)$/ )
-    		{
-                for (1..$1)
-    			{
-                    my $x = $self->getMarkedText($tag, $content); # and throw it away.
-    			}
-                $next_scaffold = $$scaffold[2];
-            }
-            else {
-                print STDERR  "elmName: $elmName\n" if $debug;
-                $next_scaffold = $$scaffold[2];
-                die "Element-name form of <$tag> is not implemented, yet.";
-            }
-            next SCAFFOLD unless $sub_content = $self->getMarkedText($tag, $content);
-        }
-    	elsif ( $tag =~ m/^(TD|DT|DD|DIV)$/ )
-        {
-            next SCAFFOLD unless $sub_content = $self->getMarkedText($tag, $content); # and throw it away.
-#    		next SCAFFOLD unless ( $$content =~ s-(<$tag\s*[^>]*>(.*?)</$tag\s*[^>]*>)--si );  $sub_content = $2;
-    		$next_scaffold = $$scaffold[1];
-            if ( 'ARRAY' ne ref $next_scaffold  ) # if next_scaffold is an array ref, then we'll recurse (below)
-            {
-               my $binding = $next_scaffold;
-               my $datParser = $$scaffold[2];
-               print STDERR  "raw dat: '$sub_content'\n" if $debug;
-               if ( $debug ) { # print ref $ aways does something screwy
-                  print STDERR  "datParser: ";
-                  print STDERR  ref $datParser;
-                  print STDERR  "\n";
-               };
-               $datParser = \&WWW::Search::Scraper::trimTags unless $datParser;
-               print STDERR  "binding: '$binding', " if $debug;
-               print STDERR  "parsed dat: '".&$datParser($self, $hit, $sub_content)."'\n" if $debug;
-                if ( $binding eq 'url' )
-                {
-                    my $url = new URI::URL(&$datParser($self, $hit, $sub_content), $self->{_base_url});
-                    $url = $url->abs;
-                    $hit->add_url($url);
-                } 
-                elsif ( $binding) {
-                    $hit->_elem($binding, &$datParser($self, $hit, $sub_content));
-                }
-                $total_hits_found = 1;
-                next SCAFFOLD;
-            }
-        }
-        elsif ( 'A' eq $tag ) 
-        {
-            my $lbl = $$scaffold[1];
-            if ( $$content =~ s-<A\s+HREF="([^"]+)"[^>]*>(.*?)</A>--si )
-            {
-                print "<A> binding: $$scaffold[2]: '$2', $$scaffold[1]: '$1'\n" if $debug;
-                my $datParser = $$scaffold[3];
-                $datParser = \&WWW::Search::Scraper::trimTags unless $datParser;
-                $hit->_elem($$scaffold[2], &$datParser($self, $hit, $2));
-
-               my ($url) = new URI::URL($1, $self->{_base_url});
-               $url = $url->abs;
-               if ( $lbl eq 'url' ) {
-                    $hit->add_url($url);
-               }
-               else {
-                   $hit->_elem($lbl, $url);
-               }
-               $total_hits_found = 1;
-            }
-            next SCAFFOLD;
-        }
-        elsif ( 'AN' eq $tag ) 
-        {
-            my $lbl = $$scaffold[1];
-            if ( $$content =~ s-<A\s+HREF=([^>]+)>(.*?)</A>--si )
-            {
-                print "<A> binding: $$scaffold[2]: '$2', $$scaffold[1]: '$1'\n" if $debug;
-                
-                my $datParser = $$scaffold[3];
-                $datParser = \&WWW::Search::Scraper::trimTags unless $datParser;
-                $hit->_elem($$scaffold[2], &$datParser($self, $hit, $2));
-
-               my ($url) = new URI::URL($1, $self->{_base_url});
-               $url = $url->abs;
-               if ( $lbl eq 'url' ) {
-                    $hit->add_url($url);
-               }
-               else {
-                   $hit->_elem($lbl, $url);
-               }
-               $total_hits_found = 1;
-            }
-            next SCAFFOLD;
-        }
-        elsif ( 'REGEX' eq $tag ) 
-        {
-            my @ary = @$scaffold;
-            shift @ary;
-            my $regex = shift @ary;
-            if ( $$content =~ s/$regex//si )
-            {
-                my @dts = ($1,$2,$3,$4,$5,$6,$7,$8,$9);
-                for ( @ary ) 
-                {
-                    if ( $_ eq '' ) {
-                        shift @dts;
-                    }
-                    elsif ( $_ eq 'url' ) {
-                        my $url = new URI::URL(shift @dts, $self->{_base_url});
-                        $url = $url->abs;
-                        $hit->add_url($url);
-                    } 
-                    else {
-                        $hit->_elem($_, $self->trimTags($hit, shift @dts));
-                    }
-                }
-                $total_hits_found = 1;
-            }
-            next SCAFFOLD;
-        } elsif ( $tag eq 'RESIDUE' )
-        {
-            $sub_content = $$content;
-            my $binding = $$scaffold[1];
-            my $datParser = $$scaffold[2];
-            $datParser = \&WWW::Search::Scraper::null unless $datParser;
-            $hit->_elem($binding, &$datParser($self, $hit, $sub_content));
-            next SCAFFOLD;
-        }
-        elsif ( $tag eq 'BOGUS' )
-        {
-            # Take back any hits at the header that are declared to be "bogus".
-            my $bogusCount = $$scaffold[1];
-            do { for ( 1..$bogusCount ) {
-                last unless $total_hits_found > 0;
-                $total_hits_found -= 1;
-                shift @{$self->{cache}};
-               }
-            } if $bogusCount > 0;
-            # Take back any hits at the footer that are declared to be "bogus".
-            do { for ( 1..(-$bogusCount) ) {
-                last unless $total_hits_found > 0;
-                $total_hits_found -= 1;
-                pop @{$self->{cache}};
-               }
-            } if $bogusCount < 0;
-            next SCAFFOLD;
-        }
-        elsif ( $tag eq 'TRACE' )
-        {
-            my $x = $$content;
-            $x =~ s/\r//gs;
-            print "TRACE:\n'$x'\n";
-            $total_hits_found += $$scaffold[1];
-        } elsif ( $tag eq 'CALLBACK' ) {
-            &{$$scaffold[1]}($self, $hit, $content, $debug);
-        } else {
-            die "Unrecognized tag: '$tag'";
-        }
-
-        # So it's all set up to recurse to the next layer - - -
-        $total_hits_found += $self->scraper($next_scaffold, \$sub_content, $hit, $debug);
-    }
-    return $total_hits_found;
-}
-
-
-
-sub touchUp {
-    my ($self, $hit, $dat, $datParser) = @_;
-}
-
-
-# Returns the marked up text from the referenced string, as designated by the given tag.
-# This algorithm extracts the contents of the first <$tag> element it encounters,
-#   taking into consideration that it may contain <$tag> elements within it.
-# It removes the marked text from the original string, strips off the markup tags,
-#   and returns that result.
-# (if wantarray, will return result and first tag, with brackets removed)
-#
-sub getMarkedText {
-    my ($self, $tag, $content) = @_;
-    
-    my $eidx = 0;
-    my $sidx = 0;
-    my $depth = 0;
-
-    while ( $$content =~ m-<(/)?$tag[^>]*?>-gsi ) {
-        if ( $1 ) { # then we encountered an end-tag
-            $depth -= 1;
-            if ( $depth < 0 ) {
-                # . . . then somehow we've stumbled into the midst of a table whose end-tag
-                #   has just been encountered - let's be generous and start over.
-                $eidx = 0;
-                $sidx = 0;
-                $depth = 0;
-            }
-            elsif ( $depth == 0 ) { # we've counted as many end-tags as start-tags; we're done!
-                $eidx = pos $$content;
-                last;
-            }
-        } else # we encountered a start-tag
-        {
-            $depth += 1;
-            $sidx = length $` unless $sidx; 
-        }
-    }
-    
-
-    my $rslt = substr $$content, $sidx, $eidx - $sidx, '';
-    $$content =~ m/./;
-    $rslt =~ m-^<($tag[^>]*?)>(.*?)</$tag\s*[^>]*?>$-si;
-    return ($2, $1) if wantarray;
-    return $2;
-}
-
-
-sub addURL {
-   my ($self, $hit, $dat) = @_;
-   
-   if ( $dat =~ m-<A\s+HREF="([^"]+)"[^>]*>-si )
-   {
-      my ($url) = new URI::URL($1, $self->{_base_url});
-      $url = $url->abs;
-      $hit->add_url($url);
-   } else
-   {
-      $hit->add_url("Can't find HREF in '$dat'");
-   }
-
-   return trimTags($self, $hit, $dat);
-}
-
-
-sub trimTags { # Strip tag clutter from $_;
-    my ($self, $hit, $dat) = @_;
-   # This simply rearranges the parameter list from the datParser form.
-    $dat =~ s/\r//gsi;
-    return strip_tags($dat);
-}
-
-sub trimLFs { # Strip LFs, then tag clutter from $_;
-    my ($self, $hit, $dat) = @_;
-    $dat = $self->trimTags($hit, $dat);
-    $dat =~ s/\s*\r?\n\s*//gs;
-   # This simply rearranges the parameter list from the datParser form.
-    return $dat;
-}
-
-sub trimLFLFs { # Strip double-LFs, then tag clutter from $_;
-    my ($self, $hit, $dat) = @_;
-    $dat = $self->trimTags($hit, $dat);
-#    while ( 
-        $dat =~ s/[\s]*\n([\s]*\n[\s]*)*/\n/gsi;
-#         ) {}; # Do several times, rather than /g, to handle triple, quadruple, quintuple, etc.
-   # This simply rearranges the parameter list from the datParser form.
-    return $dat;
-}
-
-# A null filter.
-sub null { # Strip tag clutter from $_;
-    my ($self, $hit, $dat) = @_;
-    return $dat;
-}
-
-# Alternative name for the next_result() method for Scraper.
-sub next_response {
-    my $self = shift;
-    $self->next_result(@_);
-}
-
-# Alternative name for the native_query() method for Scraper.
-sub setup_query {
-    my $self = shift;
-    $self->native_query(@_);
-}
-
-
-
-use WWW::Search::Scraper::Response;
-sub newHit {
-    my $self = new WWW::Search::Scraper::Response;
-    return $self;
-}
-
-{ package WWW::Search;
-sub getName {
-   return $_[0]->{'scraperName'};
-}
-
-}
-
-
-
-{
-    package LWP::UserAgent;
-
-# Dice always redirects the first query page via 302 status code.
-# BAJobs frequently (but not always) redirects via 302 status code.
-# We need to tell LWP::UserAgent that it's ok to redirect on Dice and BAJobs.
-sub redirect_ok
-{
-    # draft-ietf-http-v10-spec-02.ps from www.ics.uci.edu, specify:
-    #
-    # If the 30[12] status code is received in response to a request using
-    # the POST method, the user agent must not automatically redirect the
-    # request unless it can be confirmed by the user, since this might change
-    # the conditions under which the request was issued.
-
-    my($self, $request) = @_;
-    return 1 if $request->uri() =~ m-jobsearch\.dice\.com/jobsearch/jobsearch\.cgi-i;
-    return 1 if $request->uri() =~ m-www\.bajobs\.com/jobseeker/searchresults\.jsp-i;
-    return 1 if $request->uri() =~ m-\.techies\.com/Common-i;
-    return 0 if $request->method eq "POST";
-    1;
-}
-}
-
-
-
-1;

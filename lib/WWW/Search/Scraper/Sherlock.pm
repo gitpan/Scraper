@@ -289,7 +289,7 @@ sub native_setup_search
     }
     $self->{'_options'}{'scrapeFrame'} = [ 'HTML', [ @allResultList ] ];
     # whew!
-    use Data::Dumper; print Dumper($self->{'_options'}{'scrapeFrame'});
+    use Data::Dumper; print Dumper($self->{'_options'}{'scrapeFrame'}) if $native_options_ref->{'search_debug'};
 
     # Ok, we'll add anything other inputs the user wants to throw at the search engine, too.
     my($options_ref) = $self->{_options};
